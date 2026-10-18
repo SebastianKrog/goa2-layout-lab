@@ -324,6 +324,20 @@ node test/desk-ui.mjs
 node test/presentation-e2e.mjs
 ```
 
+The upgrade Confirm tap-target regression owns a separate headless verification desk
+(default ports 3500-3503 and 8500) and tests the configured frontend working tree:
+
+```sh
+npm run test:mobile-confirm
+```
+
+It loads the shared tier-II upgrade situation in mobile and desktop 2D shells at
+390x844, 360x800 and 844x390. It stages a card, checks the enabled Confirm button
+receives hits at its center and corners at both scroll extremes, then submits one
+real touch tap and verifies exactly one accepted upgrade. Failures save a browser
+screenshot under `.layout-lab/runtime/`. The suite closes only its owned services.
+Runtime/checkout overrides use the usual `GOA2_LAB_*` variables.
+
 The frontend remains unchanged in production: camera/presentation bridges are
 injected only by the lab Vite config. The backend helper lives in this tool and
 is never imported by the normal backend entrypoint.
