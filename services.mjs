@@ -97,6 +97,8 @@ export class Services {
   constructor(token) {
     this.token = token;
     this.children = new Map();
+    this.frontends = new Map();
+    this.sources = new Map();
     this.closing = false;
     this.references = { ...REFERENCES };
     this.mode = selectRuntime();
@@ -123,6 +125,16 @@ export class Services {
     this.comparator = resolveComparator(STARTUP.comparatorRef);
   }
   async source(sha) {
+    if (!this.sources.has(sha)) {
+      const pending = this.prepareSource(sha).catch((error) => {
+        this.sources.delete(sha);
+        throw error;
+      });
+      this.sources.set(sha, pending);
+    }
+    return this.sources.get(sha);
+  }
+  async prepareSource(sha) {
     if (!/^[a-f0-9]{40}$/.test(sha))
       throw new Error("An exact commit SHA is required.");
     const dest = path.join(
@@ -223,6 +235,16 @@ export class Services {
     }, "isolated backend");
   }
   async frontend(source) {
+    const key = source === "target" ? "base" : source;
+    if (!this.frontends.has(key)) {
+      const pending = this.startFrontend(source).finally(() =>
+        this.frontends.delete(key),
+      );
+      this.frontends.set(key, pending);
+    }
+    return this.frontends.get(key);
+  }
+  async startFrontend(source) {
     const key = source === "target" ? "base" : source;
     if (this.children.has(key) && !this.children.get(key).exited)
       return this.children.get(key).port;

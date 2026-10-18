@@ -18,6 +18,13 @@
         </button>
         <button class="nav-item" data-page="settings">Settings</button>
       </nav>
+      <button
+        class="danger"
+        id="stop"
+        title="Stop the desk and its owned services, including a pending load"
+      >
+        Stop desk
+      </button>
       <div class="connection">
         <i id="connectionDot"></i><span id="connection">Connecting</span>
       </div>
@@ -59,10 +66,20 @@
               ><button id="capture">Capture</button>
             </div>
 
-            <label class="check"
-              ><input id="restore" type="checkbox" checked />Restore saved
-              viewpoints</label
-            >
+            <div class="saved-view-setup">
+              <label class="check"
+                ><input
+                  id="restore"
+                  type="checkbox"
+                  checked
+                  aria-describedby="savedViewHelp"
+                />Use saved view setup</label
+              >
+              <small id="savedViewHelp" class="muted"
+                >Restores saved views, players, screens, cameras and panels. Off
+                keeps your setup. The game moment always loads.</small
+              >
+            </div>
           </div>
         </section>
         <div class="section-line">
@@ -158,9 +175,6 @@
           <summary>Process logs</summary>
           <pre id="processes"></pre>
         </details>
-        <div class="settings-end">
-          <button class="danger" id="stop">Stop desk</button>
-        </div>
       </section>
       <div id="toast" role="status" hidden></div>
     </main>

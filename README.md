@@ -42,13 +42,27 @@ modes install Playwright Chromium when needed. To install that browser for tests
 node node_modules/playwright/cli.js install chromium
 ```
 
-The VS Code task **GoA2: Open comparison desk** runs the same command.
-The desk opens at **http://localhost:3200**. First use extracts the pinned Git
+The VS Code task **Layout lab: Start** runs the same command.
+The desk opens at **http://localhost:3200** with no situation loaded. Select a
+situation and press **Load** when ready. Starting the desk alone does not prepare
+frontend sources or create game clones. To load one explicitly at startup, use
+`npm run compare -- --situation=<saved-situation-id>`; `--preset` selects its views.
+The situation ID is in its JSON file or the desk catalog.
+
+The first explicit load extracts the pinned Git
 sources, verifies/copies model assets, and installs each version's locked
 dependencies. Source caches are separated by runtime/platform/architecture;
 the backend uses its own uv environment under `.layout-lab/runtime`.
 Subsequent launches reuse those caches. Source preparation can
 take several minutes on a Windows-mounted filesystem.
+
+Views load concurrently and share preparation when they use the same source.
+The lab uses Vite directly with a same-origin HTTP/WebSocket proxy to its isolated
+backend; it does not start Cloudflare worker emulators. Game-state, camera, font
+and asset readiness checks still run before a view is ready. The desk catalog
+contains situation metadata and saved presentation setup; full checkpoints are
+loaded only for game operations and exports. Production Worker behavior should
+be checked in the frontend project itself.
 
 Prerequisites on Linux/macOS: Node 22.12+ and npm, Git, `tar`, uv, and the
 `goa2-frontend`, `goa2-backend` and (for Target views) `goa2-mobile-2d-patch` checkouts alongside this repository.
@@ -186,8 +200,10 @@ Use **Settings > Show Cheats controls** to reveal them for debugging. This visib
 4. Click **Save situation**, enter a name and choose **Game state from**.
    That game's full engine/rollback state is the checkpoint;
    presentation settings from all windows are saved with it.
-5. Open it later with **Restore saved viewpoints** enabled. With that
-   option disabled, the selected preset controls the windows instead.
+5. Open it later with **Use saved view setup** enabled to restore saved view
+   count, sources, player seats, devices, cameras, panels and inspection/selection.
+   Turn it off to keep your current comparison setup. The saved game checkpoint
+   loads in both cases; this option only controls its presentation.
 
 **Export** in Saved situations downloads a portable JSON bundle. Import it on another run
 to restore the checkpoint, presentation settings and source provenance. Source
@@ -275,7 +291,7 @@ process logs** shows exact log paths; failures also write diagnostic JSON/PNG fi
 in `.layout-lab/runtime`. Change frozen references in launcher options or env vars
 and restart; they are not editable in the desk.
 
-Stop with **Settings â†’ Stop desk**, Ctrl+C in its launch terminal, or:
+Stop with **Stop desk** in the top bar (also available while loading), Ctrl+C in its launch terminal, or:
 
 ```sh
 npm run compare -- --stop
@@ -337,6 +353,23 @@ receives hits at its center and corners at both scroll extremes, then submits on
 real touch tap and verifies exactly one accepted upgrade. Failures save a browser
 screenshot under `.layout-lab/runtime/`. The suite closes only its owned services.
 Runtime/checkout overrides use the usual `GOA2_LAB_*` variables.
+
+The M2 gameplay acceptance suite also owns its instance (default ports 3600-3603
+and 8600) and tests the frontend working tree:
+
+```sh
+npm run test:mobile-gameplay
+```
+
+It uses the shared simple situations and runs
+`scripts/create-mobile-gameplay-situations.py` to fabricate real Gydion spell,
+Snorri inscription and Emmitt second-card checkpoints. Python resolves from
+`GOA2_LAB_PYTHON`, the sibling backend environment, or `uv run --project` as a
+fallback with an isolated environment under `.layout-lab/runtime/`. Checks cover inspection without submission, selected-card/inspection
+capture and restore, accepted core actions, sequential rune confirmations with
+the automatic fourth rune, spell-action follow-up, and Emmitt take-back, second
+commit and Done. Screenshots and `evidence.json` go under ignored
+`.layout-lab/reviews/m2-*/`; generated situations remain local drafts.
 
 The frontend remains unchanged in production: camera/presentation bridges are
 injected only by the lab Vite config. The backend helper lives in this tool and

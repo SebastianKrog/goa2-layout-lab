@@ -75,6 +75,14 @@ class SituationTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200, response.text)
         return response.json()
 
+    def test_metadata_catalog_omits_checkpoints_without_changing_full_exports(self):
+        full = self.client.get("/__lab/situations", headers=self.headers).json()
+        light = self.client.get("/__lab/situations?metadata=true", headers=self.headers).json()
+        self.assertEqual(len(full), len(light))
+        self.assertEqual(light, [{k: v for k, v in entry.items() if k != "checkpoint"} for entry in full])
+        self.assertTrue(all("checkpoint" in entry for entry in full))
+        self.assertLess(len(json.dumps(light)), len(json.dumps(full)) // 5)
+
     def test_shared_library_clones_and_local_promotion(self):
         listing = self.client.get("/__lab/situations", headers=self.headers).json()
         bundled = [s for s in listing if s["origin"] == "library"]

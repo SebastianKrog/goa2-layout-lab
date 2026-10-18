@@ -51,6 +51,8 @@ Load the same checkpoint into independent lab clones. Use Synchronize None while
 
 Use an owning player seat for private hands, deck contents and decision choices. During defense or forced discard, the responder can differ from the active attacker. Use the responder's seat for the chooser, and separate opponent/spectator views when useful. Do not enable reveal-all to disguise a wrong viewpoint.
 
+Save those slots as provenance.slots, with seats that exist in the checkpoint; a provenance.seat hint alone is not a saved comparison setup. This matters for custom rosters that omit the default hero_arien. The loader repairs absent preset seats while preserving valid independent seats and spectators.
+
 Configure two or three slots deliberately. The userscript target uses the legacy desktop shell with a phone profile and 2D; the migrated comparator/live source may use the native mobile shell. Two desktop 2D or 3D slots are also valid.
 
 Open supported panels using the lab's pane/hero adapters or the actual UI. Local planning-card selection is presentation state, not a backend commit. Wait for the panel and real card control to mount before selecting; a navigation click alone is not proof that the panel has rendered. Save it after opening the correct hand and selecting the card, and verify captured selectedCard. The current adapters handle Windows CRLF checkouts and asynchronous mobile panels; inspect adapter warnings before classifying absent markers as a missing frontend feature. Capture per-view camera, scroll, inspection and panel state through the lab's save workflow.

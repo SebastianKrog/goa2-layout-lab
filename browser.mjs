@@ -2,7 +2,13 @@ import { Synchronizer } from "./synchronize.mjs";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { chromium } from "playwright";
-import { PROFILES, DATA, gameURL, validateSlots } from "./config.mjs";
+import {
+  PROFILES,
+  DATA,
+  gameURL,
+  validateSlots,
+  slotsForSituation,
+} from "./config.mjs";
 import { instrumentScript } from "./instrument.mjs";
 import { delay } from "./services.mjs";
 import {
@@ -63,7 +69,7 @@ export class Comparison {
       throw error;
     }
   }
-  async open(config, presentation, existingClone = null) {
+  async open(config, presentation, existingClone = null, slotIndex) {
     if (presentation?.render && presentation.render !== config.render)
       presentation = presentation.modes?.[config.render];
     const port = await this.services.frontend(config.source);
@@ -200,7 +206,9 @@ export class Comparison {
           const existingIndex = this.windows.findIndex(
             (w) => w.clone.game_id === clone.game_id,
           );
-          const index = existingIndex < 0 ? this.windows.length : existingIndex;
+          const index =
+            slotIndex ??
+            (existingIndex < 0 ? this.windows.length : existingIndex);
           await session.send("Browser.setWindowBounds", {
             windowId,
             bounds: {
@@ -317,17 +325,33 @@ export class Comparison {
     await page.evaluate(() => document.fonts.ready);
     await page.waitForLoadState("networkidle", { timeout: 60_000 });
   }
-  async load(situationId, configs, presentations = {}) {
-    const slots = validateSlots(configs);
+  async load(situationId, configs, presentations = {}, savedSituation = null) {
+    // Resolve the roster before closing an existing comparison. This also
+    // repairs old drafts/presets that still refer to a different game's hero.
+    validateSlots(configs);
+    const situation =
+      savedSituation ||
+      (await this.api("/situations", undefined, "GET")).find(
+        (s) => s.id === situationId,
+      );
+    if (!situation) throw new Error("Choose a saved situation.");
+    const slots = slotsForSituation(configs, situation);
     await this.clear();
     this.situationId = situationId;
-    try {
-      // Sequential opening makes setup failures easy to associate with a slot.
-      for (let i = 0; i < slots.length; i++)
-        this.windows.push(await this.open(slots[i], presentations[i]));
-    } catch (error) {
+    // Wait for every attempt before cleanup, so a slower successful view cannot
+    // leak its context/clone after another view fails. Keep configured slot order.
+    const opened = await Promise.allSettled(
+      slots.map((slot, i) => this.open(slot, presentations[i], null, i)),
+    );
+    this.windows = opened
+      .filter((r) => r.status === "fulfilled")
+      .map((r) => r.value);
+    const failed = opened.findIndex((r) => r.status === "rejected");
+    if (failed >= 0) {
       await this.clear();
-      throw error;
+      throw new Error(`View ${failed + 1}: ${opened[failed].reason.message}`, {
+        cause: opened[failed].reason,
+      });
     }
     const required = new Set(
       slots.map((s) => (s.source === "target" ? "base" : s.source)),

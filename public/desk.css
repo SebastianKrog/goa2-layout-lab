@@ -795,3 +795,6 @@ dialog::backdrop {
     min-width: 100%;
   }
 }
+
+.saved-view-setup { display: grid; gap: 4px; max-width: 320px; }
+.saved-view-setup small { line-height: 1.4; }

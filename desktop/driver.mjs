@@ -36,43 +36,55 @@ export class NativeDesktop {
         return id;
       },
       newPage: async () => {
-        const created = this.app.waitForEvent("window");
-        id = await this.app.evaluate(
-          async (_, profile) => lab.create(profile),
-          profile,
-        );
-        page = await created;
-        const cdp = await page.context().newCDPSession(page);
-        await cdp.send("Emulation.setTimezoneOverride", {
-          timezoneId: "Europe/Copenhagen",
+        // Electron's window event is global: serialize creation only, while
+        // navigation and rendering of separate views can proceed concurrently.
+        const previous = this.creating || Promise.resolve();
+        let release;
+        this.creating = new Promise((resolve) => {
+          release = resolve;
         });
-        await cdp.send("Emulation.setLocaleOverride", { locale: "en-GB" });
-        await cdp.send("Emulation.setEmulatedMedia", {
-          features: [{ name: "prefers-color-scheme", value: "dark" }],
-        });
-        await cdp.send("Emulation.setTouchEmulationEnabled", {
-          enabled: !!profile.isMobile,
-          maxTouchPoints: 5,
-        });
-        // Keep emulation attached for this view's lifetime. Detaching resets touch.
-        page.__labNative = true;
-        const screenshot = page.screenshot.bind(page);
-        let captures = Promise.resolve();
-        page.screenshot = (options) => {
-          const result = captures.then(async () => {
-            await this.app.evaluate((_, id) => lab.beginCapture(id), id);
-            try {
-              return await screenshot({ timeout: 120_000, ...options });
-            } finally {
-              await this.app
-                .evaluate((_, id) => lab.endCapture(id), id)
-                .catch(() => {});
-            }
+        await previous;
+        try {
+          const created = this.app.waitForEvent("window");
+          id = await this.app.evaluate(
+            async (_, profile) => lab.create(profile),
+            profile,
+          );
+          page = await created;
+          const cdp = await page.context().newCDPSession(page);
+          await cdp.send("Emulation.setTimezoneOverride", {
+            timezoneId: "Europe/Copenhagen",
           });
-          captures = result.catch(() => {});
-          return result;
-        };
-        return page;
+          await cdp.send("Emulation.setLocaleOverride", { locale: "en-GB" });
+          await cdp.send("Emulation.setEmulatedMedia", {
+            features: [{ name: "prefers-color-scheme", value: "dark" }],
+          });
+          await cdp.send("Emulation.setTouchEmulationEnabled", {
+            enabled: !!profile.isMobile,
+            maxTouchPoints: 5,
+          });
+          // Keep emulation attached for this view's lifetime. Detaching resets touch.
+          page.__labNative = true;
+          const screenshot = page.screenshot.bind(page);
+          let captures = Promise.resolve();
+          page.screenshot = (options) => {
+            const result = captures.then(async () => {
+              await this.app.evaluate((_, id) => lab.beginCapture(id), id);
+              try {
+                return await screenshot({ timeout: 120_000, ...options });
+              } finally {
+                await this.app
+                  .evaluate((_, id) => lab.endCapture(id), id)
+                  .catch(() => {});
+              }
+            });
+            captures = result.catch(() => {});
+            return result;
+          };
+          return page;
+        } finally {
+          release();
+        }
       },
       newCDPSession: (p) => p.context().newCDPSession(p),
       close: async () => {

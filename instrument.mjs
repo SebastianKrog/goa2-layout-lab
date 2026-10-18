@@ -43,6 +43,29 @@ export function instrument(code, id) {
       "<div data-lab-card={card.id} data-lab-card-name={card.name} data-lab-selected={isSelected || undefined}\n      onClick={onClick}",
     );
   }
+  if (normalized.endsWith("/mobile/MobileCardList.tsx")) {
+    return code
+      .replace(
+        '<button type="button" aria-pressed={selectedId === card.id}',
+        '<button data-lab-card={card.id} data-lab-card-name={card.name} data-lab-selected={selectedId === card.id || undefined} type="button" aria-pressed={selectedId === card.id}',
+      )
+      .replace(
+        '<button type="button" aria-label={`Inspect ${card.name}`}',
+        '<button data-lab-inspect-card={card.id} type="button" aria-label={`Inspect ${card.name}`}',
+      );
+  }
+  if (normalized.endsWith("/mobile/MobileDecisionPanel.tsx")) {
+    return code.replace(
+      '<button type="button" aria-label={`Inspect ${card.name}`}',
+      '<button data-lab-inspect-card={card.id} type="button" aria-label={`Inspect ${card.name}`}',
+    );
+  }
+  if (normalized.endsWith("/mobile/MobileInspection.tsx")) {
+    return code.replace(
+      "<div ref={dialog}",
+      "<div data-lab-mobile-inspection={card.id} ref={dialog}",
+    );
+  }
   if (normalized.endsWith("/board3d/Board3D.tsx")) {
     const anchor =
       "const [hoveredCard, setHoveredCard] = useState<{ card: CardView; heroSlug: string } | null>(null);";

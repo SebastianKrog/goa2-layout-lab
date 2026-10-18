@@ -17,7 +17,8 @@ npm run compare [-- options]
   --runtime=native|wsl       Defaults to native on Linux/macOS, WSL on Windows
   --display=embedded|browser|windows  Native desktop views by default
   --headless --no-open       Run without desktop windows
-  --no-auto-load             Open an empty workspace
+  --situation=<id>           Load this saved situation at startup (default: empty)
+  --no-auto-load             Keep empty even if --situation was supplied
   --stop                     Stop the running desk
 
 See layout-lab.env.example for environment variables.

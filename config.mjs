@@ -47,6 +47,13 @@ export function launchSettings(
   if (new Set(Object.values(ports)).size !== Object.keys(ports).length)
     throw new Error("Comparison service ports must be different.");
   const preset = value("preset", "GOA2_LAB_PRESET", "mobile");
+  const situationArg = args.find((arg) => arg.startsWith("--situation="));
+  const situationId =
+    situationArg === undefined
+      ? null
+      : situationArg.slice("--situation=".length);
+  if (situationId !== null && !/^[A-Za-z0-9]{1,40}$/.test(situationId))
+    throw new Error("Use --situation=<saved-situation-id>.");
   return {
     baseRef: value("base-ref", "GOA2_LAB_BASE_REF", REFERENCES.base),
     scriptRef: value("script-ref", "GOA2_LAB_SCRIPT_REF", REFERENCES.script),
@@ -61,6 +68,7 @@ export function launchSettings(
         "desktop-2d": "Layout regression",
         "desktop-3d": "3D regression",
       }[preset] || preset,
+    situationId,
     display: value("display", "GOA2_LAB_DISPLAY", "embedded"),
     ports,
   };
@@ -141,6 +149,27 @@ export function validateSlots(slots) {
       throw new Error("Choose a player seat or spectator.");
     return s;
   });
+}
+// Keep chosen viewpoints when valid; a new roster cannot retain an absent seat.
+export function slotsForSituation(configs, situation) {
+  const slots = validateSlots(configs);
+  const heroes = Object.values(
+    situation.checkpoint?.state?.teams || {},
+  ).flatMap((t) => t.heroes || []);
+  const seats = new Set(heroes.map((h) => h.id));
+  if (!seats.size) throw new Error("Situation has no player seats.");
+  const preferred = [
+    situation.provenance?.seat,
+    situation.summary?.responder,
+    ...(situation.provenance?.slots || []).map((s) => s.seat),
+    heroes.find((h) => situation.summary?.responder === "team:" + h.team)?.id,
+    heroes[0].id,
+  ].find((seat) => seats.has(seat));
+  return slots.map((slot) =>
+    slot.seat === "spectator" || seats.has(slot.seat)
+      ? slot
+      : { ...slot, seat: preferred },
+  );
 }
 export function gameURL(port, clone, s) {
   const token =

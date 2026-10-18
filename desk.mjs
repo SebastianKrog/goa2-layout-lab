@@ -20,6 +20,7 @@ import { Comparison } from "./browser.mjs";
 import { captureReport } from "./report.mjs";
 import { ViewStreams } from "./streams.mjs";
 import { openURL } from "./runtime.mjs";
+import { loadStartupSituation } from "./startup.mjs";
 
 export async function startDesk({
   flags = new Set(process.argv.slice(2)),
@@ -157,7 +158,11 @@ export async function startDesk({
         return res.end(bytes);
       }
       if (req.method === "GET" && url.pathname === "/api/catalog") {
-        const situations = await api("/situations", undefined, "GET");
+        const situations = await api(
+          "/situations?metadata=true",
+          undefined,
+          "GET",
+        );
         const commits = git([
           "log",
           STARTUP.comparatorRef,
@@ -218,6 +223,7 @@ export async function startDesk({
                   situation.id,
                   slots,
                   body.restoreViews ? situation.presentations : {},
+                  situation,
                 );
               }
               case "/api/synchronize":
@@ -399,8 +405,11 @@ export async function startDesk({
     console.log("Starting isolated comparison backend...");
     await services.backend();
     await comparison.launch();
-    let situations = await api("/situations", undefined, "GET");
-    if (!situations.length) situations = [await api("/starter", {})];
+    // An empty desk needs no checkpoints. Fetch them only for explicit autoload.
+    const situations =
+      STARTUP.situationId && !flags.has("--no-auto-load")
+        ? await api("/situations", undefined, "GET")
+        : [];
     await new Promise((resolve) =>
       server.listen(PORTS.desk, "127.0.0.1", resolve),
     );
@@ -413,10 +422,16 @@ export async function startDesk({
       comparison.desktop.app.on("close", () => void close());
     } else if (!flags.has("--no-open"))
       openURL(`http://localhost:${PORTS.desk}`);
-    if (!flags.has("--no-auto-load")) {
+    if (STARTUP.situationId && !flags.has("--no-auto-load")) {
       busy = true;
       try {
-        await comparison.load(situations[0].id, presets[STARTUP.preset]);
+        await loadStartupSituation({
+          situationId: STARTUP.situationId,
+          situations,
+          comparison,
+          presets,
+          preset: STARTUP.preset,
+        });
       } catch (error) {
         lastError = error.message;
         console.error(error);

@@ -1,9 +1,10 @@
-import fs from "node:fs";
 import path from "node:path";
 import { createRequire } from "node:module";
 import { pathToFileURL } from "node:url";
 import { instrument } from "./instrument.mjs";
-import { DATA, ROOT } from "./config.mjs";
+import { ROOT } from "./config.mjs";
+
+import { localAPIProxy } from "./local-api-proxy.mjs";
 
 const root = process.env.GOA2_LAB_SOURCE;
 if (!root) throw new Error("Start Vite through npm run compare.");
@@ -11,41 +12,14 @@ const requireSource = createRequire(path.join(root, "package.json"));
 const { defineConfig, loadConfigFromFile } = await import(
   pathToFileURL(requireSource.resolve("vite")).href
 );
-const { cloudflare } = await import(
-  pathToFileURL(
-    path.join(root, "node_modules/@cloudflare/vite-plugin/dist/index.mjs"),
-  ).href
-);
 const loaded = await loadConfigFromFile(
   { command: "serve", mode: "development" },
   path.join(root, "vite.config.ts"),
 );
 if (!loaded) throw new Error("Cannot load the source frontend Vite config.");
 const original = loaded.config;
-const generated = path.join(
-  DATA,
-  "workers",
-  `worker-${process.env.GOA2_LAB_PORT}.json`,
-);
-fs.mkdirSync(path.dirname(generated), { recursive: true });
-fs.writeFileSync(
-  generated,
-  JSON.stringify({
-    name: "goa2-layout-lab",
-    main: path.join(root, "worker/index.ts"),
-    compatibility_date: "2025-09-27",
-    compatibility_flags: ["nodejs_compat"],
-    assets: {
-      binding: "ASSETS",
-      not_found_handling: "single-page-application",
-    },
-    vars: {
-      BACKEND_ORIGIN: `http://127.0.0.1:${process.env.GOA2_LAB_BACKEND_PORT || 8100}`,
-    },
-  }),
-);
-// The generated Wrangler config has its own directory, so the normal .dev.vars
-// (which points at port 8000) is never read by the comparison Worker.
+// Local comparisons need the same-origin API contract, without a deployment
+// worker emulator for every frontend. Keep the source React/asset plugins.
 export default defineConfig({
   ...original,
   root,
@@ -67,13 +41,6 @@ export default defineConfig({
       transform: instrument,
     },
     ...original.plugins.slice(0, -1),
-    cloudflare({
-      configPath: generated,
-      inspectorPort: false,
-      persistState: {
-        path: path.join(DATA, `workers/state-${process.env.GOA2_LAB_PORT}`),
-      },
-    }),
   ],
   resolve: {
     ...original.resolve,
@@ -84,6 +51,9 @@ export default defineConfig({
     host: "0.0.0.0",
     port: Number(process.env.GOA2_LAB_PORT),
     strictPort: true,
+    proxy: {
+      "^/api(?:/|$)": localAPIProxy(process.env.GOA2_LAB_BACKEND_PORT || 8100),
+    },
     watch:
       path.resolve(root) === path.resolve(ROOT)
         ? {

@@ -115,6 +115,13 @@ async function call(name, body = {}) {
   if (!r.ok) throw new Error(v.error || "The action could not be completed.");
   return v;
 }
+function hasSavedViewSetup() {
+  const situation = selectedSituation();
+  return !!(
+    situation?.provenance?.slots?.length ||
+    Object.keys(situation?.presentations || {}).length
+  );
+}
 function controls() {
   const busy = running || state.busy || disconnected;
   document.body.classList.toggle("busy", running || !!state.busy);
@@ -140,8 +147,10 @@ function controls() {
     !(state.windows || []).some((w) =>
       ["live", "comparator"].includes(w.config.source),
     );
-  $("restore").disabled =
-    !!busy || !Object.keys(selectedSituation()?.presentations || {}).length;
+  $("restore").disabled = !!busy || !hasSavedViewSetup();
+  $("savedViewHelp").textContent = hasSavedViewSetup()
+    ? "Restores saved views, players, screens, cameras and panels. Off keeps your setup. The game moment always loads."
+    : "No saved view setup. Your current setup will be used; the saved game moment still loads.";
 }
 async function task(label, fn, { sync = true } = {}) {
   if (running || state.busy) return;
@@ -816,8 +825,7 @@ $("count").onchange = () => {
 $("situation").onchange = () => {
   draftSetup = $("situation").value !== state.situationId;
   updateStatus();
-  $("restore").checked = !!Object.keys(selectedSituation()?.presentations || {})
-    .length;
+  $("restore").checked = hasSavedViewSetup();
   controls();
 };
 $("load").onclick = loadComparison;

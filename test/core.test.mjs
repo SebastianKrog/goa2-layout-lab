@@ -3,7 +3,13 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { PNG } from "pngjs";
-import { validateSlots, PRESETS, gameURL, ROOT } from "../config.mjs";
+import {
+  validateSlots,
+  slotsForSituation,
+  PRESETS,
+  gameURL,
+  ROOT,
+} from "../config.mjs";
 import { instrument, instrumentScript } from "../instrument.mjs";
 import { imageDiff, strip, reportHTML } from "../report.mjs";
 import net from "node:net";
@@ -159,4 +165,73 @@ test("planning card adapters support LF and Windows CRLF checkouts", () => {
     );
     assert.ok(instrumented.includes("onClick={onClick}"));
   }
+});
+
+test("loading a different roster replaces absent seats and preserves valid independent viewpoints", () => {
+  for (const owner of ["hero_gydion", "hero_snorri", "hero_emmitt"]) {
+    const situation = {
+      provenance: { seat: owner },
+      checkpoint: {
+        state: {
+          teams: {
+            RED: { heroes: [{ id: owner, team: "RED" }] },
+            BLUE: { heroes: [{ id: "hero_wasp", team: "BLUE" }] },
+          },
+        },
+      },
+    };
+    const configs = structuredClone(PRESETS["Mobile migration"]);
+    configs[1].seat = "spectator";
+    configs[2].seat = "hero_wasp";
+    const before = structuredClone(configs);
+    assert.deepEqual(
+      slotsForSituation(configs, situation).map((s) => s.seat),
+      [owner, "spectator", "hero_wasp"],
+    );
+    assert.deepEqual(configs, before);
+    delete situation.provenance.seat;
+    situation.summary = { responder: owner };
+    assert.equal(slotsForSituation(configs, situation)[0].seat, owner);
+    situation.summary = { responder: "team:BLUE" };
+    assert.equal(slotsForSituation(configs, situation)[0].seat, "hero_wasp");
+  }
+});
+
+test("comparison load resolves unavailable preset seats before opening any clones", async () => {
+  const owner = "hero_snorri";
+  const situation = {
+    id: "runes",
+    provenance: { seat: owner },
+    checkpoint: {
+      state: { teams: { RED: { heroes: [{ id: owner, team: "RED" }] } } },
+    },
+  };
+  let cleared = false;
+  const comparison = new Comparison({ stop: async () => {} }, async (route) => {
+    assert.equal(route, "/situations");
+    assert.equal(cleared, false);
+    return [situation];
+  });
+  comparison.clear = async () => {
+    cleared = true;
+    comparison.windows = [];
+  };
+  comparison.open = async (config) => {
+    assert.equal(config.seat, owner);
+    return { config };
+  };
+  comparison.status = () => comparison.windows.map((w) => w.config);
+  const result = await comparison.load("runes", PRESETS["Mobile migration"]);
+  assert.equal(result.length, 3);
+  assert.equal(cleared, true);
+  cleared = false;
+  await assert.rejects(
+    () => comparison.load("absent", PRESETS["Mobile migration"]),
+    /saved situation/,
+  );
+  assert.equal(
+    cleared,
+    false,
+    "An invalid situation must not close the existing comparison",
+  );
 });
