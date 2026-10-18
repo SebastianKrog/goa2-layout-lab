@@ -1,0 +1,4 @@
+interface:
+  display_name: "GoA2 compare views"
+  short_description: "Compare commits, export images or prepare a viewer"
+  default_prompt: "Use $goa2-compare-views to compare two GoA2 frontend commits in a saved situation, optionally adding the userscript target, and prepare images or a live viewer."

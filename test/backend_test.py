@@ -1,0 +1,251 @@
+"""Run using the sibling backend's uv environment; no production files edited."""
+
+import importlib.util
+import json
+import os
+from pathlib import Path
+import tempfile
+import time
+import unittest
+import sys
+import shutil
+from unittest.mock import patch
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+
+class SituationTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.temp = tempfile.TemporaryDirectory()
+        cls.old_environ = dict(os.environ)
+        cls.old_time, cls.old_ns = time.time, time.time_ns
+        os.environ.update(
+            GOA2_LAB_DATA=cls.temp.name,
+            GOA2_LAB_TOKEN="test-lab-secret",
+            GOA2_PREWARM_WORKERS="0",
+            GOA2_VERIFY_REPLAYS="0",
+        )
+        for env, sub in [
+            ("GOA2_SAVE_DIR", "games"),
+            ("GOA2_REPLAY_DIR", "replays"),
+            ("GOA2_LOG_DIR", "logs"),
+            ("GOA2_BUG_REPORT_DIR", "reports"),
+            ("GOA2_SHARE_DIR", "shares"),
+        ]:
+            os.environ[env] = str(Path(cls.temp.name) / sub)
+        spec = importlib.util.spec_from_file_location(
+            "lab_backend", Path(__file__).parents[1] / "backend.py"
+        )
+        cls.module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(cls.module)
+        from fastapi.testclient import TestClient
+        from goa2.server import time_control
+
+        cls.old_schedule = time_control.schedule_deadline
+
+        from situations import SituationStore
+
+        cls.library = Path(cls.temp.name) / "library"
+        shutil.copytree(Path(__file__).parents[1] / "situations", cls.library)
+        with patch(
+            "situations.SituationStore",
+            side_effect=lambda shared, data: SituationStore(cls.library, data),
+        ):
+            cls.client = TestClient(cls.module.create_app())
+        cls.client.__enter__()
+        cls.headers = {"x-lab-token": "test-lab-secret"}
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.client.__exit__(None, None, None)
+        time.time, time.time_ns = cls.old_time, cls.old_ns
+        from goa2.server import time_control
+
+        time_control.schedule_deadline = cls.old_schedule
+        os.environ.clear()
+        os.environ.update(cls.old_environ)
+        import logging
+
+        logging.shutdown()  # Release per-game file handlers before Windows temp cleanup.
+        cls.temp.cleanup()
+
+    def post(self, path, body):
+        response = self.client.post("/__lab" + path, json=body, headers=self.headers)
+        self.assertEqual(response.status_code, 200, response.text)
+        return response.json()
+
+    def test_shared_library_clones_and_local_promotion(self):
+        listing = self.client.get("/__lab/situations", headers=self.headers).json()
+        bundled = [s for s in listing if s["origin"] == "library"]
+        self.assertEqual(len(bundled), len(list(self.library.rglob("*.json"))))
+        self.assertGreaterEqual(len(bundled), 2)
+        for situation in bundled:
+            cloned = self.post("/clone", {"situation_id": situation["id"]})
+            self.assertEqual(cloned["summary"], situation["summary"])
+            contract = (
+                situation.get("provenance", {}).get("fixture", {}).get("condition")
+            )
+            if contract:
+                self.assertEqual(cloned["summary"]["phase"], contract["phase"])
+                self.assertEqual(cloned["summary"]["decision"], contract["decision"])
+        local = self.post("/starter", {"name": "Defense UI draft"})
+        self.assertEqual(local["origin"], "local")
+        moved = self.post(
+            "/organize", {"id": local["id"], "group": "cards/defense", "shared": False}
+        )
+        shared = self.post(
+            "/organize", {"id": moved["id"], "group": "cards/defense", "shared": True}
+        )
+        self.assertNotEqual(shared["id"], local["id"])
+        self.assertTrue(
+            (self.library / "cards/defense" / (shared["id"] + ".json")).exists()
+        )
+        self.assertEqual(
+            self.post("/clone", {"situation_id": shared["id"]})["hash"],
+            self.post("/clone", {"situation_id": local["id"]})["hash"],
+        )
+        rejected = self.client.post(
+            "/__lab/organize",
+            headers=self.headers,
+            json={"id": local["id"], "group": "../outside", "shared": True},
+        )
+        self.assertEqual(rejected.status_code, 400)
+        # Keep this test independent of ordering in the shared test class.
+        (self.library / "cards/defense" / (shared["id"] + ".json")).unlink()
+
+    def test_clone_independence_capture_and_no_source_credentials(self):
+        situation = self.post("/starter", {})
+        a = self.post("/clone", {"situation_id": situation["id"]})
+        b = self.post("/clone", {"situation_id": situation["id"]})
+        self.assertNotEqual(a["game_id"], b["game_id"])
+        self.assertNotEqual(a["seats"]["hero_arien"], b["seats"]["hero_arien"])
+        self.assertEqual(a["hash"], b["hash"])
+        game = self.client.app.state.registry.get(a["game_id"])
+        hero = next(
+            h
+            for team in game.session.state.teams.values()
+            for h in team.heroes
+            if h.id == "hero_arien"
+        )
+        hero.gold += 1
+        captured = self.post("/capture", {"game_id": a["game_id"], "name": "One gold"})
+        data = json.dumps(captured)
+        self.assertNotIn(a["spectator_token"], data)
+        self.assertNotIn(a["seats"]["hero_arien"], data)
+        c = self.post("/clone", {"situation_id": captured["id"]})
+        self.assertNotEqual(c["hash"], b["hash"])
+        reset = self.post("/clone", {"situation_id": situation["id"]})
+        self.assertEqual(reset["hash"], b["hash"])
+        imported = self.post("/import", {"content": captured})
+        self.assertEqual(
+            imported["checkpoint"]["state"], captured["checkpoint"]["state"]
+        )
+
+    def test_timed_state_is_frozen_and_protected(self):
+        self.assertEqual(self.client.get("/__lab/situations").status_code, 403)
+        situation = self.post("/starter", {"timed": True})
+        clone = self.post("/clone", {"situation_id": situation["id"]})
+        game = self.client.app.state.registry.get(clone["game_id"])
+        from goa2.server.time_control import set_player_ready
+
+        for hero in clone["seats"]:
+            set_player_ready(game, hero, True, self.module.FROZEN_MS)
+        self.assertEqual(game.session.state.clock.status.value, "RUNNING")
+        saved = self.post(
+            "/capture", {"game_id": clone["game_id"], "name": "Running frozen"}
+        )
+        one = self.post("/clone", {"situation_id": saved["id"]})
+        time.sleep(0.05)
+        two = self.post("/clone", {"situation_id": saved["id"]})
+        self.assertEqual(one["hash"], two["hash"])
+        self.assertIsNone(game.timer_task)
+        self.assertEqual(time.time_ns(), self.module.FROZEN_MS * 1_000_000)
+
+    def test_invalid_schema_and_state_fail_clearly(self):
+        response = self.client.post(
+            "/__lab/import",
+            json={"content": {"schema": 99, "checkpoint": {}}},
+            headers=self.headers,
+        )
+        self.assertEqual(response.status_code, 422)
+        self.assertIn("schema", response.text)
+        response = self.client.post(
+            "/__lab/import", json={"content": {"state": {}}}, headers=self.headers
+        )
+        self.assertEqual(response.status_code, 422)
+
+    def test_real_actions_pending_decision_restore_and_replay_import(self):
+        situation = self.post("/starter", {})
+        one = self.post("/clone", {"situation_id": situation["id"]})
+        two = self.post("/clone", {"situation_id": situation["id"]})
+        registry = self.client.app.state.registry
+        game = registry.get(one["game_id"])
+        for team in game.session.state.teams.values():
+            for hero in team.heroes:
+                response = self.client.post(
+                    f"/games/{game.game_id}/cards",
+                    json={"card_id": hero.hand[0].id},
+                    headers={"Authorization": "Bearer " + one["seats"][hero.id]},
+                )
+                self.assertEqual(response.status_code, 200, response.text)
+        for hero_id, token in one["seats"].items():
+            self.client.post(
+                f"/games/{game.game_id}/planning-done",
+                json={},
+                headers={"Authorization": "Bearer " + token},
+            )
+        self.assertNotEqual(
+            self.module.canonical_hash(game.session.state.model_dump(mode="json")),
+            two["hash"],
+        )
+        saved = self.post(
+            "/capture", {"game_id": game.game_id, "name": "Actual decision"}
+        )
+        restored = self.post("/clone", {"situation_id": saved["id"]})
+        expected = game.last_result.input_request if game.last_result else None
+        actual_game = registry.get(restored["game_id"])
+        actual = (
+            actual_game.last_result.input_request if actual_game.last_result else None
+        )
+        self.assertIsNotNone(expected)
+        self.assertIsNotNone(actual)
+        self.assertEqual(expected.request_type, actual.request_type)
+        self.assertEqual(expected.player_id, actual.player_id)
+        self.assertEqual(
+            self.module.canonical_hash(game.session.state.model_dump(mode="json")),
+            restored["hash"],
+        )
+        records = saved["checkpoint"]["replay_log"]
+        self.assertGreater(len(records), 1)
+        imported = self.post(
+            "/import",
+            {
+                "kind": "replay",
+                "decision": 0,
+                "content": "\n".join(json.dumps(r) for r in records),
+            },
+        )
+        replay_clone = self.post("/clone", {"situation_id": imported["id"]})
+        self.assertEqual(replay_clone["hash"], two["hash"])
+        decision = self.post(
+            "/import",
+            {
+                "kind": "replay",
+                "decision": len(records) - 1,
+                "content": "\n".join(json.dumps(r) for r in records),
+            },
+        )
+        at_decision = self.post("/clone", {"situation_id": decision["id"]})
+        replay_game = registry.get(at_decision["game_id"])
+        self.assertEqual(at_decision["hash"], restored["hash"])
+        self.assertEqual(
+            replay_game.last_result.input_request.request_type, expected.request_type
+        )
+        self.assertEqual(
+            replay_game.last_result.input_request.player_id, expected.player_id
+        )
+
+
+if __name__ == "__main__":
+    unittest.main()

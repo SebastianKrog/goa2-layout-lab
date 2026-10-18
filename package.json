@@ -1,0 +1,32 @@
+{
+  "name": "goa2-layout-lab",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node launch.mjs",
+    "test": "node --test test/*.test.mjs",
+    "browsers": "playwright install chromium",
+    "compare": "node launch.mjs",
+    "test:ui": "node test/desk-ui.mjs",
+    "test:e2e": "node test/e2e.mjs",
+    "test:streams": "node test/stream-input.mjs",
+    "test:embedded": "node test/embedded-e2e.mjs",
+    "test:native": "node test/native-views.mjs",
+    "test:native-e2e": "node test/native-e2e.mjs",
+    "test:sync": "node test/sync-e2e.mjs"
+  },
+  "devDependencies": {
+    "@electron/get": "5.1.0",
+    "electron": "44.9.0",
+    "pixelmatch": "7.1.0",
+    "playwright": "1.64.1",
+    "pngjs": "7.0.0",
+    "prettier": "3.6.2",
+    "ws": "8.22.0",
+    "yauzl": "3.4.0"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "description": "Local two- and three-view comparison workspace for GoA2 frontend development"
+}

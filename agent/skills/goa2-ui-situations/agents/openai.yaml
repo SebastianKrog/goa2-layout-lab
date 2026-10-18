@@ -1,0 +1,4 @@
+interface:
+  display_name: "GoA2 UI situations"
+  short_description: "Fabricate saved game moments for UI comparisons"
+  default_prompt: "Use $goa2-ui-situations to fabricate a saved GoA2 situation and viewpoints for comparing layouts."

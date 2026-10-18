@@ -1,0 +1,9 @@
+node_modules/
+.layout-lab/
+.layout-lab-dependencies
+.env.layout-lab
+.env
+.DS_Store
+__pycache__/
+*.pyc
+.pytest_cache/
