@@ -65,8 +65,20 @@ export async function capturePresentation(page, render) {
       inspection3d: window.__GOA2_LAB_BRIDGE__?.inspection3d?.get(),
       inspectionScript: window.GOA2Mobile2D?.__labInspection?.get(),
       inspectionMobile:
-        document.querySelector("[data-lab-mobile-inspection]")?.dataset
+        document.querySelector("[data-lab-mobile-inspection]:not([inert])")
+          ?.dataset.labMobileInspection || null,
+      inspectionMobileParent:
+        document.querySelector("[data-lab-mobile-inspection][inert]")?.dataset
           .labMobileInspection || null,
+      spellBrowserMobile: (() => {
+        const browser = document.querySelector("[data-lab-mobile-spells]");
+        return browser
+          ? {
+              heroId: browser.dataset.labMobileSpells,
+              selectedId: browser.dataset.labMobileSpellSelection || null,
+            }
+          : null;
+      })(),
       inspectedCard: hovered?.dataset.labCard || null,
       altHeld: !!window.__GOA2_LAB_ALT__,
       selectedCard: selectedCard?.dataset.labCard || null,
@@ -217,7 +229,9 @@ export async function restorePresentation(page, value, config) {
       if (!safe) throw new Error("Unavailable at this decision");
       if (config.layout === "mobile") await showPane(page, "hand", config);
       const target = page
-        .locator(`[data-lab-card=${JSON.stringify(value.selectedCard)}]:visible`)
+        .locator(
+          `[data-lab-card=${JSON.stringify(value.selectedCard)}]:visible`,
+        )
         .first();
       await target.waitFor({ state: "visible", timeout: 5000 }).catch(() => {
         throw new Error("Card is absent from this layout");
@@ -267,19 +281,45 @@ export async function restorePresentation(page, value, config) {
         window.GOA2Mobile2D.__labRotation.set(v);
       }, value.rotation),
     );
+  if (value.spellBrowserMobile && config.layout === "mobile")
+    await attempt("Public spell browser", async () => {
+      const browser = value.spellBrowserMobile;
+      await clickControl(
+        page,
+        page
+          .locator(
+            `[data-lab-open-spells=${JSON.stringify(browser.heroId)}]:visible`,
+          )
+          .first(),
+      );
+      await page
+        .locator("[data-lab-mobile-spells]")
+        .waitFor({ state: "visible", timeout: 5000 });
+      if (browser.selectedId)
+        await clickControl(
+          page,
+          page.locator(
+            `[data-lab-preview-spell=${JSON.stringify(browser.selectedId)}]:visible`,
+          ),
+        );
+    });
   if (value.inspectionMobile && config.layout === "mobile")
     await attempt("Mobile inspection", async () => {
-      const target = page
-        .locator(
-          `[data-lab-inspect-card=${JSON.stringify(value.inspectionMobile)}]:visible`,
-        )
-        .first();
-      if (!(await target.count()))
-        throw new Error("Card absent from this pane/player-scoped view");
-      await clickControl(page, target);
-      await page
-        .locator("[data-lab-mobile-inspection]")
-        .waitFor({ state: "visible", timeout: 5000 });
+      for (const id of [
+        value.inspectionMobileParent,
+        value.inspectionMobile,
+      ].filter(Boolean)) {
+        const target = page
+          .locator(`[data-lab-inspect-card=${JSON.stringify(id)}]:visible`)
+          .first();
+        await target.waitFor({ state: "visible", timeout: 5000 });
+        await clickControl(page, target);
+        await page
+          .locator(
+            `[data-lab-mobile-inspection=${JSON.stringify(id)}]:not([inert])`,
+          )
+          .waitFor({ state: "visible", timeout: 5000 });
+      }
     });
   await page.evaluate((v) => {
     for (const s of v.scroll || []) {

@@ -371,6 +371,23 @@ the automatic fourth rune, spell-action follow-up, and Emmitt take-back, second
 commit and Done. Screenshots and `evidence.json` go under ignored
 `.layout-lab/reviews/m2-*/`; generated situations remain local drafts.
 
+The M3 presentation suite owns ports 3700-3703 and 8700 by default:
+
+```sh
+npm run test:mobile-presentation
+```
+
+It generates real-map display fixtures with
+`scripts/create-mobile-presentation-situations.py`, then checks owner/opponent/
+spectator public spell access, counters 0/1/3/9/10, scoped embedded spell readers,
+sorting, nested/public presentation save and restore, portrait/compact/landscape
+bounds, shared image painting, rune history and markers on Razzle's pieces.
+The rune flow also covers a real reload, Board peek, Undo and acknowledgment of
+the automatic fourth rune. `--runes-only` runs just that recovery flow.
+Screenshots and evidence go to ignored `.layout-lab/reviews/m3-*/`. Factories do
+not overwrite the curated library. Run these browser checks on Windows on this
+installation; normal WSL services are used without running Linux UI test suites.
+
 The frontend remains unchanged in production: camera/presentation bridges are
 injected only by the lab Vite config. The backend helper lives in this tool and
 is never imported by the normal backend entrypoint.

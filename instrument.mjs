@@ -60,11 +60,64 @@ export function instrument(code, id) {
       '<button data-lab-inspect-card={card.id} type="button" aria-label={`Inspect ${card.name}`}',
     );
   }
-  if (normalized.endsWith("/mobile/MobileInspection.tsx")) {
+  if (normalized.endsWith("/mobile/MobileHeroCard.tsx")) {
     return code.replace(
-      "<div ref={dialog}",
-      "<div data-lab-mobile-inspection={card.id} ref={dialog}",
+      '<button type="button" aria-label={`Inspect ${card.name}`}',
+      '<button data-lab-inspect-card={card.id} type="button" aria-label={`Inspect ${card.name}`}',
     );
+  }
+  if (normalized.endsWith("/mobile/MobileBoardSummary.tsx")) {
+    return code.replace(
+      '<button type="button" key={card.id}',
+      '<button data-lab-inspect-card={card.id} type="button" key={card.id}',
+    );
+  }
+  if (normalized.endsWith("/mobile/MobileRules.tsx")) {
+    return code.replace(
+      '<button type="button" className={styles.inlineSpell}',
+      '<button data-lab-inspect-card={spell.id} type="button" className={styles.inlineSpell}',
+    );
+  }
+  if (normalized.endsWith("/mobile/MobileHeroIndicators.tsx")) {
+    return code
+      .replace(
+        '<button type="button" key="spells"',
+        '<button data-lab-open-spells={hero.id} type="button" key="spells"',
+      )
+      .replace(
+        '<button type="button" className={styles.combined}',
+        '<button data-lab-open-spells={hero.spellbook != null ? hero.id : undefined} type="button" className={styles.combined}',
+      );
+  }
+  if (normalized.endsWith("/mobile/MobileSpellBrowser.tsx")) {
+    return code
+      .replace(
+        "className={styles.castBrowser}",
+        "data-lab-mobile-spells={hero.id} data-lab-mobile-spell-selection={card?.id} className={styles.castBrowser}",
+      )
+      .replace(
+        '<button type="button" key={spell.id}',
+        '<button data-lab-preview-spell={spell.id} type="button" key={spell.id}',
+      )
+      .replace(
+        '<button type="button" onClick={() => context?.inspect(card.id)}',
+        '<button data-lab-inspect-card={card.id} type="button" onClick={() => context?.inspect(card.id)}',
+      );
+  }
+  if (normalized.endsWith("/mobile/MobileInspection.tsx")) {
+    return code
+      .replace(
+        "<div ref={dialog}",
+        "<div data-lab-mobile-inspection={card.id} ref={dialog}",
+      )
+      .replace(
+        "<div {...dialog}",
+        "<div data-lab-mobile-inspection={card.id} {...dialog}",
+      )
+      .replace(
+        "<div {...nestedDialog}",
+        "<div data-lab-mobile-inspection={nested?.id} {...nestedDialog}",
+      );
   }
   if (normalized.endsWith("/board3d/Board3D.tsx")) {
     const anchor =

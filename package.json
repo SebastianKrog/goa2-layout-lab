@@ -15,7 +15,8 @@
     "test:native-e2e": "node test/native-e2e.mjs",
     "test:sync": "node test/sync-e2e.mjs",
     "test:mobile-confirm": "node test/mobile-confirm.mjs",
-    "test:mobile-gameplay": "node test/mobile-gameplay.mjs"
+    "test:mobile-gameplay": "node test/mobile-gameplay.mjs",
+    "test:mobile-presentation": "node test/mobile-presentation.mjs"
   },
   "devDependencies": {
     "@electron/get": "5.1.0",
