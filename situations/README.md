@@ -39,8 +39,8 @@ and inspection remain separate from submitting a choice.
 
 Gydion starts at the spell chooser, before its follow-up action prompt. Snorri
 starts before the first inscription choice, rather than after the completed rune
-arrangement. These fixtures cover core gameplay; public cast-spell browsing and
-polished rune history displays require separate situations and later UI work.
+arrangement. These fixtures cover core gameplay. The M3 presentation situations below cover
+public cast-spell browsing, rune history displays and piece markers.
 
 Regenerate import bundles with the sibling backend's installed Python:
 
@@ -52,3 +52,41 @@ Run from the backend checkout, or pass `--backend <checkout>`. Outputs default t
 ignored `.layout-lab/situation-recipes/mobile-gameplay/`. Import, verify and promote
 only cases that add useful coverage; repeated acceptance runs and workspace
 backups stay local. The factory does not overwrite the curated library.
+
+## M3 presentation examples
+
+| Folder | Situation | Saved moment |
+| --- | --- | --- |
+| `heroes/gydion/public-spells/` | [M3 presentation - gydion-public-spells-0](heroes/gydion/public-spells/0756dc7f3f79.json) | Public cast spells: 0 |
+| `heroes/gydion/public-spells/` | [M3 presentation - gydion-public-spells-1](heroes/gydion/public-spells/158474129d8a.json) | Public cast spells: 1 |
+| `heroes/gydion/public-spells/` | [M3 presentation - gydion-public-spells-10](heroes/gydion/public-spells/3ae94d18bc3b.json) | Public cast spells: 10 |
+| `heroes/gydion/public-spells/` | [M3 presentation - gydion-public-spells-3](heroes/gydion/public-spells/00357f1d97ab.json) | Public cast spells: 3 |
+| `heroes/gydion/public-spells/` | [M3 presentation - gydion-public-spells-9](heroes/gydion/public-spells/5949a8eccf40.json) | Public cast spells: 9 |
+| `heroes/razzle/markers/` | [M3 presentation - razzle-piece-markers](heroes/razzle/markers/3536c730ea73.json) | Bounty and Poison on an owned piece, summarized on Razzle |
+| `heroes/snorri/runes/` | [M3 presentation - snorri-empty-history-runes](heroes/snorri/runes/4372410c2d87.json) | Four named runes above empty turn slots; turn 2 active |
+
+These seven situations were promoted from the Windows Chromium acceptance drafts.
+Saved views use the newest Comparator commit in native mobile 2D, with separate
+owner and spectator seats. M3 or newer is required. Keep **Use saved view setup**
+enabled to restore both seats, or disable it to keep your own comparison sources.
+There is no pre-opened menu or inspection: open Heroes or the board summary, then
+use Gydion's cast-spell indicator to browse his public spells. Check Rank/Color
+sorting and Large/Image inspection; private prepared spells remain owner-only.
+The 0, 1, 9 and 10 cases cover empty, singular, die-pip and numeric indicators.
+Snorri has Axe, Bird, Anvil and Horn in slots 1 through 4, with no played cards.
+Razzle has both Bounty and Poison attached to an owned piece.
+
+Start at 390 x 844, then check 360 x 800 and 844 x 390. Use Synchronize None while
+reviewing different presentations. These are fabricated display states, not
+claims about a naturally reached game sequence. Checkpoints round-trip through
+the engine without changing their canonical state.
+
+Regenerate import bundles using the sibling backend's installed Python:
+
+```sh
+python ../goa2-layout-lab/scripts/create-mobile-presentation-situations.py
+```
+
+Run from the backend checkout or pass `--backend <checkout>`. The default output
+is ignored `.layout-lab/situation-recipes/mobile-presentation/`; it does not
+overwrite this curated library.
