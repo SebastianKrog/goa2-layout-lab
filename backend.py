@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+from contextlib import asynccontextmanager
 import hashlib
 import json
 import os
@@ -14,6 +15,27 @@ import uuid
 
 FROZEN_MS = 1792238400000
 SCHEMA = 1
+
+
+@asynccontextmanager
+async def lab_lifespan(app):
+    """Fresh comparison clones; keep disk saves available for manual recovery."""
+    from goa2.server.registry import GameRegistry
+    from goa2.server.draft_registry import DraftRegistry
+    from goa2.server.time_control import stop_timers
+    from goa2.server.workers import shutdown_heavy_pool
+
+    # The desk never reconnects to old clones after restart. Restoring them
+    # validates every old checkpoint and resumes timers for invisible games.
+    # Situations remain the durable source; do not delete old recovery files.
+    registry = GameRegistry(save_dir=os.environ.get("GOA2_SAVE_DIR"))
+    app.state.registry = registry
+    app.state.draft_registry = DraftRegistry()
+    try:
+        yield
+    finally:
+        shutdown_heavy_pool()
+        await stop_timers(registry)
 
 
 def stable_state(value):
@@ -31,7 +53,10 @@ def stable_state(value):
 
 
 def revision() -> str:
-    return subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
+    return subprocess.check_output(
+        ["git", "rev-parse", "HEAD"], text=True,
+        cwd=os.environ.get("GOA2_LAB_BACKEND_CHECKOUT"),
+    ).strip()
 
 
 def canonical_hash(state: dict) -> str:
@@ -121,6 +146,7 @@ def create_app():
 
     library = SituationStore(Path(__file__).parent / "situations", root)
     app = normal_app()
+    app.router.lifespan_context = lab_lifespan
     token = os.environ["GOA2_LAB_TOKEN"]
 
     @app.middleware("http")

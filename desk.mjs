@@ -403,8 +403,14 @@ export async function startDesk({
   const streams = new ViewStreams(server, comparison, () => busy || closing);
   try {
     console.log("Starting isolated comparison backend...");
-    await services.backend();
-    await comparison.launch();
+    // Settle both before cleanup, including a late browser launch when backend
+    // startup fails. Otherwise it could escape the owning desk's shutdown.
+    const started = await Promise.allSettled([
+      services.backend(),
+      comparison.launch(),
+    ]);
+    const failed = started.find((result) => result.status === "rejected");
+    if (failed) throw failed.reason;
     // An empty desk needs no checkpoints. Fetch them only for explicit autoload.
     const situations =
       STARTUP.situationId && !flags.has("--no-auto-load")

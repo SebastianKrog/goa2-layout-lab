@@ -5,18 +5,39 @@ import fs from "node:fs/promises";
 import { openSync, closeSync } from "node:fs";
 import path from "node:path";
 import { TOOL, DATA, BACKEND, PORTS } from "./config.mjs";
+import { dependencyRuntime, reuseDependencies } from "./dependency-cache.mjs";
 
 const [action, ...args] = process.argv.slice(2);
 if (action === "install") {
   const [root] = args;
+  await reuseDependencies(
+    root,
+    process.env.GOA2_LAB_SOURCE_CACHE || path.join(DATA, "cache"),
+  );
   const lock = await fs.readFile(path.join(root, "package-lock.json"));
   const marker = path.join(root, "node_modules/.cache/layout-lab-dependencies");
   const current = await fs.readFile(marker).catch(() => null);
-  if (!current?.equals(lock)) {
+  const runtimeMarker = path.join(
+    root,
+    "node_modules/.cache/layout-lab-runtime",
+  );
+  const installedRuntime = await fs
+    .readFile(runtimeMarker, "utf8")
+    .catch(() => null);
+  if (
+    !current?.equals(lock) ||
+    (installedRuntime && installedRuntime !== dependencyRuntime)
+  ) {
+    // npm ci empties node_modules. Detach a borrowed install first so it
+    // cannot remove packages belonging to another committed source.
+    const modules = path.join(root, "node_modules");
+    if ((await fs.lstat(modules).catch(() => null))?.isSymbolicLink())
+      await fs.unlink(modules);
     await run("npm", ["ci", "--no-audit", "--no-fund"], { cwd: root });
     await fs.mkdir(path.dirname(marker), { recursive: true });
     await fs.writeFile(marker, lock);
   }
+  await fs.writeFile(runtimeMarker, dependencyRuntime);
 } else {
   let command, commandArgs, cwd, pidfile;
   const env = { ...process.env };
@@ -61,11 +82,9 @@ if (action === "install") {
       String(PORTS.backend),
     ];
     Object.assign(env, {
-      UV_PROJECT_ENVIRONMENT: path.join(
-        DATA,
-        "runtime",
-        `venv-${process.platform}-${process.arch}`,
-      ),
+      UV_PROJECT_ENVIRONMENT:
+        process.env.GOA2_LAB_VENV ||
+        path.join(DATA, "runtime", `venv-${process.platform}-${process.arch}`),
       UV_LINK_MODE: "copy",
       PYTHONPATH: [TOOL, path.join(BACKEND, "src")].join(path.delimiter),
       GOA2_LAB_TOKEN: token,

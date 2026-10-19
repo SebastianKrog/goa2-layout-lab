@@ -1,4 +1,6 @@
 import path from "node:path";
+import { createHash } from "node:crypto";
+import { lstatSync } from "node:fs";
 import { createRequire } from "node:module";
 import { pathToFileURL } from "node:url";
 import { instrument } from "./instrument.mjs";
@@ -18,6 +20,11 @@ const loaded = await loadConfigFromFile(
 );
 if (!loaded) throw new Error("Cannot load the source frontend Vite config.");
 const original = loaded.config;
+// Borrowed node_modules need a distinct optimizer directory per source. Keep
+// existing private-install cache paths so upgrading the lab does not cool them.
+const cacheSource = lstatSync(path.join(root, "node_modules")).isSymbolicLink()
+  ? `-${createHash("sha256").update(path.resolve(root)).digest("hex").slice(0, 16)}`
+  : "";
 // Local comparisons need the same-origin API contract, without a deployment
 // worker emulator for every frontend. Keep the source React/asset plugins.
 export default defineConfig({
@@ -31,7 +38,7 @@ export default defineConfig({
   // excludes them. An external cache makes Babel reprocess huge Three bundles.
   cacheDir: path.join(
     root,
-    `node_modules/.cache/layout-lab-vite-${process.env.GOA2_LAB_PORT}`,
+    `node_modules/.cache/layout-lab-vite${cacheSource}-${process.env.GOA2_LAB_PORT}`,
   ),
   plugins: [
     {
@@ -62,6 +69,14 @@ export default defineConfig({
             ignored: [path.join(root, ".layout-lab/**")],
           }
         : null,
-    fs: { allow: [root, process.env.GOA2_LAB_TOOL] },
+    fs: {
+      allow: [
+        root,
+        process.env.GOA2_LAB_TOOL,
+        ...(process.env.GOA2_LAB_SOURCE_CACHE
+          ? [process.env.GOA2_LAB_SOURCE_CACHE]
+          : []),
+      ],
+    },
   },
 });

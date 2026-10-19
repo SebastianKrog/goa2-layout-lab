@@ -75,6 +75,19 @@ class SituationTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200, response.text)
         return response.json()
 
+    def test_restart_skips_old_clones_and_preserves_recovery_saves(self):
+        from fastapi.testclient import TestClient
+
+        save = Path(os.environ["GOA2_SAVE_DIR"]) / "old-clone.json"
+        save.parent.mkdir(parents=True, exist_ok=True)
+        save.write_text('{"old": "recovery save"}')
+        before = save.read_bytes()
+        with patch("goa2.server.registry.GameRegistry.restore_all", side_effect=AssertionError("restored old clones")):
+            with TestClient(self.module.create_app()) as client:
+                self.assertEqual(client.app.state.registry._games, {})
+                self.assertEqual(client.get("/__lab/health", headers=self.headers).status_code, 200)
+        self.assertEqual(save.read_bytes(), before)
+
     def test_metadata_catalog_omits_checkpoints_without_changing_full_exports(self):
         full = self.client.get("/__lab/situations", headers=self.headers).json()
         light = self.client.get("/__lab/situations?metadata=true", headers=self.headers).json()

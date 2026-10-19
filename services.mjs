@@ -104,6 +104,7 @@ export class Services {
     this.mode = selectRuntime();
   }
   servicePath(value) {
+    if (this.mode === "wsl" && value.startsWith("/")) return value;
     return this.mode === "wsl" ? linuxPath(value) : value;
   }
   async init() {
@@ -137,6 +138,15 @@ export class Services {
   async prepareSource(sha) {
     if (!/^[a-f0-9]{40}$/.test(sha))
       throw new Error("An exact commit SHA is required.");
+    if (this.mode === "wsl") {
+      const job = await this.prepareJob(["prepare-source", sha]);
+      const result = JSON.parse(
+        await fs.readFile(`${job.pidfile}.result.json`, "utf8"),
+      );
+      if (typeof result.root !== "string" || !result.root.startsWith("/"))
+        throw new Error("Invalid WSL source cache path.");
+      return result.root;
+    }
     const dest = path.join(
       DATA,
       "cache",
@@ -215,7 +225,7 @@ export class Services {
   async backend() {
     if (this.children.has("backend")) return;
     await available(PORTS.backend);
-    await this.start("backend", ["backend"], true);
+    await this.start("backend", ["backend"], true, PORTS.backend);
     await waitFor(async () => {
       const process = this.children.get("backend");
       if (!process || process.exited)
@@ -329,7 +339,11 @@ export class Services {
     });
     await waitFor(
       async () => {
-        if (args[0] === "prepare" && existsSync(pidfile)) return true;
+        if (
+          ["prepare", "prepare-source"].includes(args[0]) &&
+          existsSync(pidfile)
+        )
+          return true;
         if (value.exited)
           throw Object.assign(
             new Error(
@@ -344,9 +358,12 @@ export class Services {
     );
   }
   async prepare(root) {
+    await this.prepareJob(["prepare", this.servicePath(root)]);
+  }
+  async prepareJob(args) {
     const key = `prepare-${randomUUID()}`;
     try {
-      await this.start(key, ["prepare", this.servicePath(root)], false);
+      await this.start(key, args, false);
       const process = this.children.get(key);
       await waitFor(
         () => {
@@ -361,6 +378,7 @@ export class Services {
         "frontend dependencies",
         600_000,
       );
+      return process;
     } finally {
       await this.stop(key);
     }

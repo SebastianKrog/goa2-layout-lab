@@ -18,9 +18,10 @@ GitHub/
 ```
 
 The lab does not need to be inside the frontend checkout. The shared situation library lives in tracked `situations/` folders. Local drafts,
-reports, source caches and backend runtime files stay in this repo's ignored
-`.layout-lab/` directory. Only Vite dependency caches are written inside the
-frontend's ignored `node_modules/`.
+reports and backend recovery files stay in this repo's ignored `.layout-lab/`
+directory. Native Linux/macOS also keep service caches there. The Windows-to-WSL
+adapter keeps service caches on WSL's Linux filesystem as described below.
+Live-view Vite dependency caches use the frontend's ignored `node_modules/`.
 
 ## Start
 
@@ -51,10 +52,21 @@ The situation ID is in its JSON file or the desk catalog.
 
 The first explicit load extracts the pinned Git
 sources, verifies/copies model assets, and installs each version's locked
-dependencies. Source caches are separated by runtime/platform/architecture;
-the backend uses its own uv environment under `.layout-lab/runtime`.
-Subsequent launches reuse those caches. Source preparation can
-take several minutes on a Windows-mounted filesystem.
+dependencies. Source caches are separated by runtime/platform/architecture.
+Subsequent launches reuse those caches. Native Linux/macOS use
+`.layout-lab/cache` and a backend uv environment under `.layout-lab/runtime`.
+
+Committed sources with identical package files and npm settings reuse a completed
+dependency installation from another cached commit, provided its platform,
+architecture and Node ABI match. Live checkouts, local/workspace dependencies
+and root install hooks keep separate installs. Each source retains its own Vite
+optimization cache. Existing caches become eligible after their next load.
+
+The backend's uv environment is already persistent; engine source changes are
+picked up on restart. Chromium and the backend start concurrently. The lab backend
+starts with an empty game registry instead of restoring old comparison clones.
+Saved situations and old runtime recovery saves are retained, and active clones
+still autosave normally. This avoids startup work growing with past comparisons.
 
 Views load concurrently and share preparation when they use the same source.
 The lab uses Vite directly with a same-origin HTTP/WebSocket proxy to its isolated
@@ -92,6 +104,24 @@ Windows Node/browser dependency. To explicitly use the Windows browser runtime:
 ```sh
 npm run compare -- --runtime=wsl
 ```
+
+The Windows-to-WSL adapter automatically stores committed frontend sources,
+their `node_modules` and Vite caches, backend source snapshots, the backend uv
+environment and Python bytecode in:
+
+```text
+~/.cache/goa2-layout-lab/<lab-checkout-hash>/linux-<architecture>/
+```
+
+No configuration change is needed. Sources are extracted and dependencies
+installed directly on the Linux filesystem on their first use, then reused.
+Old Windows-mounted caches are left intact; they are not copied or deleted.
+The first run builds the new cache, so subsequent runs show the full benefit.
+Backend snapshots include current working-tree source bytes (including edits
+and new source files), and refresh automatically when those bytes change at
+desk startup. Original checkouts, saved situations, reports, recovery saves and
+process logs remain in Windows. Live frontend editing continues to serve the
+original working tree with polling. Native Linux/macOS cache behavior is unchanged.
 
 That optional mode needs Windows `node.exe` on the WSL PATH, or
 `GOA2_LAB_WINDOWS_NODE` set to its WSL executable path. `--runtime=native`
