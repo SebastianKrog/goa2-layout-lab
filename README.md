@@ -570,7 +570,8 @@ absence, retain the just-resolved card, and check fixed row/column bounds.
 The Emmitt case uses the gameplay factory, commits his second card through
 native UI and mirrors the real command with API synchronization before taking
 paired images. Opponent masking remains covered by frontend integration tests.
-Generated display variants are local drafts; the off-board variant deliberately
+Factory outputs remain local drafts; curated turn-state, two-card Emmitt and
+public rank-IV Wish copies are indexed in [the shared library](situations/README.md#completed-turns-off-board-heroes-and-final-card-variants). The off-board variant deliberately
 removes Brogan and discards his unresolved card without claiming a natural play
 sequence. No production saves or engine rules are modified.
 

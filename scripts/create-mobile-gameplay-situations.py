@@ -94,4 +94,8 @@ session = GameSession(state)
 session.commit_card(HeroID(hero.id), hero.hand[0])
 assert state.phase == GamePhase.PLANNING
 outputs.append(write('emmitt-second-card', session, None, str(hero.id)))
+session.commit_card(HeroID(hero.id), hero.hand[0])
+assert state.phase == GamePhase.PLANNING
+assert hero.id in state.pending_inputs and hero.id in state.pending_second_cards
+outputs.append(write('emmitt-two-cards-committed', session, None, str(hero.id)))
 print(json.dumps(outputs, indent=2))

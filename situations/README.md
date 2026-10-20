@@ -124,3 +124,39 @@ Regenerate using `scripts/create-mobile-resolution-situations.py`. Use Board
 peek to inspect the order without answering the pending choice. Long waiting
 status and gold selection regenerate through the presentation and gameplay
 factory scripts respectively.
+
+## Completed turns, off-board heroes and final card variants
+
+These entries extend the parity-review library without duplicating the existing
+first/second-card, tie-choice, spell-choice or rune situations. Each was reopened
+through Restore saved viewpoints in Windows Chromium with Base, Comparator and
+Base + userscript, matching normalized game hashes and no restore warnings.
+
+| Situation | Folder | Default viewpoint |
+| --- | --- | --- |
+| [Hanu - completed turn, Tigerclaw choosing](resolution/turn-states/cc3e0199b87a.json) | `resolution/turn-states/` | `hero_hanu` |
+| [Brogan - on board without a queued card](resolution/turn-states/fa7fa8532f2e.json) | `resolution/turn-states/` | `hero_hanu` |
+| [Brogan - off board, Hanu's turn completed](resolution/turn-states/4c80e4e5f69b.json) | `resolution/turn-states/` | `hero_hanu` |
+| [Hanu - off board after completing turn](resolution/turn-states/4c76d386ddc6.json) | `resolution/turn-states/` | `hero_hanu` |
+| [Emmitt - two cards committed with ultimate](heroes/emmitt/f3b4b937c7ab.json) | `heroes/emmitt/` | `hero_emmitt` |
+| [Gydion - public rank IV Wish (spectator)](heroes/gydion/public-spells/cd4b7845c42a.json) | `heroes/gydion/public-spells/` | `spectator` |
+
+Turn-state entries use Hanu's viewpoint while Tigerclaw's real action decision
+remains pending. They open on Board so the compact queue, just-resolved card and
+status markers can be compared; open Heroes to inspect portraits and history.
+The off-board variants are fabricated display states, not claims about a natural
+combat sequence. Regenerate drafts with
+`scripts/create-mobile-resolution-situations.py`.
+
+Emmitt has level 8 and two real planning commits, waiting for Wasp. His first-card
+checkpoint remains available separately. Both regenerate with
+`scripts/create-mobile-gameplay-situations.py`.
+
+Wish uses the spectator viewpoint: only the public rank-IV Wish is exposed;
+prepared spells remain masked. The migrated and userscript views restore the
+public spell browser with Wish selected. Base retains its supported overview,
+as it has no equivalent public mobile spell browser. Regenerate the display
+checkpoint with `scripts/create-mobile-presentation-situations.py`.
+
+Factories write ignored local drafts and do not overwrite these curated shared
+copies. Ordinary user/agent-generated situations continue to use `.layout-lab/`.
