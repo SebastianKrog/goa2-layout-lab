@@ -447,3 +447,38 @@ npm run test:sync
 The native suite checks all three phone versions, the userscript, direct input,
 modal layering, scaling, save/capture/reload, two desktop 2D views and two desktop
 3D views with camera controls. It also verifies that no screenshot stream is used.
+
+### Mobile Deck browsing and plans (M4)
+
+```sh
+npm run test:mobile-deck
+```
+
+This focused Windows Chromium check owns diagnostic ports 3800-3803 and 8800.
+It uses the shared Arien card-selection and Gydion public-spells-3 situations to
+check Tree/List/Grid, local plan persistence after reload, preview selection,
+390x844 / 360x800 / 844x390 layouts, and owner/spectator visibility. Browsing and
+planning must preserve the authoritative state hash and scoped live view.
+It records working-tree screenshots/evidence in ignored `.layout-lab/reviews/m4-*/`
+and closes only its own desk/services. The frontend's M4 integration notes own
+plan/preference migration and later M5/M6 upgrade submission scope.
+
+### Deck/shared-card visual parity
+
+```sh
+npm run test:mobile-visual
+```
+
+This isolated Windows comparison uses ports 3900-3903/8900 and the configured
+frozen Base/userscript refs against the frontend's Live working tree. It captures
+28 native/target pairs for Arien/Gydion: Tree/List/Grid and card previews at
+390x844, 360x800 and 844x390, plus Large/Image spell readers. Each report contains
+originals, a combined PNG, pairwise diff and standalone HTML overlay viewer.
+State hashes, panel geometry, compact-card heights and actual canvas pixels are
+checked; rendering and asset failures fail the run. Captures wait for native card
+paint readiness so a temporarily transparent canvas cannot count as finished.
+The helper stops only its own desk and leaves artifacts under ignored
+`.layout-lab/reviews/parity-*/` and `.layout-lab/reports/`. Set `GOA2_PARITY_TAG` to
+label a run. These are working-tree comparisons, not immutable commit evidence.
+The match header/camera and native localized card text are outside this focused
+Deck/shared-card visual comparison; full device/app acceptance remains separate.

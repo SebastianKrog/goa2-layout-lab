@@ -41,6 +41,25 @@ export function strip(images) {
 async function stableScreenshot(win) {
   await win.page.evaluate(() => document.fonts.ready);
   await win.page.waitForLoadState("networkidle", { timeout: 60_000 });
+  // Native card canvases paint after lazy imports/fonts/backgrounds resolve.
+  // A transparent canvas can be pixel-stable while still loading.
+  await win.page.waitForFunction(
+    () =>
+      [...document.querySelectorAll('[data-card-paint-state="loading"]')].every(
+        (element) => {
+          if (!element.checkVisibility()) return true;
+          const box = element.getBoundingClientRect();
+          return (
+            box.bottom <= 0 ||
+            box.top >= innerHeight ||
+            box.right <= 0 ||
+            box.left >= innerWidth
+          );
+        },
+      ),
+    null,
+    { timeout: 60_000 },
+  );
   const brokenImages = await win.page.evaluate(async () => {
     const visible = (image) => {
       if (!image.checkVisibility()) return false;
@@ -65,9 +84,15 @@ async function stableScreenshot(win) {
     };
     const images = [...document.images].filter(visible);
     await Promise.all(images.map((i) => i.decode().catch(() => {})));
-    return images
-      .filter((i) => !i.complete || !i.naturalWidth)
-      .map((i) => i.src);
+    return [
+      ...images.filter((i) => !i.complete || !i.naturalWidth).map((i) => i.src),
+      ...[...document.querySelectorAll('[data-card-paint-state="failed"]')]
+        .filter(visible)
+        .map(
+          (element) =>
+            `Card paint failed: ${element.getAttribute("aria-label")}`,
+        ),
+    ];
   });
   if (win.errors.length || win.assets.length || brokenImages.length) {
     throw new Error(
