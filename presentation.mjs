@@ -82,6 +82,10 @@ export async function capturePresentation(page, render) {
       inspectedCard: hovered?.dataset.labCard || null,
       altHeld: !!window.__GOA2_LAB_ALT__,
       selectedCard: selectedCard?.dataset.labCard || null,
+      focusedHeroMobile:
+        document.querySelector(
+          "[data-mobile-board-summary][data-focused] [data-mobile-hero]",
+        )?.dataset.mobileHero || null,
       inspectedHero: window.__GOA2_LAB_INSPECTED_HERO__ || null,
       deckOpen,
     };
@@ -239,6 +243,29 @@ export async function restorePresentation(page, value, config) {
       await clickControl(page, target);
       if (config.layout === "mobile" && value.pane && value.pane !== "hand")
         await showPane(page, value.pane, config);
+    });
+  if (value.focusedHeroMobile && config.layout === "mobile")
+    await attempt("Focused mobile hero", async () => {
+      await showPane(page, "board", config);
+      const current = await page
+        .locator("[data-mobile-board-summary][data-focused] [data-mobile-hero]")
+        .evaluateAll(
+          (elements) => elements[0]?.getAttribute("data-mobile-hero") || null,
+        );
+      if (current !== value.focusedHeroMobile) {
+        const control = page
+          .locator(
+            `[data-lab-focus-hero=${JSON.stringify(value.focusedHeroMobile)}]:visible`,
+          )
+          .first();
+        await control.waitFor({ state: "visible", timeout: 5000 });
+        await clickControl(page, control);
+      }
+      await page
+        .locator(
+          `[data-mobile-board-summary][data-focused] [data-mobile-hero=${JSON.stringify(value.focusedHeroMobile)}]`,
+        )
+        .waitFor({ state: "visible", timeout: 5000 });
     });
   if (value.inspectedCard)
     await attempt("Card inspection", async () => {

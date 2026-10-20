@@ -18,7 +18,8 @@
     "test:mobile-gameplay": "node test/mobile-gameplay.mjs",
     "test:mobile-presentation": "node test/mobile-presentation.mjs",
     "test:mobile-deck": "node test/mobile-deck.mjs",
-    "test:mobile-visual": "node test/mobile-visual-parity.mjs"
+    "test:mobile-visual": "node test/mobile-visual-parity.mjs",
+    "test:mobile-roster-visual": "node test/mobile-roster-visual.mjs"
   },
   "devDependencies": {
     "@electron/get": "5.1.0",

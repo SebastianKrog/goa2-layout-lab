@@ -134,10 +134,15 @@ try {
         if (count) {
           const choice = browser.getByRole("button", { name: /^View / }).last();
           await choice.tap();
+          // Reader selection is now a Router entry; wait for that presentation
+          // to mount before checking a subsequent preference change.
+          await win.page.getByLabel("Public spell preview", { exact: true }).waitFor();
           const label = await choice.getAttribute("aria-label");
-          await browser
-            .getByRole("combobox", { name: "Sort spells" })
-            .selectOption("color");
+          const sort = browser.getByRole("switch", {
+            name: "Sort spells by color instead of rank",
+          });
+          if ((await sort.getAttribute("aria-checked")) !== "true")
+            await sort.tap();
           assert.equal(
             await browser
               .getByRole("button", { name: label, exact: true })

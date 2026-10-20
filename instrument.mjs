@@ -66,11 +66,27 @@ export function instrument(code, id) {
       '<button data-lab-inspect-card={card.id} type="button" aria-label={`Inspect ${card.name}`}',
     );
   }
+  if (normalized.endsWith("/mobile/MobileHeroDashboard.tsx")) {
+    return code
+      .replaceAll(
+        '<button type="button" aria-label={`Inspect ${card.name}`}',
+        '<button data-lab-inspect-card={card.id} type="button" aria-label={`Inspect ${card.name}`}',
+      )
+      .replace(
+        "className={styles.ultimateShortcut}",
+        "data-lab-inspect-card={hero.ultimate_card?.id} className={styles.ultimateShortcut}",
+      );
+  }
   if (normalized.endsWith("/mobile/MobileBoardSummary.tsx")) {
-    return code.replace(
-      '<button type="button" key={card.id}',
-      '<button data-lab-inspect-card={card.id} type="button" key={card.id}',
-    );
+    return code
+      .replace(
+        '<button type="button" onClick={() => onHero(hero.id)}',
+        '<button data-lab-focus-hero={hero.id} type="button" onClick={() => onHero(hero.id)}',
+      )
+      .replace(
+        '<button type="button" key={card.id}',
+        '<button data-lab-inspect-card={card.id} type="button" key={card.id}',
+      );
   }
   if (normalized.endsWith("/mobile/MobileRules.tsx")) {
     return code.replace(

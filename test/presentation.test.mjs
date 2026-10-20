@@ -50,3 +50,44 @@ test("saved mobile selection ignores hidden panes, waits for Hand, and restores 
     await browser.close();
   }
 });
+
+test("focused mobile hero capture and restore uses the visible safe focus control", async () => {
+  const browser = await chromium.launch({ headless: true });
+  try {
+    const page = await browser.newPage();
+    await page.route("http://fixture.test/", (route) =>
+      route.fulfill({
+        contentType: "text/html",
+        body: `
+      <div hidden><button data-lab-focus-hero="hero_arien" onclick="window.hiddenClicks++">Hidden focus</button></div>
+      <button data-lab-focus-hero="hero_arien">Focus Arien</button><main></main>
+      <script>window.hiddenClicks=0;window.focusClicks=0;
+      document.querySelector('body > button').onclick=()=>{window.focusClicks++;
+        document.querySelector('main').innerHTML='<div data-mobile-board-summary data-focused><section data-mobile-hero="hero_arien">Arien</section></div>'};
+      <\/script>`,
+      }),
+    );
+    await page.goto("http://fixture.test/");
+    const config = { layout: "mobile", source: "live", render: "2d" };
+    assert.deepEqual(
+      await restorePresentation(
+        page,
+        { pane: "board", focusedHeroMobile: "hero_arien" },
+        config,
+      ),
+      [],
+    );
+    const saved = await capturePresentation(page, "2d");
+    assert.equal(saved.focusedHeroMobile, "hero_arien");
+    await page.locator("main").evaluate((e) => e.replaceChildren());
+    assert.deepEqual(await restorePresentation(page, saved, config), []);
+    assert.equal(
+      (await capturePresentation(page, "2d")).focusedHeroMobile,
+      "hero_arien",
+    );
+    assert.equal(await page.evaluate(() => window.hiddenClicks), 0);
+    assert.equal(await page.evaluate(() => window.focusClicks), 2);
+  } finally {
+    await browser.close();
+  }
+});

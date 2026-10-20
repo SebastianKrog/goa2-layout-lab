@@ -56,6 +56,10 @@ for count in [0, 1, 3, 9, 10]:
     state.place_marker(MarkerType.BOUNTY, str(hero.id), 1, 'hero_wasp')
     state.place_marker(MarkerType.POISON, str(hero.id), -1, 'hero_wasp')
     write('gydion-public-spells-' + str(count), state, hero)
+    if count == 3:
+        session = GameSession(state)
+        session.commit_card(hero.id, hero.hand[0])
+        write('gydion-three-indicators-committed', state, hero)
 
 state, hero = fresh('Snorri')
 hero.rune_slots = {1: RuneType.AXE, 2: RuneType.BIRD, 3: RuneType.ANVIL, 4: RuneType.HORN}
@@ -68,4 +72,15 @@ piece_id = state.get_piece_ids(str(hero.id))[0]
 state.place_marker(MarkerType.BOUNTY, piece_id, 1, 'hero_wasp')
 state.place_marker(MarkerType.POISON, piece_id, -1, 'hero_wasp')
 write('razzle-piece-markers', state, hero)
+state, hero = fresh('Brogan')
+hero.level = 8
+hero.items = {StatType.ATTACK: 1, StatType.DEFENSE: 2, StatType.INITIATIVE: 1}
+for card in list(hero.hand[:4]):
+    hero.discard_card(card)
+hero.discard_pile[0].is_active = True
+hero.play_card(hero.hand[0])
+hero.resolve_current_card(turn_number=2)
+state.turn = 3
+write('brogan-discard-active-history', state, hero)
+
 print(json.dumps(outputs, indent=2))
