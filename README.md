@@ -433,6 +433,39 @@ Use `npm run test:element-tools -- --case=discard-card` for a focused rerun.
 Full/active source exports traverse the complete document and can take substantially
 longer and produce larger files than selector-focused exports.
 
+### Collect mobile HTML/CSS review evidence
+
+`npm run test:mobile-elements` collects paired viewport images and selector-focused
+HTML/CSS exports for the committed Comparator's native mobile UI and the pinned
+Base + userscript Target. It uses shared situations and checks that both clones
+start with equal game hashes and remain unchanged by presentation collection.
+The userscript is a comparison reference; assess either implementation against
+intended behavior rather than assuming the Target is correct.
+
+The current cases cover shell/pane headers, selected Hand cards, action/defense/
+discard/upgrade choices, Arien and Gydion Tree/List/Grid browsers, and Large card
+previews at 390×844, 360×800 and 844×390. This is evidence collection for a subset
+of M1–M4, not complete milestone acceptance or a pixel-equality test.
+
+```bash
+npm run test:mobile-elements -- --case=m2-defense,m4-arien
+```
+
+`--case=` accepts comma-separated case-name prefixes. The runner uses isolated
+ports 5900–5903 and backend port 10900 by default; the corresponding
+`GOA2_LAB_*_PORT` environment variables can override them. Other checkout/ref
+settings come from the normal launcher configuration. It starts a headless
+browser desk and closes its owned services after collection.
+
+The local `.layout-lab/reviews/m1-m4-elements-<timestamp>/evidence.json` records
+revisions, situations, hashes, selectors, observations, diagnostics and report
+references. Images and HTML/CSS viewers are under `.layout-lab/reports/`.
+Inspect the exported images and styles together. Collection errors are recorded
+per case/viewport and must be checked even when the process exits successfully;
+missing selectors are collection gaps, not evidence of a product defect.
+Offscreen controls also need a scrolling/reachability check before calling them
+inaccessible. These generated artifacts remain local and ignored by Git.
+
 ### Loading and capture performance
 
 Situation loads fetch just the selected checkpoint and cache parsed situation

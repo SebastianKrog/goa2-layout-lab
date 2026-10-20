@@ -31,6 +31,8 @@ Read [references/captures-and-diffs.md](references/captures-and-diffs.md). The l
 
 The bundled [scripts/capture-comparison.mjs](scripts/capture-comparison.mjs) captures an already-prepared local desk, checks requested exact SHAs, rejects live sources/inactive targets/restore errors, and downloads a self-contained report into a new directory. It does not start a desk, load a situation, change refs, synchronize clicks or close the viewer. Use --help and the reference examples. It requires Node with built-in fetch, and no skill-local packages.
 
+Assess both implementations against intended behavior; the userscript Target can contain errors. Classify meaningful differences as a native issue, target issue, deliberate difference, or unresolved setup/coverage gap. A sampled evidence run does not establish complete milestone acceptance.
+
 Equal dimensions permit a pixel diff but do not establish a fair comparison by themselves. Checkpoint divergence, different seats/cameras, mismatched panels, hover/tooltips, animation, assets and font rendering can dominate the result. Ratios are informational. Do not call a positive diff a regression or a small diff proof of parity. Preserve original dimensions; do not stretch unequal screenshots to manufacture a diff.
 
 ## Compare elements
