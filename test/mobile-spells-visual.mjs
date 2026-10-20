@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 for (const [k, v] of Object.entries({
   DESK: 4700,
   BASE: 4701,
@@ -9,10 +10,26 @@ for (const [k, v] of Object.entries({
   BACKEND: 9700,
 }))
   process.env[`GOA2_LAB_${k}_PORT`] ??= String(v);
-const { DATA } = await import("../config.mjs");
+const { DATA, BACKEND, TOOL } = await import("../config.mjs");
 const { startDesk } = await import("../desk.mjs");
 const { showPane } = await import("../presentation.mjs");
 const { captureReport } = await import("../report.mjs");
+const rank4 = process.argv.includes("--rank4");
+if (rank4)
+  execFileSync(
+    process.env.GOA2_LAB_PYTHON ||
+      path.join(
+        BACKEND,
+        ".venv",
+        process.platform === "win32" ? "Scripts/python.exe" : "bin/python",
+      ),
+    [
+      path.join(TOOL, "scripts/create-mobile-presentation-situations.py"),
+      "--backend",
+      BACKEND,
+    ],
+    { stdio: "ignore", windowsHide: true },
+  );
 const desk = await startDesk({
   flags: new Set([
     "--verification",
@@ -23,14 +40,30 @@ const desk = await startDesk({
 });
 const c = desk.comparison;
 const records = [];
-const output = path.join(DATA, "reviews", `public-spells-parity-${Date.now()}`);
+const output = path.join(
+  DATA,
+  "reviews",
+  `public-spells-${rank4 ? "rank4" : "parity"}-${Date.now()}`,
+);
 await fs.mkdir(output, { recursive: true });
 try {
-  const s = (await c.api("/situations", undefined, "GET")).find(
-    (s) =>
-      s.origin === "library" &&
-      s.name === "M3 presentation - gydion-public-spells-9",
-  );
+  const s = rank4
+    ? await c.api("/import", {
+        content: JSON.parse(
+          await fs.readFile(
+            path.join(
+              DATA,
+              "situation-recipes/mobile-presentation/gydion-public-rank-4.json",
+            ),
+            "utf8",
+          ),
+        ),
+      })
+    : (await c.api("/situations", undefined, "GET")).find(
+        (s) =>
+          s.origin === "library" &&
+          s.name === "M3 presentation - gydion-public-spells-9",
+      );
   assert.ok(s);
   await c.load(
     s.id,
@@ -39,7 +72,7 @@ try {
       { source: "target", layout: "desktop" },
     ].map((w) => ({
       ...w,
-      seat: "hero_gydion",
+      seat: rank4 ? "spectator" : "hero_gydion",
       render: "2d",
       profile: "portrait",
     })),
@@ -65,7 +98,11 @@ try {
     for (const w of c.windows) {
       await showPane(w.page, "heroes", w.config);
       await w.page
-        .getByRole("button", { name: "Spells cast: 9", exact: true })
+        .getByRole("button", {
+          name: `Spells cast: ${rank4 ? 1 : 9}`,
+          exact: true,
+        })
+        .first()
         .tap();
     }
     if (mode === "large") {
@@ -78,6 +115,44 @@ try {
         state: "list",
         ...(await captureReport(c, [0, 1])),
       });
+    }
+    if (rank4) {
+      const data = await native.page.evaluate(
+        () => window.__GOA2_LAB_STATE__.view,
+      );
+      const hero = data.teams.RED.heroes.find((h) => h.id === "hero_gydion");
+      assert.equal(
+        Array.isArray(hero.spellbook),
+        false,
+        "Spectator must not receive prepared spell cards",
+      );
+      assert.equal(spell.spell_rank, 4);
+      const tiny = native.page.getByRole("button", {
+        name: "View Wish",
+        exact: true,
+      });
+      assert.equal(await tiny.locator('[aria-label^="Initiative"]').count(), 0);
+      const accents = await tiny
+        .locator('[class*="faceBand"]')
+        .evaluate((el) => [
+          getComputedStyle(el, "::before").width,
+          getComputedStyle(el, "::after").width,
+        ]);
+      assert.deepEqual(
+        await tiny
+          .locator('[class*="faceBand"]')
+          .evaluate((el) => [
+            getComputedStyle(el, "::before").backgroundImage,
+            getComputedStyle(el, "::after").backgroundImage,
+          ]),
+        ["none", "none"],
+        "Rank IV ends are solid, not repeating tier stripes",
+      );
+      assert.deepEqual(
+        accents,
+        ["6px", "6px"],
+        "Rank IV uses solid end accents",
+      );
     }
     await native.page
       .getByRole("button", { name: `View ${spell.name}`, exact: true })

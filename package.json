@@ -26,7 +26,10 @@
     "test:mobile-special-visual": "node test/mobile-special-visual.mjs",
     "test:mobile-card-fallback": "node test/mobile-card-fallback.mjs",
     "test:mobile-status-visual": "node test/mobile-status-visual.mjs",
-    "test:mobile-decision-visual": "node test/mobile-decision-visual.mjs"
+    "test:mobile-decision-visual": "node test/mobile-decision-visual.mjs",
+    "test:mobile-resolution-visual": "node test/mobile-resolution-visual.mjs",
+    "test:mobile-library-reopen": "node test/mobile-library-reopen.mjs",
+    "test:mobile-turn-state-visual": "node test/mobile-turn-state-visual.mjs"
   },
   "devDependencies": {
     "@electron/get": "5.1.0",

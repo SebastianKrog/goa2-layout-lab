@@ -110,3 +110,17 @@ They retain their pending state; loading creates independent clones.
 History fixtures separately cover hidden and public active cards. The paused,
 suspended and completed fixtures exercise shell presentation rather than timing
 rules. Regenerate drafts with `scripts/create-mobile-presentation-situations.py`.
+
+## Status, gold choice and resolution ties
+
+- [M3 presentation - shell-long-waiting-status](planning/status/ee0dd0fe03ce.json), viewpoint `hero_arien`.
+- [M2 acceptance - takahide-gold-card-choice](heroes/takahide/555d71a47fd2.json), viewpoint `hero_takahide`.
+- [M3 resolution - team-tie](resolution/ties/50205badf8ea.json), viewpoint `hero_hanu`.
+- [M3 resolution - selected-teammate](resolution/ties/371c8eb12f74.json), viewpoint `hero_hanu`.
+
+Resolution checkpoints retain real CHOOSE_ACTOR and CHOOSE_ACTION prompts;
+Arien/Hanu/Tigerclaw use initiative 13 and Brogan 11, with initial coin RED.
+Regenerate using `scripts/create-mobile-resolution-situations.py`. Use Board
+peek to inspect the order without answering the pending choice. Long waiting
+status and gold selection regenerate through the presentation and gameplay
+factory scripts respectively.

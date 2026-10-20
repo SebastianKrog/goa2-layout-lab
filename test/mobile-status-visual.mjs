@@ -132,6 +132,28 @@ try {
         .evaluate((el) => el.scrollHeight <= el.clientHeight + 1),
       "All ten compact rows should fit at the audited sizes",
     );
+    assert.ok(
+      await native.page
+        .locator("[data-mobile-board-summary] > div")
+        .evaluateAll((rows) =>
+          rows.every((row) => row.scrollWidth <= row.clientWidth + 1),
+        ),
+      "Crowded Board rows must fit horizontally",
+    );
+    const focus = await native.page
+      .getByRole("button", { name: "Focus Gydion", exact: true })
+      .boundingBox();
+    const emblem = await native.page
+      .locator("[data-mobile-board-summary]")
+      .getByRole("button", { name: /^Spells cast:/ })
+      .boundingBox();
+    assert.ok(
+      focus &&
+        emblem &&
+        emblem.x >= focus.x + focus.width &&
+        emblem.x <= focus.x + focus.width + 4,
+      "Compact indicators immediately follow the independent hero-name button",
+    );
     await capture("long-status-collapsed", profile);
     await strip.tap();
     await target.page.locator('.m2-hud-bottom[role="button"]').tap();
@@ -165,11 +187,13 @@ try {
     );
   }
   const library = await c.api("/situations", undefined, "GET");
-  for (const [key, seat] of [
-    ["snorri-played-history-runes", "hero_snorri"],
-    ["brogan-public-active-history", "hero_brogan"],
-    ["gydion-three-indicators-committed", "hero_gydion"],
-  ]) {
+  for (const [key, seat] of process.argv.includes("--status-only")
+    ? []
+    : [
+        ["snorri-played-history-runes", "hero_snorri"],
+        ["brogan-public-active-history", "hero_brogan"],
+        ["gydion-three-indicators-committed", "hero_gydion"],
+      ]) {
     s = library.find(
       (s) => s.origin === "library" && s.name === "M3 presentation - " + key,
     );

@@ -112,4 +112,13 @@ for status in [ClockStatus.PAUSED, ClockStatus.SUSPENDED_FOR_INACTIVITY, ClockSt
         state.winner = TeamColor.RED
     write('shell-' + status.value.lower(), state, state.get_hero('hero_arien'))
 
+# A public rank-IV display, with all other prepared spells still masked.
+state, hero = fresh('Gydion')
+hero.level = 8
+hero.items = {StatType.ATTACK: 2, StatType.INITIATIVE: 1}
+for spell in hero.spells:
+    spell.state = CardState.OUTSIDE_SPELLBOOK if spell.id == 'wish' else CardState.SPELLBOOK
+    spell.is_facedown = spell.id != 'wish'
+write('gydion-public-rank-4', state, hero)
+
 print(json.dumps(outputs, indent=2))

@@ -523,3 +523,61 @@ The helper stops only its own desk and leaves artifacts under ignored
 label a run. These are working-tree comparisons, not immutable commit evidence.
 The match header/camera and native localized card text are outside this focused
 Deck/shared-card visual comparison; full device/app acceptance remains separate.
+
+### Resolution order parity (M3)
+
+```sh
+npm run test:mobile-resolution-visual
+```
+
+This Windows Chromium comparison owns ports 5300-5303/10300. Its factory
+`scripts/create-mobile-resolution-situations.py` uses real planning commits on
+the full map: Arien/Hanu/Tigerclaw at initiative 13, Brogan at 11, with the
+initial coin on RED. It saves the actual teammate-choice prompt and the next
+action prompt after choosing Hanu. Both checkpoints are restored twice and
+checked for stable canonical state. These are generated drafts under ignored
+`.layout-lab/situation-recipes/mobile-resolution/`.
+
+The browser uses each view's Board-peek control without answering the pending
+game choice, compares Board and Heroes at 390x844, 360x800 and 844x390, and
+checks order labels, visible badge bounds and matching game hashes. Reports
+under `.layout-lab/reviews/resolution-*/` describe Live versus the frozen target;
+they are working-tree evidence. The frontend retains server-provided initiative
+ordering, including Reverse Time; unit coverage verifies the ascending case.
+The helper closes only its owned diagnostic desk and services.
+
+### Library defaults and remaining card/turn states
+
+```sh
+npm run test:mobile-library-reopen
+npm run test:mobile-turn-state-visual
+npm run test:mobile-turn-state-visual -- --case=emmitt-two-commits
+npm run test:mobile-status-visual -- --status-only
+npm run test:mobile-spells-visual -- --rank4
+```
+
+Library reopening uses diagnostic ports 5400-5403/10400 and the regular desk
+`restoreViews:true` endpoint. It checks the shared long-status, Takahide gold,
+team-tie and selected-teammate entries with their saved Base/Comparator/Target
+sources, seats, layouts, hashes and actual pending decisions. Three-column
+reports are restore checks, rather than evidence of Live source parity.
+
+Turn-state comparisons own ports 5500-5503/10500 and generate normalized real
+checkpoints with the resolution factory: Hanu's accepted HOLD/confirmation,
+a hero without a queued or completed card, and an off-board hero. They compare
+Board/Heroes at all three phone sizes. Assertions distinguish completion from
+absence, retain the just-resolved card, and check fixed row/column bounds.
+The Emmitt case uses the gameplay factory, commits his second card through
+native UI and mirrors the real command with API synchronization before taking
+paired images. Opponent masking remains covered by frontend integration tests.
+Generated display variants are local drafts; the off-board variant deliberately
+removes Brogan and discards his unresolved card without claiming a natural play
+sequence. No production saves or engine rules are modified.
+
+`--status-only` limits the existing status runner to its ten-hero long-status
+case and verifies horizontal as well as vertical row bounds. The spell runner's
+`--rank4` mode uses a fabricated public Wish with all other prepared spells still
+masked. It checks a spectator can inspect Large/Image at three sizes and the
+Tiny row has solid rank-IV end accents without an initiative rail. It uses the
+usual spell-runner ports 4700-4703/9700. These remain Live-versus-frozen-target
+comparisons, and each owned diagnostic desk closes after capture.
