@@ -18,6 +18,7 @@ import {
 import { Services, available, git, resolveComparator } from "./services.mjs";
 import { Comparison } from "./browser.mjs";
 import { captureReport } from "./report.mjs";
+import { extractSources } from "./source-inspection.mjs";
 import { ViewStreams } from "./streams.mjs";
 import { openURL } from "./runtime.mjs";
 import { loadStartupSituation } from "./startup.mjs";
@@ -277,8 +278,12 @@ export async function startDesk({
               case "/api/focus":
                 await comparison.window(body.index).page.bringToFront();
                 return { ok: true };
+              case "/api/extract":
+                return await extractSources(comparison, body);
               case "/api/capture":
-                return await captureReport(comparison, body.indexes);
+                return await captureReport(comparison, body.indexes, {
+                  crop: body.crop,
+                });
               case "/api/refresh": {
                 const next = resolveComparator(
                   body.ref || STARTUP.comparatorRef,
@@ -382,15 +387,17 @@ export async function startDesk({
         } else return send({ error: "Not found" }, 404);
         const content = await fs.readFile(filename);
         res.writeHead(200, {
-          "content-type": filename.endsWith(".png")
-            ? "image/png"
-            : filename.endsWith(".mjs")
-              ? "text/javascript"
-              : filename.endsWith(".css")
-                ? "text/css"
-                : filename.endsWith(".json")
-                  ? "application/json"
-                  : "text/html; charset=utf-8",
+          "content-type": filename.endsWith(".txt")
+            ? "text/plain; charset=utf-8"
+            : filename.endsWith(".png")
+              ? "image/png"
+              : filename.endsWith(".mjs")
+                ? "text/javascript"
+                : filename.endsWith(".css")
+                  ? "text/css"
+                  : filename.endsWith(".json")
+                    ? "application/json"
+                    : "text/html; charset=utf-8",
           "cache-control": "no-store",
         });
         return res.end(content);

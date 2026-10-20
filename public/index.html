@@ -92,6 +92,66 @@
           lab desktop window.
         </p>
         <div id="slots" class="slots"></div>
+        <details class="source-tools" id="cropTools">
+          <summary>Crop image capture to an element</summary>
+          <label class="check"
+            ><input id="cropEnabled" type="checkbox" />Crop screenshots</label
+          >
+          <label
+            >Crop CSS selector
+            <input id="cropSelector" placeholder="e.g. [data-pane=hand]"
+          /></label>
+          <label
+            >Multiple matches
+            <select id="cropMatch">
+              <option value="unique">Require one visible match</option>
+              <option value="nth">Specific visible occurrence</option>
+              <option value="union">
+                All visible matches (bounding rectangle)
+              </option>
+              <option value="individual">
+                Individual — image per visible match
+              </option>
+              <option value="combine">
+                Combine — individual crops in one image
+              </option>
+            </select></label
+          >
+          <label
+            >Occurrence (from 1)
+            <input id="cropOccurrence" type="number" min="1" step="1" value="1"
+          /></label>
+          <p class="muted">
+            Uses the current viewport without scrolling. Occurrences follow DOM
+            order among visible matches. Bounding rectangle includes the space
+            between matches. Individual saves each match; Combine joins those
+            crops without the original gaps. Hidden/offscreen matches are
+            ignored; missing matches are an error in any selected view. Then use
+            Capture above.
+          </p>
+        </details>
+        <details class="source-tools">
+          <summary>Compare HTML &amp; CSS</summary>
+          <p class="muted">
+            Select exactly two views using their Capture checkboxes. Extract the
+            current page or matching elements without changing the game.
+          </p>
+          <label
+            >Extract
+            <select id="extractMode">
+              <option value="full">Full HTML + CSS</option>
+              <option value="active">
+                Active CSS (computed + matched rules)
+              </option>
+              <option value="element">Element HTML + active CSS</option>
+            </select></label
+          >
+          <label
+            >CSS selector
+            <input id="extractSelector" placeholder="e.g. [data-pane=hand]"
+          /></label>
+          <button id="extract">Extract two views</button>
+        </details>
         <section id="report" hidden></section>
         <footer class="build-strip">
           <span

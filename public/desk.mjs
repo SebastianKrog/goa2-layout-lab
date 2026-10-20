@@ -132,8 +132,9 @@ function controls() {
     .forEach((b) => (b.disabled = !!busy));
   for (const live of liveViews.values()) live.pause(!!busy);
   const count = state.windows?.length || 0;
-  for (const id of ["capture", "save", "reset", "clear"])
-    $(id).disabled = !!busy || count < (id === "capture" ? 2 : 1);
+  for (const id of ["capture", "extract", "save", "reset", "clear"])
+    $(id).disabled =
+      !!busy || count < (["capture", "extract"].includes(id) ? 2 : 1);
   if (!busy)
     document
       .querySelectorAll("[data-needs-window]")
@@ -883,7 +884,19 @@ $("capture").onclick = () =>
       .filter((i) => !excluded.has(i));
     if (indexes.length < 2)
       throw new Error("Select Capture on at least two views.");
-    const result = await call("capture", { indexes });
+    const crop = $("cropEnabled").checked
+      ? {
+          selector: $("cropSelector").value,
+          match: $("cropMatch").value,
+          ...($("cropMatch").value === "nth"
+            ? { occurrence: Number($("cropOccurrence").value) }
+            : {}),
+        }
+      : null;
+    const result = await call("capture", {
+      indexes,
+      ...(crop ? { crop } : {}),
+    });
     const text = el("div");
     text.append(
       el("h3", "", "Capture saved"),
@@ -902,6 +915,40 @@ $("capture").onclick = () =>
     $("report").replaceChildren(text, a);
     $("report").hidden = false;
     notify("Comparison captured.");
+  });
+$("extractMode").onchange = () => {
+  $("extractSelector").placeholder =
+    $("extractMode").value === "element"
+      ? "Required CSS selector"
+      : "Used only for element extraction";
+};
+$("extract").onclick = () =>
+  task("Extracting HTML and CSS…", async () => {
+    const indexes = state.windows
+      .map((w) => w.index)
+      .filter((i) => !excluded.has(i));
+    if (indexes.length !== 2)
+      throw Error("Select Capture on exactly two views.");
+    const result = await call("extract", {
+      indexes,
+      mode: $("extractMode").value,
+      selector: $("extractSelector").value,
+    });
+    const title = el("h3", "", "HTML and CSS saved");
+    const link = el("a", "", "Open source comparison ↗");
+    link.href = result.url;
+    link.target = "_blank";
+    link.rel = "noopener";
+    const note = el(
+      "p",
+      "",
+      result.diverged
+        ? "These views have different game states; interpret differences accordingly."
+        : "Rendered HTML, stylesheet sources, computed values and matched rules.",
+    );
+    $("report").replaceChildren(title, note, link);
+    $("report").hidden = false;
+    notify("Source comparison exported.");
   });
 $("synchronize").onchange = () => {
   const mode = $("synchronize").value;

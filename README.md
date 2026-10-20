@@ -305,6 +305,120 @@ Reports are stored under `.layout-lab/reports` and can be reopened through their
 desk URLs. Pixel differences are an inspection aid, not automatic layout parity
 pass/fail tests.
 
+### Crop captures to elements
+
+Open **Crop image capture to an element**, enable **Crop screenshots**, enter a
+CSS selector, then use **Capture** normally. The same selector and match policy
+are applied independently to every selected view (two or three).
+
+- **Require one visible match** (default): exactly one match must have a visible
+  area in the current viewport. Multiple matches fail instead of choosing one.
+- **Specific visible occurrence**: select a one-based occurrence in DOM order
+  among visible matches. An out-of-range occurrence fails. Numbering is not visual
+  left-to-right order and does not guarantee the same semantic item across layouts.
+- **All visible matches**: capture the bounding rectangle of all visible matches.
+  This includes gaps and any other content within that rectangle.
+- **Individual**: save one image per visible match, numbered in DOM order.
+  Each view's occurrence 1 is compared with occurrence 1 in other views, and so
+  on. Unmatched extra occurrences remain available as individual images.
+- **Combine**: save those same individual images plus a horizontal strip per view,
+  in DOM order without resizing or the original viewport gaps. Shorter crops leave
+  transparent space below them. Different match counts disable the strip's diff.
+
+Hidden, transparent, zero-area, fully clipped and offscreen matches are ignored.
+No remaining visible matches in any selected view fails the capture. Partial
+matches are clipped to the viewport and rectangular ancestor scroll/overflow
+bounds. The page is not scrolled, resized or restyled. These are actual screenshot
+pixels: overlapping content stays visible, occlusion is not used to exclude
+matches, and shadows/pseudo-elements extending outside the element box are not
+included. Complex transforms, rounded clipping and clip paths retain their
+painted appearance inside the rectangular crop; they are not shape masks.
+Selectors inspect the main document's light DOM.
+
+Reports include the selector, matching policy, match counts, selected DOM
+occurrences, CSS bounds and screenshot pixel bounds. Crops retain device scale
+and are never stretched; unequal crop sizes disable that pair's diff/overlay.
+The original capture files in a cropped report are the cropped images; turn the
+option off for full viewport evidence. Game and presentation metadata remain.
+
+API: `POST /api/capture {indexes:[0,1],crop:{selector:".card",match:"nth",occurrence:2}}`.
+Omit `crop` for full viewport captures. The portable comparison helper accepts
+`--selector ".card" --match nth --occurrence 2`; `--match unique` is the default,
+and `--match union` selects the combined rectangle. Use `--match individual` or
+`--match combine` for separate crops or their compact strip. Individual files are
+`window-N-match-M.png` (view N, visible occurrence M); Combine additionally writes
+`window-N.png`. The report/export helper includes every individual image.
+
+## Compare rendered HTML and CSS
+
+Prepare a comparison normally, then open **Compare HTML & CSS** below the views.
+Select exactly two views using their **Capture** checkboxes and choose:
+
+- **Full HTML + CSS**: the rendered document and every stylesheet exposed by
+  Chromium, including imported sheets, inline stylesheets and injected userscript
+  styles. Inline element styles remain in the HTML and matched declarations.
+- **Active CSS**: resolved computed properties for every element in the document,
+  plus Chromium's matched rules, inline declarations, inheritance, pseudo-element
+  rules, cascade layers and conditional-rule metadata.
+- **Element HTML + active CSS**: enter a standard CSS selector. Every matching
+  element and its descendants are included in both views. A missing or invalid
+  selector fails explicitly, rather than returning an empty comparison.
+
+This reads the already-open views without reloading or advancing their games.
+Open the resulting side-by-side source viewer to switch between HTML, loaded CSS,
+computed CSS and matched rules. The viewer displays markup as text; it does not
+execute exported scripts. It works offline when the entire report folder is copied.
+
+For agents or terminal use:
+
+```sh
+npm run extract -- --indexes=0,1 --mode=full --out=./html-css-review
+npm run extract -- --indexes=0,1 --mode=active --out=./active-css-review
+npm run extract -- --indexes=1,2 --mode=element --selector="[data-pane='hand']" --out=./hand-review
+```
+
+Use `--origin=http://127.0.0.1:3200` to select another running desk. The output
+folder must be new. Omit `--out` to retain the export only under
+`.layout-lab/reports/source-<id>/`. The API equivalent is
+`POST /api/extract {indexes:[0,1],mode:"element",selector:".your-selector"}`;
+indexes are zero-based, with exactly two distinct open views.
+
+`comparison.json` records revisions, source configuration, viewport dimensions,
+userscript activation, game-state hashes, diagnostics and the full extraction.
+`view-N.html.txt` contains inert HTML (full/element modes), `view-N.computed.css`
+contains resolved values, and `view-N.active.json` contains per-element computed
+values and matched-rule information. Large repeated protocol structures use
+`{$ref:"matched-N"}` entries, resolved through that view's `matchedDefinitions`
+table (schema 2). The viewer has a **Matched rule definitions** tab. Full mode also exports individual
+`view-N.sheet-M.css` files; their source URLs and sheet IDs are in the JSON.
+`changes.json` lists computed-property changes aligned by structural CSS paths.
+These paths describe DOM positions, so different component trees need human
+interpretation rather than automatic semantic matching.
+
+“Active” describes the current viewport and interaction state, including hidden
+DOM elements; it is not just CSS for pixels currently on screen. Computed values
+are the resolved result. Matched rules also contain overridden declarations and
+conditional metadata, and must not all be interpreted as winning declarations.
+Animations/transitions are sampled, not frozen; HTML/CSS cannot reproduce canvas
+or WebGL pixels. Extraction currently covers the main document's light DOM;
+child frames and open shadow roots are flagged instead of silently claimed as
+captured. A game-state change or detected structural DOM change during extraction
+requires a retry. Live sources are labelled mutable. No platform services or
+browser sessions are started by the extraction command.
+
+### Verify element capture and CSS extraction
+
+`npm run test:element-tools` starts an isolated headless browser desk on ports
+5700–5703/10700 and tests the shared card-selection, action-choice and discard
+situations against committed Comparator and the userscript Target. It exports
+Individual/Combine images, checks portable offline viewers, tests selector failures
+and Nth/Union crops, and exports full/active/element HTML/CSS. It checks game hashes
+remain unchanged and closes only its own services. Reports and a verification
+manifest stay under `.layout-lab/reviews/element-tools-<timestamp>/`.
+Use `npm run test:element-tools -- --case=discard-card` for a focused rerun.
+Full/active source exports traverse the complete document and can take substantially
+longer and produce larger files than selector-focused exports.
+
 ## Processes and troubleshooting
 
 | Process              | Port |

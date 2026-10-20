@@ -29,7 +29,9 @@
     "test:mobile-decision-visual": "node test/mobile-decision-visual.mjs",
     "test:mobile-resolution-visual": "node test/mobile-resolution-visual.mjs",
     "test:mobile-library-reopen": "node test/mobile-library-reopen.mjs",
-    "test:mobile-turn-state-visual": "node test/mobile-turn-state-visual.mjs"
+    "test:mobile-turn-state-visual": "node test/mobile-turn-state-visual.mjs",
+    "extract": "node scripts/extract-sources.mjs",
+    "test:element-tools": "node test/element-tools-e2e.mjs"
   },
   "devDependencies": {
     "@electron/get": "5.1.0",

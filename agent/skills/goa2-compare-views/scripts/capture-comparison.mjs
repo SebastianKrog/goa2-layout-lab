@@ -11,7 +11,8 @@ async function main() {
       "Capture/export a prepared GoA2 comparison. Leaves the desk running.\n" +
         "node capture-comparison.mjs --origin http://127.0.0.1:3200 --out <new-directory>\n" +
         "  [--indexes 0,1,2] [--base-sha <40-hex>] [--compare-sha <40-hex>]\n" +
-        "  [--script-sha <40-hex>] [--allow-diverged]",
+        "  [--script-sha <40-hex>] [--allow-diverged]\n" +
+        "  [--selector <css>] [--match unique|nth|union|individual|combine] [--occurrence <one-based-number>]",
     );
     return;
   }
@@ -22,6 +23,9 @@ async function main() {
     "--base-sha",
     "--compare-sha",
     "--script-sha",
+    "--selector",
+    "--match",
+    "--occurrence",
   ]);
   for (let i = 0; i < args.length; i++) {
     if (args[i] === "--allow-diverged") {
@@ -120,7 +124,21 @@ async function main() {
     throw Error(
       "Games diverged; reset/load the same situation, or use --allow-diverged for an intentional comparison.",
     );
-  const report = await request("/api/capture", { indexes });
+  if (!options.selector && (options.match || options.occurrence))
+    throw Error("Crop --match/--occurrence requires --selector.");
+  const crop = options.selector
+    ? {
+        selector: options.selector,
+        match: options.match || "unique",
+        ...(options.occurrence
+          ? { occurrence: Number(options.occurrence) }
+          : {}),
+      }
+    : null;
+  const report = await request("/api/capture", {
+    indexes,
+    ...(crop ? { crop } : {}),
+  });
   if (
     !/^[A-Za-z0-9._-]+$/.test(report.id) ||
     report.url !== "/reports/" + report.id + "/index.html"
@@ -142,12 +160,13 @@ async function main() {
     "report.json",
     "side-by-side.png",
     ...metadata.captures.map((c) => c.file),
+    ...metadata.captures.flatMap((c) => (c.parts || []).map((p) => p.file)),
     ...metadata.pairs.filter((p) => p.available).map((p) => p.file),
   ];
   if (
     files.some(
       (f) =>
-        !/^(index\.html|report\.json|side-by-side\.png|window-\d+\.png|diff-\d+-\d+\.png)$/.test(
+        !/^(index\.html|report\.json|side-by-side\.png|window-\d+(?:-match-\d+)?\.png|diff-\d+-\d+\.png)$/.test(
           f,
         ),
     )

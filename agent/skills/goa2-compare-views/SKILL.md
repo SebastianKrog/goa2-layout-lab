@@ -1,11 +1,11 @@
 ---
 name: goa2-compare-views
-description: Compare two GoA2 frontend commits in goa2-layout-lab, optionally with a pinned userscript as a third view. Prepare a live human viewer or export original screenshots, a combined image, pairwise pixel diffs and an overlay report using saved situations. Use goa2-ui-situations when a new game moment must first be fabricated.
+description: Compare two GoA2 frontend commits in goa2-layout-lab, optionally with a pinned userscript as a third view. Prepare a live human viewer or export viewport/element screenshots, combined crops, pixel diffs, an overlay report, or paired HTML/CSS extractions using saved situations. Use goa2-ui-situations when a new game moment must first be fabricated.
 ---
 
 # GoA2 compare views
 
-Produce a comparison tied to exact frontend revisions and one reproducible situation. The requested result may be images, a static overlay/diff viewer, or a live desk left ready for a human. Choose the result the user asked for; use the native live viewer for animation and interaction review.
+Produce a comparison tied to exact frontend revisions and one reproducible situation. The requested result may be viewport/element images, HTML/CSS inspection, a static overlay/diff viewer, or a live desk left ready for a human. Choose the result the user asked for; use the native live viewer for animation and interaction review.
 
 ## Establish the comparison
 
@@ -33,6 +33,45 @@ The bundled [scripts/capture-comparison.mjs](scripts/capture-comparison.mjs) cap
 
 Equal dimensions permit a pixel diff but do not establish a fair comparison by themselves. Checkpoint divergence, different seats/cameras, mismatched panels, hover/tooltips, animation, assets and font rendering can dominate the result. Ratios are informational. Do not call a positive diff a regression or a small diff proof of parity. Preserve original dimensions; do not stretch unequal screenshots to manufacture a diff.
 
+## Compare elements
+
+Use a selector crop when the question concerns the actual appearance of one or
+more controls. In the desk, expand **Crop image capture to an element**, enable
+**Crop screenshots**, choose a selector/match policy, then use **Capture**.
+The same selector is applied independently to every selected view.
+
+| Policy             | Result                                                                                          |
+| ------------------ | ----------------------------------------------------------------------------------------------- |
+| `unique` (default) | One visible match required; ambiguity is an error.                                              |
+| `nth`              | One numbered visible match in DOM order; `occurrence` starts at 1.                              |
+| `union`            | One bounding rectangle including the space/content between matches.                             |
+| `individual`       | One image per visible match, compared by occurrence across views.                               |
+| `combine`          | The same individual images plus a horizontal strip per view, without original gaps or resizing. |
+
+Use Individual to inspect each card/control and Combine for a compact overview.
+Keep Union when spacing or neighboring content matters. Confirm semantic identity
+before comparing occurrence numbers across different DOM trees. Hidden/offscreen
+matches are excluded; cropping never scrolls or changes the layout. Open/scroll
+the intended panel deliberately first. Missing matches in any selected view fail.
+See [references/captures-and-diffs.md](references/captures-and-diffs.md) for crop API,
+portable helper examples, filenames, clipping limits and pair indexing.
+
+## Extract HTML and CSS
+
+For source/style inspection, read
+[references/html-and-css.md](references/html-and-css.md). Use the prepared views
+and **Compare HTML & CSS** in the desk or `scripts/extract-sources.mjs` from the
+repository root. Select exactly two views, including any two from a three-view
+comparison. Choose full HTML + loaded CSS, active CSS throughout the document, or
+selector-matched element HTML + active CSS including descendants.
+
+Computed values are resolved results; matched rules also include overridden
+properties and cascade/condition metadata. Extraction includes hidden DOM
+matches, unlike visible-only screenshot cropping. Inspect the outputs and source
+identity before drawing conclusions. Use a crop alongside the source export to
+show the actual result; HTML/CSS extraction does not render an isolated element,
+replay interactions, or capture canvas/WebGL pixels.
+
 ## Leave a human viewer ready
 
 For interactive review, launch the native embedded desk in a visible desktop session, load and arrange the requested views, verify them, and leave its owning process running. Give the user the active window/local URL, exact A/B/script SHAs, situation, seat/device/renderer, sync mode, reset behavior and the stop command. A static report supports zoom/overlay/pair selection but does not replay animations. Browser JPEG previews are a fallback for static layout work.
@@ -41,4 +80,4 @@ When only artifacts were requested, stop only the diagnostic instance you starte
 
 ## Deliver
 
-Link the combined PNG, requested diff(s), originals and report viewer as appropriate, with a compact reproduction record: exact revisions, situation, slots and any unavailable features or viewpoint/state mismatches. For a live handoff, state which process is left running and how to stop it. Distinguish source-inspected capability from what was actually opened/exported on the current revisions.
+Link the combined PNG, requested diff(s), individual crops, source/style exports and report viewer as appropriate, with a compact reproduction record: exact revisions, situation, slots and any unavailable features or viewpoint/state mismatches. For a live handoff, state which process is left running and how to stop it. Distinguish source-inspected capability from what was actually opened/exported on the current revisions.

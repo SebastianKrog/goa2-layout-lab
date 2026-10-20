@@ -796,5 +796,31 @@ dialog::backdrop {
   }
 }
 
-.saved-view-setup { display: grid; gap: 4px; max-width: 320px; }
-.saved-view-setup small { line-height: 1.4; }
+.saved-view-setup {
+  display: grid;
+  gap: 4px;
+  max-width: 320px;
+}
+.saved-view-setup small {
+  line-height: 1.4;
+}
+
+.source-tools {
+  margin: 16px 0;
+  padding: 16px;
+  border: 1px solid var(--border, #94a3b8);
+  border-radius: 10px;
+}
+.source-tools summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.source-tools label {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  margin: 8px 12px 8px 0;
+}
+.source-tools input {
+  min-width: 240px;
+}
