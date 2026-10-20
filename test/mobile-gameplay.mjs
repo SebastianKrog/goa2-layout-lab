@@ -141,7 +141,7 @@ async function choice(text) {
   const panel = current.page.getByRole("region", { name: "Game decision" });
   await panel.getByRole("button", { name: text, exact: true }).tap();
   await accepted(() =>
-    panel.getByRole("button", { name: "Confirm choice", exact: true }).tap(),
+    panel.getByRole("button", { name: /^Confirm (choice|discard)$/, exact: true }).tap(),
   );
 }
 try {
@@ -202,7 +202,7 @@ try {
       await unchanged(() => option.tap());
       await record(key + "-staged");
       await accepted(() =>
-        panel.getByRole("button", { name: "Confirm choice" }).tap(),
+        panel.getByRole("button", { name: /^Confirm (choice|discard)$/ }).tap(),
       );
     }
     await record(key + "-accepted");
@@ -223,6 +223,7 @@ try {
   await unchanged(async () => {
     await current.page
       .getByRole("button", { name: "Inspect Magic Missile", exact: true })
+      .last()
       .tap();
     await current.page
       .getByRole("dialog", { name: "Inspect Magic Missile" })
@@ -243,7 +244,7 @@ try {
   await hold.tap();
   await accepted(() =>
     current.page
-      .getByRole("button", { name: "Confirm choice", exact: true })
+      .getByRole("button", { name: /^Confirm (choice|discard)$/, exact: true })
       .tap(),
   );
   await record("gydion-spell-action-accepted");
@@ -264,7 +265,7 @@ try {
     await unchanged(() => option.tap());
     await record("snorri-" + rune.toLowerCase() + "-confirmation");
     await accepted(() =>
-      panel.getByRole("button", { name: "Confirm choice", exact: true }).tap(),
+      panel.getByRole("button", { name: /^Confirm (choice|discard)$/, exact: true }).tap(),
     );
   }
   await waitFor(
@@ -282,6 +283,7 @@ try {
 
   // Deliberately reuse the Arien preset; the loader must resolve this roster.
   await load(fixtures["emmitt-second-card"]);
+  await showPane(current.page, "hand", current.config);
   assert.equal(
     await current.page
       .getByRole("button", { name: "Done — play one card", exact: true })
@@ -314,6 +316,7 @@ try {
   await record("emmitt-two-cards-committed");
   await comparison.reset(1);
   current = comparison.windows[1];
+  await showPane(current.page, "hand", current.config);
   await accepted(() =>
     current.page
       .getByRole("button", { name: "Done — play one card", exact: true })

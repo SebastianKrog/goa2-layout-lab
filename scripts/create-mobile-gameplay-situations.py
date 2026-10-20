@@ -81,6 +81,12 @@ session, result, seat = action(state, 'inscribe_the_runes')
 assert result.input_request.request_type == InputRequestType.SELECT_OPTION
 outputs.append(write('snorri-inscription', session, result, seat))
 
+state = fresh('Takahide')
+session, result, seat = action(state, 'bushido')
+assert result.input_request.request_type == InputRequestType.SELECT_CARD
+assert len(result.input_request.options) == 2
+outputs.append(write('takahide-gold-card-choice', session, result, seat))
+
 state = fresh('Emmitt')
 hero = state.get_hero('hero_emmitt')
 hero.level = 8

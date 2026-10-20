@@ -90,3 +90,23 @@ python ../goa2-layout-lab/scripts/create-mobile-presentation-situations.py
 Run from the backend checkout or pass `--backend <checkout>`. The default output
 is ignored `.layout-lab/situation-recipes/mobile-presentation/`; it does not
 overwrite this curated library.
+
+## Additional visual audit situations
+
+These normalized display checkpoints were inspected in Windows Chromium against
+the pinned userscript target at portrait, compact and short-landscape sizes.
+They retain their pending state; loading creates independent clones.
+
+| Folder | Situation |
+| --- | --- |
+| `heroes/gydion/markers/` | [M3 presentation - gydion-three-indicators-committed](heroes/gydion/markers/f2728687d079.json) |
+| `heroes/snorri/history/` | [M3 presentation - snorri-played-history-runes](heroes/snorri/history/09fa8b1ac243.json) |
+| `heroes/brogan/history/` | [M3 presentation - brogan-discard-active-history](heroes/brogan/history/7cc3ce17c3e7.json) |
+| `heroes/brogan/history/` | [M3 presentation - brogan-public-active-history](heroes/brogan/history/5f40e18e9cf2.json) |
+| `planning/clocks/` | [M3 presentation - shell-paused](planning/clocks/dc818586ba77.json) |
+| `planning/clocks/` | [M3 presentation - shell-suspended_for_inactivity](planning/clocks/15776afb8667.json) |
+| `planning/clocks/` | [M3 presentation - shell-finished](planning/clocks/75b7580a23ba.json) |
+
+History fixtures separately cover hidden and public active cards. The paused,
+suspended and completed fixtures exercise shell presentation rather than timing
+rules. Regenerate drafts with `scripts/create-mobile-presentation-situations.py`.

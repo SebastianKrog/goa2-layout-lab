@@ -69,7 +69,15 @@ export async function capturePresentation(page, render) {
           ?.dataset.labMobileInspection || null,
       inspectionMobileParent:
         document.querySelector("[data-lab-mobile-inspection][inert]")?.dataset
-          .labMobileInspection || null,
+          .labMobileInspection ||
+        document.querySelector("[data-decision-inspection]")?.dataset
+          .decisionParent ||
+        null,
+      inspectionMobileContext: document.querySelector(
+        "[data-decision-inspection]",
+      )
+        ? "decision"
+        : null,
       spellBrowserMobile: (() => {
         const browser = document.querySelector("[data-lab-mobile-spells]");
         return browser
@@ -332,6 +340,24 @@ export async function restorePresentation(page, value, config) {
     });
   if (value.inspectionMobile && config.layout === "mobile")
     await attempt("Mobile inspection", async () => {
+      if (value.inspectionMobileContext === "decision") {
+        const parent = page.locator(
+          `[data-decision-parent=${JSON.stringify(value.inspectionMobileParent)}]:visible`,
+        );
+        const child = parent
+          .locator(
+            `[data-lab-inspect-card=${JSON.stringify(value.inspectionMobile)}]:visible`,
+          )
+          .first();
+        await child.waitFor({ state: "visible", timeout: 5000 });
+        await clickControl(page, child);
+        await page
+          .locator(
+            `[data-lab-mobile-inspection=${JSON.stringify(value.inspectionMobile)}]:not([inert])`,
+          )
+          .waitFor({ state: "visible", timeout: 5000 });
+        return;
+      }
       for (const id of [
         value.inspectionMobileParent,
         value.inspectionMobile,

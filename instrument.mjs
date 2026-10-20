@@ -55,10 +55,15 @@ export function instrument(code, id) {
       );
   }
   if (normalized.endsWith("/mobile/MobileDecisionPanel.tsx")) {
-    return code.replace(
-      '<button type="button" aria-label={`Inspect ${card.name}`}',
-      '<button data-lab-inspect-card={card.id} type="button" aria-label={`Inspect ${card.name}`}',
-    );
+    return code
+      .replace(
+        '<button type="button" aria-label={`Inspect ${card.name}`}',
+        '<button data-lab-inspect-card={card.id} type="button" aria-label={`Inspect ${card.name}`}',
+      )
+      .replace(
+        "<div {...nestedDialog}",
+        "<div data-lab-mobile-inspection={nestedInspection?.id} {...nestedDialog}",
+      );
   }
   if (normalized.endsWith("/mobile/MobileHeroCard.tsx")) {
     return code.replace(

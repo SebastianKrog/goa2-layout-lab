@@ -19,7 +19,14 @@
     "test:mobile-presentation": "node test/mobile-presentation.mjs",
     "test:mobile-deck": "node test/mobile-deck.mjs",
     "test:mobile-visual": "node test/mobile-visual-parity.mjs",
-    "test:mobile-roster-visual": "node test/mobile-roster-visual.mjs"
+    "test:mobile-roster-visual": "node test/mobile-roster-visual.mjs",
+    "test:mobile-spells-visual": "node test/mobile-spells-visual.mjs",
+    "test:mobile-ready-visual": "node test/mobile-ready-visual.mjs",
+    "test:mobile-shell-visual": "node test/mobile-shell-visual.mjs",
+    "test:mobile-special-visual": "node test/mobile-special-visual.mjs",
+    "test:mobile-card-fallback": "node test/mobile-card-fallback.mjs",
+    "test:mobile-status-visual": "node test/mobile-status-visual.mjs",
+    "test:mobile-decision-visual": "node test/mobile-decision-visual.mjs"
   },
   "devDependencies": {
     "@electron/get": "5.1.0",

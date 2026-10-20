@@ -91,3 +91,45 @@ test("focused mobile hero capture and restore uses the visible safe focus contro
     await browser.close();
   }
 });
+
+test("decision spell inspection restores through its parent without selecting a game choice", async () => {
+  const browser = await chromium.launch({ headless: true });
+  try {
+    const page = await browser.newPage();
+    await page.route("http://fixture.test/", (route) =>
+      route.fulfill({
+        contentType: "text/html",
+        body: `
+      <button data-lab-inspect-card="cantrip" onclick="window.unsafe++">Unrelated parent shortcut</button>
+      <div hidden><button data-lab-inspect-card="magic_missile" onclick="window.unsafe++">Hidden</button></div>
+      <section data-decision-parent="cantrip"><button data-lab-inspect-card="magic_missile">Inspect spell</button></section>
+      <script>window.unsafe=0;document.querySelector('section button').onclick=()=>{
+        const parent=document.querySelector('section');parent.dataset.decisionInspection='magic_missile';
+        const dialog=document.createElement('div');dialog.dataset.labMobileInspection='magic_missile';dialog.textContent='Spell';parent.append(dialog);
+      };<\/script>`,
+      }),
+    );
+    await page.goto("http://fixture.test/");
+    const saved = {
+      pane: "board",
+      inspectionMobile: "magic_missile",
+      inspectionMobileParent: "cantrip",
+      inspectionMobileContext: "decision",
+    };
+    assert.deepEqual(
+      await restorePresentation(page, saved, {
+        layout: "mobile",
+        source: "live",
+        render: "2d",
+      }),
+      [],
+    );
+    const captured = await capturePresentation(page, "2d");
+    assert.equal(captured.inspectionMobile, "magic_missile");
+    assert.equal(captured.inspectionMobileParent, "cantrip");
+    assert.equal(captured.inspectionMobileContext, "decision");
+    assert.equal(await page.evaluate(() => window.unsafe), 0);
+  } finally {
+    await browser.close();
+  }
+});

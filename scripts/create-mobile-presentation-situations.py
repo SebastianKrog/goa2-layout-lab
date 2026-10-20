@@ -14,7 +14,8 @@ parser.add_argument('--output', type=Path, default=LAB / '.layout-lab/situation-
 args = parser.parse_args()
 sys.path.insert(0, str(args.backend.resolve() / 'src'))
 from goa2.bootstrap import register_all_effects
-from goa2.domain.models import CardState, StatType
+from goa2.domain.models import CardState, StatType, GamePhase, TeamColor
+from goa2.domain.time_control import TimeControlConfig, ClockStatus
 from goa2.domain.models.enums import RuneType
 from goa2.domain.models.marker import MarkerType
 from goa2.engine.session import GameSession
@@ -66,6 +67,10 @@ hero.rune_slots = {1: RuneType.AXE, 2: RuneType.BIRD, 3: RuneType.ANVIL, 4: Rune
 state.turn = 2
 hero.played_cards = [None, None, None, None]
 write('snorri-empty-history-runes', state, hero)
+hero.play_card(hero.hand[0])
+hero.current_turn_card.is_facedown = False
+hero.resolve_current_card(turn_number=2)
+write('snorri-played-history-runes', state, hero)
 
 state, hero = fresh('Razzle')
 piece_id = state.get_piece_ids(str(hero.id))[0]
@@ -82,5 +87,29 @@ hero.play_card(hero.hand[0])
 hero.resolve_current_card(turn_number=2)
 state.turn = 3
 write('brogan-discard-active-history', state, hero)
+hero.played_cards[1].is_facedown = False
+hero.played_cards[1].is_active = True
+write('brogan-public-active-history', state, hero)
+
+state = GameSetup.create_game(str(resolve_map_path('forgotten_island')),
+    ['Arien', 'Hanu', 'Snorri', 'Gydion', 'Emmitt'],
+    ['Brogan', 'Tigerclaw', 'Wasp', 'Razzle', 'Silverarrow'], False, 'LONG', seed=20261019)
+hero = state.get_hero('hero_arien')
+GameSession(state).commit_card(hero.id, hero.hand[0])
+write('shell-long-waiting-status', state, hero)
+
+for status in [ClockStatus.PAUSED, ClockStatus.SUSPENDED_FOR_INACTIVITY, ClockStatus.FINISHED]:
+    timing = TimeControlConfig(planning_allowance_seconds=120, resolution_allowance_seconds=90,
+        response_grant_seconds=20, initial_time_bank_seconds=300, time_bank_increment_seconds=30,
+        max_time_bank_seconds=600, upgrade_allowance_seconds=60)
+    state = GameSetup.create_game(str(resolve_map_path('forgotten_island')), ['Arien', 'Hanu'],
+        ['Brogan', 'Tigerclaw'], False, 'LONG', seed=20261019, time_control=timing)
+    state.clock.status = status
+    state.clock.paused_at_ms = lab.FROZEN_MS if status == ClockStatus.PAUSED else None
+    state.clock.pause_requested_by = 'hero_arien' if status == ClockStatus.PAUSED else None
+    if status == ClockStatus.FINISHED:
+        state.phase = GamePhase.GAME_OVER
+        state.winner = TeamColor.RED
+    write('shell-' + status.value.lower(), state, state.get_hero('hero_arien'))
 
 print(json.dumps(outputs, indent=2))

@@ -40,8 +40,10 @@ const cases = [
   ]),
   ["gydion-three-indicators-committed", "hero_gydion"],
   ["snorri-empty-history-runes", "hero_snorri"],
+  ["snorri-played-history-runes", "hero_snorri"],
   ["razzle-piece-markers", "hero_razzle"],
   ["brogan-discard-active-history", "hero_brogan"],
+  ["brogan-public-active-history", "hero_brogan"],
 ];
 const filter = process.argv.find((arg) => arg.startsWith("--case="))?.slice(7);
 const desk = await startDesk({
@@ -56,7 +58,7 @@ const c = desk.comparison;
 try {
   const library = await c.api("/situations", undefined, "GET");
   for (const [key, seat] of cases.filter(
-    ([key]) => !filter || key.includes(filter),
+    ([key]) => !filter || filter.split(",").some(term => key.includes(term)),
   )) {
     let situation = library.find(
       (s) => s.origin === "library" && s.name === `M3 presentation - ${key}`,

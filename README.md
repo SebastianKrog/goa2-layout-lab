@@ -418,6 +418,47 @@ Screenshots and evidence go to ignored `.layout-lab/reviews/m3-*/`. Factories do
 not overwrite the curated library. Run these browser checks on Windows on this
 installation; normal WSL services are used without running Linux UI test suites.
 
+For paired visual reports against the pinned userscript target:
+
+```sh
+npm run test:mobile-roster-visual
+npm run test:mobile-spells-visual
+npm run test:mobile-ready-visual
+npm run test:mobile-shell-visual
+npm run test:mobile-special-visual
+npm run test:mobile-card-fallback
+npm run test:mobile-status-visual
+npm run test:mobile-decision-visual
+```
+
+The roster runner uses ports 4600-4603/9600 and accepts a focused filter such as
+`-- --case=snorri` or `-- --case=brogan`. It includes empty and occupied rune slots,
+masked and public active history, discard piles and crowded public indicators.
+The spell runner uses 4700-4703/9700 and compares selected Large/Image readers
+at all three sizes, including rotation and closing the browser afterward.
+The ready runner uses 4500-4503/9500, checks the Ready tap target at all three
+sizes and submits readiness on both clones before comparing running clocks.
+The shell runner uses 4800-4803/9800 and captures paused, suspended and completed
+match states from real-model fixtures, without consuming their pending readiness.
+The special runner uses 4900-4903/9900 for Emmitt's second-card selection,
+starting-position adjustment, an actual routed WebSocket outage/recovery, and a
+long Snorri card. The fallback runner uses the same ports; run it separately.
+It intentionally returns HTTP 404 for native Snorri card backgrounds, records the
+routed failures, and saves labeled raw originals/combined images for Large and
+Image readers. The target retains its normal Large text view. This fault check
+bypasses the clean-asset report exporter, whose normal missing-asset rejection
+remains unchanged. Its manifest names the intentional fault and source settings.
+The status runner uses 5100-5103/10100 for a real ten-hero waiting message,
+collapsed/expanded ticker behavior, reduced motion, fixed-height Board rows and
+reopening the shared history fixtures. The decision runner uses 5200-5203/10200
+for defense/discard/spell/gold choices and supplementary hero details. It labels
+native staged choices versus immediate-submit target choices explicitly; discard
+selection is aligned on both sides. Embedded spell inspection also verifies
+parent bounds and safe capture/restore without sending a game choice.
+These runners produce original screenshots, combined images, diffs and HTML reports under
+`.layout-lab/reports/`, with manifests under `.layout-lab/reviews/`. They use Live
+working-tree sources; review the images before making a visual-parity claim.
+
 The frontend remains unchanged in production: camera/presentation bridges are
 injected only by the lab Vite config. The backend helper lives in this tool and
 is never imported by the normal backend entrypoint.
