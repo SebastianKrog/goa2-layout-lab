@@ -442,16 +442,20 @@ start with equal game hashes and remain unchanged by presentation collection.
 The userscript is a comparison reference; assess either implementation against
 intended behavior rather than assuming the Target is correct.
 
-The current cases cover shell/pane headers, selected Hand cards, action/defense/
-discard/upgrade choices, Arien and Gydion Tree/List/Grid browsers, and Large card
-previews at 390×844, 360×800 and 844×390. This is evidence collection for a subset
-of M1–M4, not complete milestone acceptance or a pixel-equality test.
+The cases cover shell/pane frames, clock/setup/connection states, selected Hand
+cards, action/defense/discard/upgrade/spell/rune/team choices, hero/Board states,
+public spell counts and privacy viewpoints, nested readers, and Arien/Gydion
+Tree/List/Grid with color-sorted plans and Large/Image previews. Default sizes
+are 390×844, 360×800 and 844×390. This collects M1–M4 review evidence; complete
+milestone acceptance and pixel equality are separate questions.
 
 ```bash
 npm run test:mobile-elements -- --case=m2-defense,m4-arien
 ```
 
-`--case=` accepts comma-separated case-name prefixes. The runner uses isolated
+`--case=` accepts comma-separated case-name prefixes. Use `--profile=landscape`
+or a comma-separated subset of `portrait,compact,landscape` for a focused rerun;
+omitting it collects all three. The runner uses isolated
 ports 5900–5903 and backend port 10900 by default; the corresponding
 `GOA2_LAB_*_PORT` environment variables can override them. Other checkout/ref
 settings come from the normal launcher configuration. It starts a headless
@@ -463,8 +467,12 @@ references. Images and HTML/CSS viewers are under `.layout-lab/reports/`.
 Inspect the exported images and styles together. Collection errors are recorded
 per case/viewport and must be checked even when the process exits successfully;
 missing selectors are collection gaps, not evidence of a product defect.
-Offscreen controls also need a scrolling/reachability check before calling them
-inaccessible. These generated artifacts remain local and ignored by Git.
+Short-landscape decision cases also record scrolling/trial-tap reachability without
+submitting choices. Obstructed centers retain hit-test geometry and a screenshot;
+these findings do not automatically fail the evidence collector. Offscreen
+controls need this reachability check before being called inaccessible. Manifests
+include the executing lab HEAD/dirty state and runner SHA-256 alongside source
+revisions. Generated artifacts remain local and ignored by Git.
 
 ### Loading and capture performance
 
