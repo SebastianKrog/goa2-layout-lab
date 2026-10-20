@@ -160,3 +160,17 @@ checkpoint with `scripts/create-mobile-presentation-situations.py`.
 
 Factories write ignored local drafts and do not overwrite these curated shared
 copies. Ordinary user/agent-generated situations continue to use `.layout-lab/`.
+
+## Physical minions in two battle zones
+
+[Across the River - physical minions in two battle zones](board/battle-zones/e82f5d9a1c14.json)
+uses a full-map Arien/Brogan planning checkpoint (seed 20261020). Lane 1
+(MidA2) has RED 1 / BLUE 3 physical minions; Lane 2 (MidB2) has RED 3 / BLUE 2.
+A heavy minion counts once, and off-board roster entries remain excluded.
+This fabricated UI checkpoint is for displaying engine facts, not testing game rules.
+
+Saved views use Arien in Base, the newest Comparator with native mobile,
+and the Userscript target, all in portrait 2D. Inspect the native mobile match
+header for separate L1/L2 counts. Older frontends/userscripts may show whole-board
+totals or lack per-lane counters; equality with those displays is not expected.
+The checkpoint was normalized and reopened in Windows Chromium during review.
