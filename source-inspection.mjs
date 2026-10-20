@@ -93,7 +93,7 @@ function readDocument({ selector, mode }) {
     elementCount: all.length,
     matches: roots.map((e) => ({
       path: elementPath(e),
-      html: mode === "active" ? null : e.outerHTML,
+      html: mode === "element" ? e.outerHTML : null,
     })),
     html:
       mode === "full"
@@ -110,13 +110,21 @@ function readDocument({ selector, mode }) {
 // structures while retaining all protocol data in a view-local definition table.
 export function matchedPool() {
   const definitions = {},
-    hashes = new Map();
+    hashes = new Map(),
+    seen = new Map();
   function compact(value) {
     if (
       value === null ||
       (typeof value !== "object" && typeof value !== "string")
     )
       return value;
+    if (typeof value === "string" && value.length < 254) return value;
+    // Repeated ancestor subtrees are common. Hash before descending so a cache
+    // hit avoids walking/serializing every declaration again for each child.
+    const raw = JSON.stringify(value);
+    const rawKey =
+      raw.length >= 256 ? createHash("sha256").update(raw).digest("hex") : null;
+    if (rawKey && seen.has(rawKey)) return seen.get(rawKey);
     let normalized;
     if (Array.isArray(value)) normalized = value.map(compact);
     else if (typeof value === "object")
@@ -125,7 +133,10 @@ export function matchedPool() {
       );
     else normalized = value;
     const json = JSON.stringify(normalized);
-    if (json.length < 256) return normalized;
+    if (json.length < 256) {
+      if (rawKey) seen.set(rawKey, normalized);
+      return normalized;
+    }
     const hash = createHash("sha256").update(json).digest("hex");
     let id = hashes.get(hash);
     if (!id) {
@@ -133,7 +144,9 @@ export function matchedPool() {
       hashes.set(hash, id);
       definitions[id] = normalized;
     }
-    return { $ref: id };
+    const reference = { $ref: id };
+    if (rawKey) seen.set(rawKey, reference);
+    return reference;
   }
   return { compact, definitions };
 }
@@ -314,10 +327,11 @@ export function inspectionHTML(report) {
 <script type="application/json" id="data">${json}</script><script>
 const data=JSON.parse(document.getElementById('data').textContent);
 const $=id=>document.getElementById(id);
+const renderComputed=${computedCSS.toString()};
 $('notes').textContent='Situation: '+(data.situationId||'unsaved')+'; mode: '+data.mode+(data.selector?'; selector: '+data.selector:'')+'\nBase: '+(data.references?.base||'unknown')+'\nComparator: '+(data.comparator||'unknown')+'\nUserscript: '+(data.script?.revision||'not loaded')+'\n'+(data.diverged?'Views have different game states.\n':'')+data.views.flatMap(v=>[...(v.snapshot.warnings||[]),...(v.warnings||[]),...(v.errors||[]),...(v.assets||[]),...(v.mutable?['Live working tree; mutable source.']:[]),...(v.config.source==='target'&&!v.scriptActive?['Userscript target is inactive.']:[])].map(w=>'View '+(v.index+1)+': '+w)).join('\n');
 function render(){data.views.forEach((v,i)=>{const side=i?'right':'left';const s=v.snapshot;$(side+'Title').textContent='View '+(v.index+1)+' · '+v.config.source+' · '+v.config.seat+' · '+s.viewport.width+'×'+s.viewport.height;
 const mode=$('mode').value;
-$(side).textContent=mode==='html'?(s.html||s.matches.map(m=>m.html||'HTML not included in active-only extraction.').join('\n\n')):mode==='stylesheets'?s.stylesheets.map(s=>'/* '+s.url+' ['+s.id+'] */\n'+s.text).join('\n\n'):mode==='computed'?v.computedCSS:mode==='definitions'?JSON.stringify(s.matchedDefinitions,null,2):JSON.stringify({note:'Resolve $ref via Matched rule definitions or comparison.json matchedDefinitions.',elements:s.elements.map(e=>({path:e.path,matched:e.matched}))},null,2);});}
+$(side).textContent=mode==='html'?(s.html||s.matches.map(m=>m.html||'HTML not included in active-only extraction.').join('\n\n')):mode==='stylesheets'?s.stylesheets.map(s=>'/* '+s.url+' ['+s.id+'] */\n'+s.text).join('\n\n'):mode==='computed'?(v.computedCSS||renderComputed(s)):mode==='definitions'?JSON.stringify(s.matchedDefinitions,null,2):JSON.stringify({note:'Resolve $ref via Matched rule definitions or comparison.json matchedDefinitions.',elements:s.elements.map(e=>({path:e.path,matched:e.matched}))},null,2);});}
 $('mode').onchange=render;render();</script>`;
 }
 
@@ -369,7 +383,7 @@ export async function extractSources(
   const views = attempts.map((r) => r.value);
   const id = "source-" + randomUUID();
   const report = {
-    schema: 2,
+    schema: 3,
     id,
     capturedAt: new Date().toISOString(),
     mode: options.mode,
@@ -397,17 +411,18 @@ export async function extractSources(
       path.join(dir, prefix + ".computed.css"),
       view.computedCSS,
     );
+    view.computedCSSFile = prefix + ".computed.css";
+    // Values already exist in snapshot.elements and the standalone CSS file.
+    // The offline viewer reconstructs CSS on demand instead of embedding a
+    // second complete property dump in both comparison.json and index.html.
+    delete view.computedCSS;
     await fs.writeFile(
       path.join(dir, prefix + ".active.json"),
-      JSON.stringify(
-        {
-          schema: 2,
-          elements: view.snapshot.elements,
-          matchedDefinitions: view.snapshot.matchedDefinitions,
-        },
-        null,
-        2,
-      ),
+      JSON.stringify({
+        schema: 2,
+        elements: view.snapshot.elements,
+        matchedDefinitions: view.snapshot.matchedDefinitions,
+      }),
     );
     if (options.mode === "full") {
       for (const [i, sheet] of view.snapshot.stylesheets.entries()) {
@@ -422,13 +437,10 @@ export async function extractSources(
     "changes.json",
     ...(await fs.readdir(dir)),
   ];
-  await fs.writeFile(
-    path.join(dir, "comparison.json"),
-    JSON.stringify(report, null, 2),
-  );
+  await fs.writeFile(path.join(dir, "comparison.json"), JSON.stringify(report));
   await fs.writeFile(
     path.join(dir, "changes.json"),
-    JSON.stringify(computedChanges(...views.map((v) => v.snapshot)), null, 2),
+    JSON.stringify(computedChanges(...views.map((v) => v.snapshot))),
   );
   await fs.writeFile(path.join(dir, "index.html"), inspectionHTML(report));
   return { id, url: `/reports/${id}/index.html`, diverged: report.diverged };

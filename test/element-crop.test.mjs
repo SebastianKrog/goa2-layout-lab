@@ -131,9 +131,31 @@ test("viewport crop matches use visible DOM order, intersect clipping and preser
         };
       },
     };
+    await Promise.all(
+      [page, secondPage].map((p) => p.waitForLoadState("networkidle")),
+    );
+    let activeCaptures = 0,
+      maxActiveCaptures = 0;
+    for (const p of [page, secondPage]) {
+      const screenshot = p.screenshot.bind(p);
+      p.screenshot = async (options) => {
+        activeCaptures++;
+        maxActiveCaptures = Math.max(maxActiveCaptures, activeCaptures);
+        try {
+          await new Promise((r) => setTimeout(r, 30));
+          return await screenshot(options);
+        } finally {
+          activeCaptures--;
+        }
+      };
+    }
     const result = await captureReport(comparison, [0, 1], {
       crop: { selector: "#two" },
     });
+    assert.ok(
+      maxActiveCaptures >= 2,
+      "Independent browser view captures should overlap",
+    );
     reportId = result.id;
     reportIds.push(reportId);
     const meta = JSON.parse(

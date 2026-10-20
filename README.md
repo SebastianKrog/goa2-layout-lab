@@ -354,6 +354,11 @@ and `--match union` selects the combined rectangle. Use `--match individual` or
 Prepare a comparison normally, then open **Compare HTML & CSS** below the views.
 Select exactly two views using their **Capture** checkboxes and choose:
 
+Start with **Element HTML + active CSS** and a narrow selector for routine styling
+reviews. Use full-page **Full** or **Active** only when explicitly needed for a
+whole-document investigation. Both collect styles for every element; Active is
+not a lightweight shortcut. Skip CSS collection for image-only comparisons.
+
 - **Full HTML + CSS**: the rendered document and every stylesheet exposed by
   Chromium, including imported sheets, inline stylesheets and injected userscript
   styles. Inline element styles remain in the HTML and matched declarations.
@@ -372,9 +377,14 @@ execute exported scripts. It works offline when the entire report folder is copi
 For agents or terminal use:
 
 ```sh
+npm run extract -- --indexes=1,2 --mode=element --selector="[data-pane='hand']" --out=./hand-review
+```
+
+For a whole-document investigation when needed:
+
+```sh
 npm run extract -- --indexes=0,1 --mode=full --out=./html-css-review
 npm run extract -- --indexes=0,1 --mode=active --out=./active-css-review
-npm run extract -- --indexes=1,2 --mode=element --selector="[data-pane='hand']" --out=./hand-review
 ```
 
 Use `--origin=http://127.0.0.1:3200` to select another running desk. The output
@@ -383,8 +393,12 @@ folder must be new. Omit `--out` to retain the export only under
 `POST /api/extract {indexes:[0,1],mode:"element",selector:".your-selector"}`;
 indexes are zero-based, with exactly two distinct open views.
 
-`comparison.json` records revisions, source configuration, viewport dimensions,
-userscript activation, game-state hashes, diagnostics and the full extraction.
+`comparison.json` (schema 3) records revisions, source configuration, viewport
+dimensions, userscript activation, game-state hashes, diagnostics and the full
+extraction. Each view's `computedCSSFile` links to its standalone computed CSS;
+the viewer reconstructs that display on demand rather than embedding duplicate
+CSS text. Machine JSON is compact; no computed properties or matched declarations
+are omitted.
 `view-N.html.txt` contains inert HTML (full/element modes), `view-N.computed.css`
 contains resolved values, and `view-N.active.json` contains per-element computed
 values and matched-rule information. Large repeated protocol structures use
@@ -418,6 +432,22 @@ manifest stay under `.layout-lab/reviews/element-tools-<timestamp>/`.
 Use `npm run test:element-tools -- --case=discard-card` for a focused rerun.
 Full/active source exports traverse the complete document and can take substantially
 longer and produce larger files than selector-focused exports.
+
+### Loading and capture performance
+
+Situation loads fetch just the selected checkpoint and cache parsed situation
+files with filesystem-change invalidation. Restarting the lab clears these
+in-memory caches. File edits, moves, additions and deletions remain visible without
+a restart. Game clones receive isolated copies of cached checkpoints.
+
+Browser captures settle independent views concurrently; native embedded capture
+keeps its required serialization. New situations still open fresh game views and
+wait for their game state, camera, fonts and assets. The first load also starts and
+prepares its required frontend services, so it can take longer than later loads.
+
+For routine work, keep the desk running, use selector-focused CSS exports, and
+reuse the exported offline viewer while reviewing the same snapshot. Collect a
+new export after relevant UI, state or stylesheet changes.
 
 ## Processes and troubleshooting
 

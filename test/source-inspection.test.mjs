@@ -140,6 +140,16 @@ test("real Chromium exports paired viewport CSS, inheritance, pseudo elements, s
       /<!DOCTYPE html>/i,
     );
     assert.equal(report.diverged, false);
+    assert.equal(report.schema, 3);
+    assert.equal(report.views[0].computedCSS, undefined);
+    assert.equal(report.views[0].computedCSSFile, "view-1.computed.css");
+    assert.match(
+      await fs.readFile(
+        path.join(dir, report.views[0].computedCSSFile),
+        "utf8",
+      ),
+      /padding-top: 18px/,
+    );
     assert.equal(report.views[0].snapshot.viewport.width, 390);
     const viewer = await browser.newPage();
     await viewer.goto(pathToFileURL(path.join(dir, "index.html")).href);

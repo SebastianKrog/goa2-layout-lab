@@ -331,9 +331,11 @@ export class Comparison {
     validateSlots(configs);
     const situation =
       savedSituation ||
-      (await this.api("/situations", undefined, "GET")).find(
-        (s) => s.id === situationId,
-      );
+      (await this.api(
+        `/situations/${encodeURIComponent(situationId)}`,
+        undefined,
+        "GET",
+      ));
     if (!situation) throw new Error("Choose a saved situation.");
     const slots = slotsForSituation(configs, situation);
     await this.clear();
@@ -367,12 +369,14 @@ export class Comparison {
     );
   }
   async clear() {
-    for (const win of this.windows) await this.closeWindow(win);
+    await Promise.all(this.windows.map((win) => this.closeWindow(win)));
     this.windows = [];
   }
   async reset(index) {
-    const situation = (await this.api("/situations", undefined, "GET")).find(
-      (s) => s.id === this.situationId,
+    const situation = await this.api(
+      `/situations/${encodeURIComponent(this.situationId)}`,
+      undefined,
+      "GET",
     );
     const indexes =
       index === undefined ? this.windows.map((_, i) => i) : [index];

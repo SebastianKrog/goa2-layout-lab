@@ -4,6 +4,7 @@ import json
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -78,6 +79,35 @@ class SituationLibraryTests(unittest.TestCase):
         self.assertEqual(len(self.store.entries()), 1)
         with self.assertRaises(ValueError):
             self.store.read("../../private")
+
+    def test_cached_reads_are_isolated_and_metadata_excludes_checkpoints(self):
+        self.store.save(self.draft)
+        with patch("situations.json.loads", wraps=json.loads) as parse:
+            first = self.store.read("abc123")
+            self.store.read("abc123")
+            self.store.entries(metadata=True)
+            self.assertEqual(parse.call_count, 1)
+        first["checkpoint"]["state"]["changed"] = True
+        self.assertEqual(self.store.read("abc123")["checkpoint"]["state"], {})
+        metadata = self.store.entries(metadata=True)[0]
+        self.assertNotIn("checkpoint", metadata)
+        metadata["provenance"]["slots"].clear()
+        self.assertEqual(len(self.store.read("abc123")["provenance"]["slots"]), 1)
+
+    def test_cache_observes_edits_moves_additions_deletions_and_duplicates(self):
+        self.store.save(self.draft)
+        self.store.read("abc123")
+        self.store.save({**self.draft, "name": "Changed externally"})
+        self.assertEqual(self.store.read("abc123")["name"], "Changed externally")
+        self.store.organize("abc123", "new-folder")
+        self.assertEqual(self.store.read("abc123")["group"], "new-folder")
+        self.store.save({**self.draft, "id": "second"})
+        self.assertEqual(len(self.store.entries()), 2)
+        (self.root / "data/situations/second.json").unlink()
+        self.assertEqual(len(self.store.entries()), 1)
+        self.store.save(self.draft)
+        with self.assertRaisesRegex(ValueError, "Duplicate"):
+            self.store.entries()
 
     def test_shared_fixtures_are_not_overwritten_by_draft_save(self):
         self.store.save(self.draft)

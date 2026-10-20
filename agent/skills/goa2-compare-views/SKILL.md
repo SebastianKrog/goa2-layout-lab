@@ -62,8 +62,12 @@ For source/style inspection, read
 [references/html-and-css.md](references/html-and-css.md). Use the prepared views
 and **Compare HTML & CSS** in the desk or `scripts/extract-sources.mjs` from the
 repository root. Select exactly two views, including any two from a three-view
-comparison. Choose full HTML + loaded CSS, active CSS throughout the document, or
-selector-matched element HTML + active CSS including descendants.
+comparison. Default to selector-focused `--mode=element` with the narrowest useful
+selector. Avoid whole-page `full` and `active` collection unless the user requests
+it or a concrete whole-document question requires it. Both modes traverse every
+element; `active` is not a lightweight alternative to `full`. For image-only review,
+skip CSS extraction. Reuse an existing export while explaining the same snapshot;
+collect again after relevant UI/state/style changes.
 
 Computed values are resolved results; matched rules also include overridden
 properties and cascade/condition metadata. Extraction includes hidden DOM

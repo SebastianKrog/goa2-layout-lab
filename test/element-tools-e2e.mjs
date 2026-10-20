@@ -255,7 +255,11 @@ try {
                 .matchedCSSRules.length,
           ),
         );
-        assert.ok(view.computedCSS.includes("font-size:"));
+        assert.ok(
+          (
+            await fs.readFile(path.join(out, view.computedCSSFile), "utf8")
+          ).includes("font-size:"),
+        );
         if (mode === "full")
           assert.ok(view.snapshot.html.startsWith("<!DOCTYPE"));
         if (mode === "active") assert.equal(view.snapshot.html, null);

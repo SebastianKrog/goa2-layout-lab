@@ -56,6 +56,14 @@ class SituationTests(unittest.TestCase):
         cls.client.__enter__()
         cls.headers = {"x-lab-token": "test-lab-secret"}
 
+    def test_single_situation_lookup_returns_only_requested_checkpoint(self):
+        response = self.client.get("/__lab/situations/e81bc3bd5fff", headers=self.headers)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["id"], "e81bc3bd5fff")
+        self.assertIn("checkpoint", response.json())
+        self.assertEqual(self.client.get("/__lab/situations/missing", headers=self.headers).status_code, 404)
+        self.assertEqual(self.client.get("/__lab/situations/e81bc3bd5fff").status_code, 403)
+
     @classmethod
     def tearDownClass(cls):
         cls.client.__exit__(None, None, None)

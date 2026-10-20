@@ -208,9 +208,9 @@ test("comparison load resolves unavailable preset seats before opening any clone
   };
   let cleared = false;
   const comparison = new Comparison({ stop: async () => {} }, async (route) => {
-    assert.equal(route, "/situations");
+    assert.ok(route.startsWith("/situations/"));
     assert.equal(cleared, false);
-    return [situation];
+    return route.endsWith("/runes") ? situation : null;
   });
   comparison.clear = async () => {
     cleared = true;

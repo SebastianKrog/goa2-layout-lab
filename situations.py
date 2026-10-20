@@ -6,6 +6,7 @@ import copy
 import json
 import re
 import uuid
+import threading
 from pathlib import Path
 
 
@@ -14,6 +15,8 @@ class SituationStore:
         self.shared = Path(shared).resolve()
         self.local = Path(data).resolve() / "situations"
         self.local.mkdir(parents=True, exist_ok=True)
+        self._lock = threading.RLock()
+        self._cache = {}
         # Preserve old IDs without moving or deleting the original backups.
         legacy = Path(data).resolve() / "scenarios"
         existing = {
@@ -58,14 +61,22 @@ class SituationStore:
         )
         temp.replace(path)
 
-    def entries(self):
+    def _scan(self):
         entries = []
+        present = set()
         ids = set()
         for origin, root in [("library", self.shared), ("local", self.local)]:
             for path in sorted(root.rglob("*.json")):
                 if not path.resolve().is_relative_to(root):
                     raise ValueError("Situation symlink escapes its library")
-                value = json.loads(path.read_text(encoding="utf-8"))
+                stat = path.stat()
+                stamp = (stat.st_mtime_ns, stat.st_ctime_ns, stat.st_size, stat.st_ino)
+                present.add(path)
+                cached = self._cache.get(path)
+                if cached is None or cached[0] != stamp:
+                    cached = (stamp, json.loads(path.read_text(encoding="utf-8")))
+                    self._cache[path] = cached
+                value = cached[1]
                 identifier = value["id"]
                 self._target(origin == "library", "", identifier)
                 if identifier in ids:
@@ -82,15 +93,26 @@ class SituationStore:
                         ),
                     }
                 )
+        self._cache = {p: value for p, value in self._cache.items() if p in present}
         return sorted(
             entries, key=lambda s: (s["group"].lower(), s["name"].lower(), s["id"])
         )
 
+    def entries(self, metadata=False):
+        with self._lock:
+            entries = self._scan()
+            if metadata:
+                entries = [{k: v for k, v in entry.items() if k != "checkpoint"} for entry in entries]
+            return copy.deepcopy(entries)
+
     def read(self, identifier):
         self._target(False, "", identifier)
-        for entry in self.entries():
-            if entry["id"] == identifier:
-                return entry
+        with self._lock:
+            for entry in self._scan():
+                if entry["id"] == identifier:
+                    # Restore/organize callers may mutate their copy; never leak
+                    # the cached checkpoint into a live game or another clone.
+                    return copy.deepcopy(entry)
         raise KeyError("Situation not found")
 
     def save(self, value, group=""):

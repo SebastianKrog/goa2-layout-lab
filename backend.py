@@ -201,13 +201,11 @@ def create_app():
     @app.get("/__lab/scenarios", include_in_schema=False)
     @app.get("/__lab/situations")
     def situations(metadata: bool = False):
-        entries = library.entries()
-        if not metadata:
-            return entries
-        return [
-            {k: v for k, v in entry.items() if k != "checkpoint"}
-            for entry in entries
-        ]
+        return library.entries(metadata=metadata)
+
+    @app.get("/__lab/situations/{situation_id}")
+    def situation(situation_id: str):
+        return read(situation_id)
 
     @app.post("/__lab/organize")
     def organize(body: dict):

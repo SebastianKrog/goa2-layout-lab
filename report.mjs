@@ -157,8 +157,9 @@ export async function captureReport(comparison, indexes, options = {}) {
     pairs: [],
     crop: cropOptions,
   };
-  const images = [];
-  for (const index of indexes) {
+  const captureWindow = async (index) => {
+    const capturesForWindow = [],
+      imagesForWindow = [];
     const win = comparison.window(index);
     await comparison.ready(win);
     const state = await comparison.api(
@@ -201,7 +202,7 @@ export async function captureReport(comparison, indexes, options = {}) {
         : `window-${index + 1}.png`;
       const bytes = capture.bytes || PNG.sync.write(capture.image);
       if (!individual) await fs.writeFile(path.join(dir, file), bytes);
-      metadata.captures.push({
+      capturesForWindow.push({
         index,
         file,
         ...win.config,
@@ -219,9 +220,24 @@ export async function captureReport(comparison, indexes, options = {}) {
                 .length > 0
             : false,
       });
-      images.push(capture.image);
+      imagesForWindow.push(capture.image);
     }
+    return { captures: capturesForWindow, images: imagesForWindow };
+  };
+  let shots;
+  if (comparison.desktop) {
+    // Native capture temporarily repositions embedded views. Keep that path
+    // serialized; independent browser pages can settle and capture together.
+    shots = [];
+    for (const index of indexes) shots.push(await captureWindow(index));
+  } else {
+    const attempts = await Promise.allSettled(indexes.map(captureWindow));
+    const failed = attempts.find((attempt) => attempt.status === "rejected");
+    if (failed) throw failed.reason;
+    shots = attempts.map((attempt) => attempt.value);
   }
+  metadata.captures = shots.flatMap((shot) => shot.captures);
+  const images = shots.flatMap((shot) => shot.images);
   metadata.diverged =
     new Set(metadata.captures.map((c) => c.state.hash)).size > 1;
   for (let i = 0; i < images.length; i++)

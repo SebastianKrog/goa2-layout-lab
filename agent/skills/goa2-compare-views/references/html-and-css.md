@@ -10,6 +10,13 @@ development but are explicitly mutable. The source export command does not
 reject every diagnostic or verify expected SHAs automatically; inspect these
 before calling the results a valid comparison.
 
+Default to **Element** mode with a narrow selector. Use **Full** or whole-document
+**Active** only when explicitly requested or needed to answer a specific
+whole-document question (for example, a global cascade audit or an unknown source
+of document-wide styles). Do not collect them routinely for each situation or
+alongside every screenshot. **Active** still traverses the full document and is
+not a cheap fallback. Image-only comparisons need no CSS export.
+
 | Mode      | Extracts                                                                                                                  |
 | --------- | ------------------------------------------------------------------------------------------------------------------------- |
 | `full`    | Rendered document HTML, all Chromium-exposed loaded stylesheets, computed values and matched rules for the main document. |
@@ -29,14 +36,34 @@ image crops, which select only matches intersecting the visible viewport. Use a
 more specific selector when hidden duplicates make the source review confusing.
 Do not use Playwright-only `:visible` syntax; these are browser CSS selectors.
 
+## Keep routine reviews focused
+
+Choose Element mode when investigating a particular card/control. Full and Active
+traverse every element and collect the complete browser matched-rule data; they
+remain substantially slower. Selector-focused export is the intended fast path,
+not a different or reduced set of properties for the selected subtree. Export
+once and reuse its offline viewer while explaining the result. New interactions
+or style changes require a fresh snapshot; there is no stale cross-export cache.
+
+Large machine JSON files are written compactly. Per-element values, stylesheet
+texts and matched-definition references are retained; the viewer formats JSON
+for inspection. Source report schema 3 avoids duplicating computed CSS inside
+`comparison.json` and its embedded viewer. The `.active.json` matched-definition
+format remains schema 2.
+
 ## Export a portable folder
 
 From the lab root, against an already-prepared desk:
 
 ```sh
+npm run extract -- --origin=http://127.0.0.1:3300 --indexes=1,2 --mode=element --selector=".your-control" --out=./new-element-review
+```
+
+Only when whole-document collection is needed:
+
+```sh
 npm run extract -- --origin=http://127.0.0.1:3300 --indexes=1,2 --mode=full --out=./new-full-review
 npm run extract -- --origin=http://127.0.0.1:3300 --indexes=1,2 --mode=active --out=./new-active-review
-npm run extract -- --origin=http://127.0.0.1:3300 --indexes=1,2 --mode=element --selector=".your-control" --out=./new-element-review
 ```
 
 Arguments use `--key=value`. Indexes are zero-based and must name two distinct
@@ -68,11 +95,13 @@ atomic browser instant.
 - `index.html`: offline side-by-side viewer; switch among HTML, Loaded CSS,
   Computed CSS and Matched rules/inheritance. Markup is displayed as text and its
   scripts are not executed. Copy the entire folder for a portable export.
-- `comparison.json`: exact source/configuration metadata, state hashes, viewport,
+- `comparison.json`: schema 3 source/configuration metadata, state hashes, viewport,
   userscript activation, diagnostics, full stylesheet texts/IDs and per-element
   style data. Check `diverged`, `mutable`, snapshot warnings, errors and assets.
 - `view-N.html.txt`: rendered document or matching element HTML (full/element).
-- `view-N.computed.css`: resolved values written against structural CSS paths,
+- `view-N.computed.css`: linked by each view's `computedCSSFile` (rather than
+  duplicating the full text in schema 3 JSON). The offline viewer reconstructs
+  its computed-CSS display from the element values. Resolved values use structural CSS paths,
   including generated pseudo-elements. This is a diagnostic snapshot, not the
   original authored CSS or a portable component stylesheet.
 - `view-N.active.json`: schema 2 object containing `elements` and

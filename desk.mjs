@@ -211,9 +211,10 @@ export async function startDesk({
             await streams.pause();
             switch (url.pathname) {
               case "/api/load": {
-                const situations = await api("/situations", undefined, "GET");
-                const situation = situations.find(
-                  (s) => s.id === (body.situationId || body.scenarioId),
+                const situation = await api(
+                  `/situations/${encodeURIComponent(body.situationId || body.scenarioId || "")}`,
+                  undefined,
+                  "GET",
                 );
                 if (!situation) throw new Error("Choose a saved situation.");
                 const slots =
@@ -376,8 +377,11 @@ export async function startDesk({
             throw new Error("Invalid report path.");
         } else if (url.pathname.startsWith("/export/")) {
           const id = url.pathname.slice("/export/".length);
-          const situations = await api("/situations", undefined, "GET");
-          const situation = situations.find((s) => s.id === id);
+          const situation = await api(
+            `/situations/${encodeURIComponent(id)}`,
+            undefined,
+            "GET",
+          );
           if (!situation) return send({ error: "Situation not found" }, 404);
           res.setHeader(
             "content-disposition",
