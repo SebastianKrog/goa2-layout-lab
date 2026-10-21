@@ -824,3 +824,7 @@ dialog::backdrop {
 .source-tools input {
   min-width: 240px;
 }
+
+.slots.one {
+  grid-template-columns: minmax(0, 1fr);
+}

@@ -106,3 +106,111 @@ test("local proxy preserves API paths, query strings, redirects and WebSocket su
   assert.equal(response.headers.location, "/api/games/?page=2");
   assert.equal(response.headers["set-cookie"], undefined);
 });
+
+test("single view and per-view controllers retain independent clone configuration", async () => {
+  const moment = structuredClone(situation);
+  moment.checkpoint.state.teams.RED.heroes.push({ id: "hero_hanu" });
+  const calls = [];
+  const comparison = new Comparison({ stop: async () => {} }, async (route) => {
+    calls.push(route);
+    return { bot_kinds: ["random", "heuristic"] };
+  });
+  comparison.status = () => comparison.windows;
+  comparison.open = async (config) => ({ config });
+  comparison.closeWindow = async () => {};
+  const solo = { ...PRESETS["Play solo"][0], bots: { hero_hanu: "random" } };
+  assert.equal((await comparison.load("moment", [solo], {}, moment)).length, 1);
+  const two = await comparison.load(
+    "moment",
+    [solo, { ...solo, bots: { hero_hanu: "heuristic" } }],
+    {},
+    moment,
+  );
+  assert.equal(two[0].config.bots.hero_hanu, "random");
+  assert.equal(two[1].config.bots.hero_hanu, "heuristic");
+  await assert.rejects(comparison.sync.setMode("api"), /Turn off bots/);
+  // Invalid setup must not replace the working views.
+  const previous = comparison.windows;
+  await assert.rejects(
+    comparison.load(
+      "moment",
+      [{ ...solo, bots: { hero_arien: "invalid" } }],
+      {},
+      moment,
+    ),
+    /bot policies/,
+  );
+  await assert.rejects(
+    comparison.load(
+      "moment",
+      [{ ...solo, bots: { absent: "random" } }],
+      {},
+      moment,
+    ),
+    /absent/,
+  );
+  await assert.rejects(
+    comparison.load(
+      "moment",
+      [{ ...solo, seat: "missing-human", bots: { hero_arien: "invalid" } }],
+      {},
+      moment,
+    ),
+    /bot policies/,
+  );
+  comparison.api = async () => ({ bot_kinds: [] });
+  await assert.rejects(
+    comparison.load("moment", [solo], {}, moment),
+    /no requested bots/,
+  );
+  assert.equal(comparison.windows, previous);
+});
+
+test("auto switch only changes viewpoint after actions, including bot-owned decisions", async () => {
+  let players = ["arien", "hanu"];
+  const comparison = new Comparison({}, async () => ({ players }));
+  const win = {
+    config: { seat: "arien", autoSwitch: true, bots: { bot: "random" } },
+    clone: { game_id: "keep", seats: { arien: "a", hanu: "h", bot: "b" } },
+    page: { isClosed: () => false },
+    warnings: [],
+  };
+  comparison.windows = [win];
+  const changes = [];
+  const switcher = async (index, seat) => {
+    changes.push([index, seat]);
+    win.config.seat = seat;
+  };
+  await comparison.followDecisions(switcher);
+  assert.deepEqual(changes, [], "Keep a player who still owes a decision");
+  players = ["hanu"];
+  await comparison.followDecisions(switcher);
+  assert.deepEqual(changes, [[0, "hanu"]]);
+  assert.equal(win.clone.game_id, "keep");
+  players = ["arien", "hanu"];
+  await comparison.followDecisions(switcher);
+  assert.equal(
+    changes.length,
+    1,
+    "Do not bounce among simultaneous responders",
+  );
+  players = ["bot"];
+  await comparison.followDecisions(switcher);
+  assert.equal(
+    changes.at(-1)[1],
+    "bot",
+    "Viewing a bot does not take over its controller",
+  );
+  assert.deepEqual(win.config.bots, { bot: "random" });
+  const count = changes.length;
+  players = ["arien"];
+  win.config.autoSwitch = false;
+  await comparison.followDecisions(switcher);
+  assert.equal(changes.length, count, "Off means keep the selected seat");
+  win.config.autoSwitch = true;
+  await comparison.followDecisions(async () => {
+    throw Error("connection lost");
+  });
+  assert.equal(win.config.autoSwitch, false);
+  assert.match(win.warnings[0], /connection lost/);
+});

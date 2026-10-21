@@ -110,11 +110,11 @@ export class DeviceServer {
         ([id, kind]) =>
           !heroes.includes(id) ||
           id === config.seat ||
-          !["random", "heuristic"].includes(kind),
+          !["random", "heuristic", "ismcts"].includes(kind),
       ) ||
       (Object.keys(bots).length && !heroes.includes(config.seat))
     )
-      throw Error("Choose Random or Simple for other heroes only.");
+      throw Error("Choose Random, Simple or ISMCTS for other heroes only.");
     const savedSlots = situation.provenance?.slots || [];
     let sourceIndex = savedSlots.findIndex(
       (s) =>

@@ -13,7 +13,7 @@ Locate goa2-layout-lab and the configured frontend/backend/userscript checkouts.
 
 Use the existing shared situations/ library. If the requested moment is missing, use the available goa2-ui-situations skill to fabricate/save it, then return here. Choose the actual chooser's seat; a defender/discarding hero can differ from the active actor. Record the situation ID/path and exact visual condition.
 
-Use [references/setup-and-viewer.md](references/setup-and-viewer.md) for launch/ref selection, two/three-slot APIs, saved presentation handling, synchronization and human handoff. Preserve an existing user's games/viewpoints before replacing their comparison. An owned instance on distinct ports usually avoids that replacement. Do not stop another desk or normal dev servers.
+Use [references/setup-and-viewer.md](references/setup-and-viewer.md) for launch/ref selection, one/two/three-slot APIs, saved presentation handling, synchronization and human handoff. Preserve an existing user's games/viewpoints before replacing their comparison. An owned instance on distinct ports usually avoids that replacement. Do not stop another desk or normal dev servers.
 
 ## Align the views
 
@@ -21,7 +21,7 @@ For commit/layout parity, keep the checkpoint, seat, device dimensions, renderer
 
 Current tool limits matter: Base slots require the desktop shell; native mobile is available on Comparator/Live only when the selected commit supports it. Target requires 2D and the desktop shell and must actually activate at the chosen viewport. A desktop/3D comparison can use a separate phone/2D target as its third slot, but unequal dimensions cannot be overlaid or pixel-diffed. Do not silently present unsupported layouts as equivalent native mobile views.
 
-Loading with restoreViews:true reinstates saved slots as well as presentations. When changing two/three views, layouts or seats, follow the adaptation recipe in setup-and-viewer.md so an old three-view preset does not replace the requested comparison. Use None sync while arranging independent UI state; API requests can keep game actions aligned, and API + clicks can mirror supported UI controls from any view. Match camera/panels explicitly; click synchronization is not a substitute for that.
+Loading with restoreViews:true reinstates saved slots as well as presentations. When changing the number of views, layouts or seats, follow the adaptation recipe in setup-and-viewer.md so an old three-view preset does not replace the requested comparison. Use None sync while arranging independent UI state; API requests can keep game actions aligned, and API + clicks can mirror supported UI controls from any view. Match camera/panels explicitly; click synchronization is not a substitute for that.
 
 Check actual status/views: correct loaded SHAs, committed sources, expected phase/decision/seat, same normalized game hash, intended panel/selection/camera, scriptActive for Target, and no restore/render/asset errors. Keep Cheats hidden. Frozen wall time does not freeze animation frames. Do not answer a pending game choice to make a screenshot look complete.
 

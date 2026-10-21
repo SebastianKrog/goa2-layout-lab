@@ -6,7 +6,7 @@ Status: implemented locally in [`goa2-layout-lab`](../../README.md). Run `npm ru
 
 Implement a reusable development tool in **`goa2-layout-lab`**, a standalone sibling repository, launched with **`npm run compare`** or **“GoA2: Open comparison desk”** in VS Code.
 
-Support **two or three independently configurable windows**. Each window chooses:
+Support **one, two or three independently configurable windows**. Each window chooses:
 
 - Source: pinned Base, Comparator (the newest `mobile-migration` commit by default), or pinned Base + userscript. An explicit live-working-tree mode enables hot reload during implementation.
 - View: 2D or 3D.
@@ -30,7 +30,7 @@ Provide three initial presets:
 
 Users can edit each window's configuration and save named presets. Default desktop viewport: **1440×900**; phone profiles: **390×844**, **844×390**, and **360×800**.
 
-The desk has **Compare**, **Situations**, and **Settings** tabs, a compact toolbar, and two or three playable views. The default Electron app embeds native WebContentsViews with isolated storage and fixed device viewports. Games animate and accept input directly in Chromium. Fit/100%/Expand change display scale while retaining the emulated viewport. Edit view holds device, renderer, source and seat settings; View tools holds panel, rotation, reset and camera controls. Dialogs hide native surfaces. Optional browser/headless mode uses JPEG streaming for static layout work; separate windows remain available through `--display=windows`.
+The desk has **Compare**, **Situations**, and **Settings** tabs, a compact toolbar, and one, two or three playable views. The default Electron app embeds native WebContentsViews with isolated storage and fixed device viewports. Games animate and accept input directly in Chromium. Fit/100%/Expand change display scale while retaining the emulated viewport. Edit view holds device, renderer, source and seat settings; View tools holds panel, rotation, reset and camera controls. Dialogs hide native surfaces. Optional browser/headless mode uses JPEG streaming for static layout work; separate windows remain available through `--display=windows`.
 
 Runtime:
 

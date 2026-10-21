@@ -46,6 +46,7 @@
             ></label>
             <label class="count-field"
               >Views<select id="count" aria-label="Views">
+                <option value="1">1 view</option>
                 <option value="2">2 views</option>
                 <option value="3" selected>3 views</option>
               </select></label
@@ -277,13 +278,15 @@
             >Set all others<select id="deviceBotPreset">
               <option value="random">Random</option>
               <option value="heuristic">Simple</option>
+              <option value="ismcts">ISMCTS</option>
               <option value="manual">Manual</option>
               <option value="custom">Mixed</option>
             </select></label
           >
           <p class="muted">
             Random chooses legal actions at random. Simple uses basic rules.
-            Manual waits for a person.
+            ISMCTS searches ahead with heuristic scoring and default search
+            limits, without a neural network. Manual waits for a person.
           </p>
           <div id="deviceBotRows"></div>
         </fieldset>
@@ -343,6 +346,36 @@
       </div>
       <form id="editorForm">
         <div id="editorFields" class="editor-fields"></div>
+        <label class="check"
+          ><input id="viewAutoSwitch" type="checkbox" />Auto switch after each
+          action</label
+        >
+        <p class="muted">
+          Follow a player with a pending decision. This only changes the
+          viewpoint; actions and bot assignments stay unchanged.
+        </p>
+        <fieldset id="viewBots" hidden>
+          <legend>Other heroes</legend>
+          <p class="muted">
+            Controllers apply to this view only. Changes keep the current game
+            moment. Bots play independently, with synchronization off. ISMCTS
+            uses default search limits and heuristic scoring without a neural
+            network.
+          </p>
+          <label
+            >Set all others<select id="viewBotPreset">
+              <option value="manual">Manual</option>
+              <option value="random">Random</option>
+              <option value="heuristic">Simple</option>
+              <option value="ismcts">ISMCTS</option>
+              <option value="custom" disabled>Mixed</option>
+            </select></label
+          >
+          <div id="viewBotRows" class="editor-fields"></div>
+        </fieldset>
+        <p id="viewBotsUnavailable" class="muted" hidden>
+          Random/Simple/ISMCTS bots require a bot-capable backend checkout.
+        </p>
         <details class="view-tools">
           <summary>View tools</summary>
           <div id="editorTools"></div>

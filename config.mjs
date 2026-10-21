@@ -109,6 +109,7 @@ const slot = (source, profile, render, layout = "desktop") => ({
   seat: "hero_arien",
 });
 export const PRESETS = {
+  "Play solo": [slot("live", "portrait", "2d", "mobile")],
   "Mobile migration": [
     slot("base", "portrait", "2d"),
     slot("comparator", "portrait", "2d", "mobile"),
@@ -124,8 +125,8 @@ export const PRESETS = {
   ],
 };
 export function validateSlots(slots) {
-  if (!Array.isArray(slots) || ![2, 3].includes(slots.length))
-    throw new Error("Choose two or three windows.");
+  if (!Array.isArray(slots) || ![1, 2, 3].includes(slots.length))
+    throw new Error("Choose one, two or three windows.");
   return slots.map((value) => {
     const s = { ...value };
     if (
@@ -147,6 +148,18 @@ export function validateSlots(slots) {
       throw new Error("The native mobile shell uses 2D.");
     if (typeof s.seat !== "string" || !s.seat)
       throw new Error("Choose a player seat or spectator.");
+    if (s.autoSwitch !== undefined && typeof s.autoSwitch !== "boolean")
+      throw new Error("Auto switch must be on or off.");
+    if (s.bots !== undefined) {
+      if (!s.bots || typeof s.bots !== "object" || Array.isArray(s.bots))
+        throw new Error("Bot choices must be an object.");
+      if (
+        Object.values(s.bots).some(
+          (kind) => !["random", "heuristic", "ismcts"].includes(kind),
+        )
+      )
+        throw new Error("Choose Random, Simple or ISMCTS bot policies.");
+    }
     return s;
   });
 }
@@ -158,6 +171,16 @@ export function slotsForSituation(configs, situation) {
   ).flatMap((t) => t.heroes || []);
   const seats = new Set(heroes.map((h) => h.id));
   if (!seats.size) throw new Error("Situation has no player seats.");
+  for (const s of slots)
+    if (Object.keys(s.bots || {}).some((id) => !seats.has(id)))
+      throw new Error(
+        "Bot hero is absent from this situation. Edit the view controllers.",
+      );
+  for (const s of slots)
+    if (Object.keys(s.bots || {}).length >= seats.size)
+      throw new Error(
+        "Leave at least one hero manual when playing against bots.",
+      );
   const preferred = [
     situation.provenance?.seat,
     situation.summary?.responder,
@@ -165,10 +188,12 @@ export function slotsForSituation(configs, situation) {
     heroes.find((h) => situation.summary?.responder === "team:" + h.team)?.id,
     heroes[0].id,
   ].find((seat) => seats.has(seat));
-  return slots.map((slot) =>
-    slot.seat === "spectator" || seats.has(slot.seat)
-      ? slot
-      : { ...slot, seat: preferred },
+  return validateSlots(
+    slots.map((slot) =>
+      slot.seat === "spectator" || seats.has(slot.seat)
+        ? slot
+        : { ...slot, seat: preferred },
+    ),
   );
 }
 export function gameURL(port, clone, s) {

@@ -131,8 +131,7 @@ export async function stableScreenshot(win, cropOptions = null) {
 export async function captureReport(comparison, indexes, options = {}) {
   const cropOptions = normalizeCrop(options.crop);
   indexes ||= comparison.windows.map((_, i) => i);
-  if (indexes.length < 2)
-    throw new Error("Select at least two comparison windows.");
+  if (indexes.length < 1) throw new Error("Select at least one view.");
   if (cropOptions) {
     // Validate every view before writing artifacts; a missing/ambiguous match in
     // any selected view is an error, never a skipped or guessed comparison.

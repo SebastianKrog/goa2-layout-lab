@@ -66,6 +66,38 @@ export async function startDesk({
     busy = false,
     lastError = null,
     closing = false;
+  let following = false;
+  const followTimer = setInterval(() => {
+    if (
+      following ||
+      busy ||
+      closing ||
+      !comparison.windows.some((w) => w.config.autoSwitch)
+    )
+      return;
+    following = true;
+    const work = queue.then(async () => {
+      if (closing) return;
+      await comparison.sync.queue;
+      await comparison.followDecisions(async (index, seat) => {
+        busy = true;
+        try {
+          await streams.pause();
+          await comparison.switchSeat(index, seat);
+        } finally {
+          busy = false;
+          await streams.resume();
+        }
+      });
+    });
+    queue = work.catch((error) => {
+      lastError = error.message;
+    });
+    void queue.finally(() => {
+      following = false;
+    });
+  }, 750);
+  followTimer.unref();
   comparison.sync.busy = () => busy || closing;
   let presets = { ...PRESETS };
   const presetFile = path.join(DATA, "presets.json");
@@ -79,6 +111,7 @@ export async function startDesk({
   async function close() {
     if (closing) return;
     closing = true;
+    clearInterval(followTimer);
     console.log("Stopping layout-lab windows and owned services...");
     await devices.close().catch(console.error);
     await streams.close().catch(console.error);

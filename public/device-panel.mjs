@@ -10,7 +10,12 @@ export function initDevicePanel({
   let seats = [],
     botKinds = [];
   const choices = new Map();
-  const names = { manual: "Manual", random: "Random", heuristic: "Simple" };
+  const names = {
+    manual: "Manual",
+    random: "Random",
+    heuristic: "Simple",
+    ismcts: "ISMCTS",
+  };
   function showLink(view) {
     activeId = view.id;
     $("deviceQR").src = view.qr;
@@ -147,7 +152,7 @@ export function initDevicePanel({
       );
       seats = options.seats;
       botKinds = (options.botKinds || []).filter((kind) =>
-        ["random", "heuristic"].includes(kind),
+        ["random", "heuristic", "ismcts"].includes(kind),
       );
       choices.clear();
       $("deviceSeat").replaceChildren(

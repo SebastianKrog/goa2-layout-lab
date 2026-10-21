@@ -179,6 +179,14 @@ export class Synchronizer {
       throw Error("Unknown synchronization mode");
     await this.queue;
     if (mode !== "none") {
+      if (
+        this.comparison.windows.some(
+          (w) => Object.keys(w.config.bots || {}).length,
+        )
+      )
+        throw Error(
+          "Turn off bots in every view before synchronizing. Bot games advance independently.",
+        );
       if (this.comparison.windows.length < 2)
         throw Error("Load at least two views before synchronizing.");
       const states = await Promise.all(

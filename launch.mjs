@@ -13,7 +13,7 @@ npm run compare [-- options]
   --base-ref=<commit>        Frozen base frontend
   --script-ref=<commit>      Frozen userscript target
   --comparator-ref=<ref>     Current build (default: mobile-migration)
-  --preset=mobile|desktop-2d|desktop-3d
+  --preset=mobile|desktop-2d|desktop-3d|"Play solo"
   --runtime=native|wsl       Defaults to native on Linux/macOS, WSL on Windows
   --display=embedded|browser|windows  Native desktop views by default
   --headless --no-open       Run without desktop windows

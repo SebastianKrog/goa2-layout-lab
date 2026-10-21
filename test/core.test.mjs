@@ -25,7 +25,8 @@ test("two duplicate desktop 3D viewpoints are valid; userscript cannot use 3D", 
     () => validateSlots([{ ...slots[0], source: "target" }, slots[1]]),
     /2D/,
   );
-  assert.throws(() => validateSlots([slots[0]]), /two or three/);
+  assert.equal(validateSlots([slots[0]]).length, 1);
+  assert.throws(() => validateSlots([]), /one, two or three/);
 });
 test("game URLs preserve private seats and force renderer without enabling native mobile on Base", () => {
   const clone = {

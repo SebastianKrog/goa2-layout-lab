@@ -8,7 +8,7 @@ Load the appropriate SKILL.md explicitly from this checkout; agent/skills/ is th
 
 | Task | Skill |
 | --- | --- |
-| Play one hero against Random/Simple bots on a phone or another device | [goa2-play-bots](agent/skills/goa2-play-bots/SKILL.md) |
+| Play one hero against Random/Simple/ISMCTS bots in desk views or on a phone | [goa2-play-bots](agent/skills/goa2-play-bots/SKILL.md) |
 | Create, adapt, verify or organize a saved UI situation | [goa2-ui-situations](agent/skills/goa2-ui-situations/SKILL.md) |
 | Compare revisions, create combined images/diffs/reports, or prepare a human viewer | [goa2-compare-views](agent/skills/goa2-compare-views/SKILL.md) |
 

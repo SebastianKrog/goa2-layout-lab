@@ -1,6 +1,6 @@
 # GoA2 comparison desk
 
-Play two or three independent copies of one saved situation inside the desk.
+Play one, two or three independent copies of one saved situation inside the desk.
 Linux and macOS run the desk, Chromium, Vite and the isolated backend natively.
 Windows runs the desk and emulated browsers locally and services in WSL. The regular
 development servers on ports 3000/8000 are separate.
@@ -290,9 +290,10 @@ simulation is not part of the desk.
 
 ## Capture and adjust
 
-Select at least two views with **Capture** checked, then **Capture
-comparison**. The report contains original viewport screenshots, a full-size
-strip, selectable pairwise overlays, pixel differences and reproduction metadata.
+Select one or more views with **Capture** checked, then **Capture**. A single
+view produces an original screenshot and reproduction metadata without pairwise
+diffs. With multiple views, the report contains original viewport screenshots,
+a full-size strip, selectable pairwise overlays, pixel differences and reproduction metadata.
 Different-size captures retain original dimensions and disable overlays. Reports
 label different seats/cameras and independently diverged game states.
 
@@ -309,7 +310,7 @@ pass/fail tests.
 
 Open **Crop image capture to an element**, enable **Crop screenshots**, enter a
 CSS selector, then use **Capture** normally. The same selector and match policy
-are applied independently to every selected view (two or three).
+are applied independently to every selected view (one, two or three).
 
 - **Require one visible match** (default): exactly one match must have a visible
   area in the current viewport. Multiple matches fail instead of choosing one.
@@ -885,7 +886,33 @@ back into the lab. Frontend and production backend code are untouched.
 See [device setup and reporting](docs/device-testing.md) for the private-LAN
 firewall helper, live updates, report locations and stop controls.
 
-### Play against Random or Simple bots
+### Play against Random, Simple or ISMCTS bots
+
+**ISMCTS** searches ahead using heuristic policy and evaluation, with no neural
+network, model artifact, or training setup. The lab uses backend defaults: 200
+iterations, a two-second decision timeout and two-round continuation horizon.
+There are no search tuning controls. Backend timeout/failure handling may fall
+back to Simple for an individual decision.
+
+Use **Views: 1 view** for a single playable board, or select the **Play solo**
+setup for one Live/mobile view. Two and three views remain available.
+In any regular view, open **Edit view**, choose the human **Viewpoint**, then
+set **Other heroes** to **Random**, **Simple**, **ISMCTS**, **Manual**, or mixed choices.
+**Apply changes** updates that clone's controllers without resetting its game.
+Before loading, these choices become part of that view's setup.
+
+In **Edit view**, enable **Auto switch after each action** to follow a player
+with a pending decision. It keeps the current viewpoint while that player still
+has a choice, so simultaneous decisions do not bounce between players. Switching
+reuses the same game/page, preserves the camera, and takes no game actions or
+controller changes. It can view bot-controlled players without taking them over.
+The option is per desk view, off by default, and retained in saved setups/Reset.
+Turn it off to keep a fixed viewpoint.
+
+Bot choices are independent per view and retained on Reset and in saved setups.
+Changing the viewpoint only changes the viewed player; bot assignments stay unchanged.
+Bots disable synchronization because each clone advances independently. Turn all
+bots off and reset divergent games before enabling synchronization again.
 
 Point `GOA2_LAB_BACKEND` in ignored `.env.layout-lab` at a backend checkout with
 bot support, such as `../goa2-backend-bots` on `bots-upstream`, and restart the lab
@@ -894,7 +921,7 @@ fork, not a separate required GitHub repository. Serving omits development and
 training dependency groups.
 
 In **Open on device**, select **Your hero**, then set the **Other heroes** to
-**Random**, **Simple**, or individual choices. Choose **Live working tree** and
+**Random**, **Simple**, **ISMCTS**, or individual choices. Choose **Live working tree** and
 **Mobile 2D** to test current phone edits, then **Start device website** and scan
 the QR. Bots control the other selected heroes on both teams; your hero stays
 manual. Timed situations may need your **Ready** confirmation, and lab clocks

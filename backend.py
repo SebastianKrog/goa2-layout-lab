@@ -13,7 +13,7 @@ import tempfile
 import time
 import uuid
 
-from device_bots import bot_kinds, clone_bot_specs, start_clone_bots, stop_clone_bots, cancel_bot_tasks
+from device_bots import bot_kinds, clone_bot_specs, start_clone_bots, stop_clone_bots, cancel_bot_tasks, update_clone_bots
 
 FROZEN_MS = 1792238400000
 SCHEMA = 1
@@ -411,11 +411,25 @@ def create_app():
             "summary": situation["summary"],
         }
 
+    @app.post("/__lab/bots")
+    async def configure_bots(body: dict):
+        game = app.state.registry.get(body["game_id"])
+        await update_clone_bots(game, app.state.registry, body)
+        return {"ok": True}
+
     @app.post("/__lab/device/stop")
     async def stop_device(body: dict):
         game = app.state.registry.get(body["game_id"])
         await stop_clone_bots(game)
         return {"ok": True}
+
+    @app.get("/__lab/games/{game_id}/responders")
+    async def responders(game_id: str):
+        from decision_players import decision_players
+
+        game = app.state.registry.get(game_id)
+        async with game.lock:
+            return {"players": decision_players(game)}
 
     @app.get("/__lab/games/{game_id}")
     async def inspect(game_id: str):

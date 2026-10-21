@@ -42,6 +42,29 @@ profile's selected device view. Use another browser/profile for independent tabs
 
 ## Play one hero with bots
 
+Bots also work in regular desk views. Select **Views: 1 view** or the **Play solo**
+setup for one board, or use two/three views. Under each view's **Edit view**, choose
+its human **Viewpoint** and set **Other heroes** independently. Apply changes to a
+loaded view keeps its current game moment. Reset uses that view's chosen bots;
+saved setups retain controller choices. Changing the viewpoint leaves bot assignments unchanged. Synchronization is disabled
+while any view has bots; independently driven clones may diverge.
+
+The desk's `POST /api/load` accepts one to three `slots`, each with an optional
+`bots` mapping using the same hero IDs and policies as device shares. Use
+`restoreViews:false` when supplying a custom setup rather than restoring saved
+slots. `POST /api/configure` with `{index,update:{bots:{...}}}` updates controllers
+on that existing clone; an empty mapping turns them off without rewinding moves.
+A single view supports Capture, Save and Reset; extraction still requires two.
+
+Regular desk views also offer **Auto switch after each action** in **Edit view**.
+This follows a player with a pending decision, keeping the current player while
+still eligible. It only changes the viewpoint, not the game or bot assignments,
+and can view a bot without taking control from it. It preserves the camera and
+drops the old player's card selection. Off keeps the viewpoint fixed. Saved
+setups and Reset retain the option (`autoSwitch:true` in a slot/configure update).
+Phone shares keep their selected seat.
+
+
 Use a backend checkout on the
 [`bots-upstream` branch](https://github.com/SebastianKrog/goa2-backend/tree/bots-upstream)
 of the backend fork. The folder name below is a local checkout convention; a
@@ -60,9 +83,16 @@ groups, so it does not install neural-network packages.
 
 Open any saved situation with **Open on device**. For current phone edits,
 choose **Live working tree** and **Mobile 2D**. Choose **Your hero**, then use
-**Set all others** to select **Random**, **Simple** or **Manual**, or choose each
+**Set all others** to select **Random**, **Simple**, **ISMCTS** or **Manual**, or choose each
 other hero's controller individually. Individual differences show **Mixed**.
 Random picks legal actions; Simple uses the fork's basic heuristic policy.
+ISMCTS uses heuristic policy and heuristic evaluation without a neural network.
+The lab leaves numerical search settings at backend defaults (currently 200
+iterations, a two-second decision limit, `bounded_continuation`, and horizon 2
+rounds). No model artifact or training dependency is loaded, and the lab accepts
+only the `ismcts` policy string, not custom search/learned configuration. Search
+may fall back to Simple on a timeout or failure under the backend's existing
+bounded runtime.
 Configure both teammates and opponents when playing alone;
 a Manual hero can leave the game waiting for another human. Your chosen hero
 always remains human-controlled.
@@ -90,7 +120,7 @@ Use the localhost desk origin (default `http://127.0.0.1:3200`) for orchestratio
 These endpoints work alongside comparison windows and existing device sessions:
 
 - `GET /api/device/options?situationId=<id>` returns actual hero IDs in `seats`
-  and supported policies in `botKinds` (`random`, `heuristic`, or empty if absent).
+  and supported policies in `botKinds` (`random`, `heuristic`, `ismcts`, or empty if absent).
 - `GET /api/device/views` lists active shares; avoid creating duplicates when a
   suitable session is already running.
 - `POST /api/device-open` creates an independent clone and returns its link/QR
@@ -118,7 +148,7 @@ Example request body for a supported mobile frontend:
 }
 ```
 
-**Simple** is `heuristic` in the API. Omit Manual heroes and the human seat from
+**Simple** is `heuristic` and **ISMCTS** is `ismcts` in the API. Omit Manual heroes and the human seat from
 `bots`; do not send `manual` as a policy. Spectator plus bots is rejected. To play
 alone, include every other hero. No private lab/backend credential extraction is
 needed; call the desk rather than private clone endpoints. Treat the returned
@@ -179,8 +209,24 @@ test clones, and leaves a fresh Random game ready. Evidence, including a local Q
 is written under `.layout-lab/reviews/device-bots/`. This runner is for verifying
 the feature; ordinary play should use **Open on device** directly.
 
-The integration was checked with both policies committing the three other heroes,
+`node test/play-bots-e2e.mjs --env-file=.env.layout-lab` checks the regular desk's
+single view, mixed Random/ISMCTS controllers, Simple in a second view, switching
+to Manual without resetting, single-view
+capture, and independently configured two-view games. Run it only against an
+owned empty desk: it rejects existing loaded views, then clears its test clones.
+Evidence is saved under `.layout-lab/reviews/play-bots/`.
+
+The device integration was checked with Random and Simple committing the three other heroes,
 then advancing a real human card commit into resolution. The focused lab tests
 also cover human-seat exclusion, invalid controllers, unsupported backends, timed
 Ready handling, stopping workers while retaining recovery, and reconnects. This
 coverage does not establish full-match, every-hero or physical-phone acceptance.
+ISMCTS adapter tests verify default settings, heuristic-only policy/value, and
+search with neural/training imports blocked, including the valid timeout path.
+
+For autoswitch acceptance, `node test/autoswitch-e2e.mjs --env-file=.env.layout-lab --display=browser`
+starts and owns a test desk. Set distinct `GOA2_LAB_*_PORT` values first so it does
+not collide with a running desk. It commits QA cards explicitly, checks viewpoint
+following and the off state, verifies that switching takes no extra actions and
+leaves bot assignments unchanged, then closes its test desk. Evidence is under
+`.layout-lab/reviews/autoswitch/`.

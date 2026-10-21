@@ -26,7 +26,8 @@ test("device clones scope bots to other heroes and stop their workers", async ()
   const api = async (route, body) => {
     calls.push({ route, body });
     if (route.startsWith("/situations/")) return situation;
-    if (route === "/health") return { bot_kinds: ["random", "heuristic"] };
+    if (route === "/health")
+      return { bot_kinds: ["random", "heuristic", "ismcts"] };
     if (route === "/clone")
       return { game_id: "game", seats: { hero_arien: "private-token" } };
     if (route === "/device/stop") return { ok: true };
@@ -40,11 +41,12 @@ test("device clones scope bots to other heroes and stop their workers", async ()
     assert.deepEqual((await devices.options("fixture")).botKinds, [
       "random",
       "heuristic",
+      "ismcts",
     ]);
     for (const bots of [
       { hero_arien: "random" },
       { unknown: "random" },
-      { hero_hanu: "ismcts" },
+      { hero_hanu: "learned" },
       [],
     ])
       await assert.rejects(
@@ -55,7 +57,11 @@ test("device clones scope bots to other heroes and stop their workers", async ()
       calls.some((c) => c.route === "/clone"),
       false,
     );
-    const bots = { hero_hanu: "random", hero_brogan: "heuristic" };
+    const bots = {
+      hero_hanu: "random",
+      hero_brogan: "heuristic",
+      hero_tigerclaw: "ismcts",
+    };
     const view = await devices.open({ situationId: "fixture", slot, bots });
     assert.deepEqual(calls.find((c) => c.route === "/clone").body, {
       situation_id: "fixture",
@@ -75,7 +81,7 @@ test("device clones scope bots to other heroes and stop their workers", async ()
   }
 });
 
-test("device dialog assigns Random, Simple, mixed controls and preserves the human seat", async () => {
+test("device dialog assigns Random, Simple, ISMCTS and mixed controls and preserves the human seat", async () => {
   const browser = await chromium.launch({ headless: true });
   try {
     const page = await browser.newPage();
@@ -89,7 +95,7 @@ test("device dialog assigns Random, Simple, mixed controls and preserves the hum
       `<script type="module">
       import {initDevicePanel} from "/device-panel.mjs";
       window.posts = []; window.messages = [];
-      window.fixture = {seats: ${JSON.stringify([...seats, { id: "spectator", name: "Spectator" }])}, botKinds: ["random", "heuristic"]};
+      window.fixture = {seats: ${JSON.stringify([...seats, { id: "spectator", name: "Spectator" }])}, botKinds: ["random", "heuristic", "ismcts"]};
       initDevicePanel({selectedSituation: () => ({id: "fixture"}), task: async (_,fn) => fn(), read: async path => path.includes("options") ? window.fixture : [], notify: m => window.messages.push(m), call: async (name, body) => { window.posts.push({name,body}); return {id: "view", name: "Bots", bots: body.bots, config: body.slot, urls: ["http://device.test"], qr: ""}; }});
       </script>`,
     );
@@ -119,7 +125,7 @@ test("device dialog assigns Random, Simple, mixed controls and preserves the hum
         .evaluateAll((nodes) => nodes.map((n) => n.value)),
       ["random", "random", "random"],
     );
-    await page.locator("#deviceBotPreset").selectOption("heuristic");
+    await page.locator("#deviceBotPreset").selectOption("ismcts");
     await page.locator("#deviceSeat").selectOption("hero_hanu");
     await page.locator('[data-bot-hero="hero_brogan"]').selectOption("manual");
     assert.equal(
@@ -134,8 +140,8 @@ test("device dialog assigns Random, Simple, mixed controls and preserves the hum
     let post = await page.evaluate(() => window.posts.at(-1));
     assert.equal(post.body.slot.seat, "hero_hanu");
     assert.deepEqual(post.body.bots, {
-      hero_arien: "heuristic",
-      hero_tigerclaw: "heuristic",
+      hero_arien: "ismcts",
+      hero_tigerclaw: "ismcts",
     });
     assert.match(await page.locator("#deviceRoster").innerText(), /hanu: You/);
     await page.evaluate(() => {

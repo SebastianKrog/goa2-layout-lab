@@ -55,7 +55,15 @@ const human = (value) =>
         .replaceAll("_", " ")
         .replace(/\b\w/g, (c) => c.toUpperCase());
 const configKey = (c) =>
-  JSON.stringify([c.source, c.profile, c.render, c.layout, c.seat]);
+  JSON.stringify([
+    c.source,
+    c.profile,
+    c.render,
+    c.layout,
+    c.seat,
+    !!c.autoSwitch,
+    Object.entries(c.bots || {}).sort(([a], [b]) => a.localeCompare(b)),
+  ]);
 const viewKey = (w) =>
   w ? w.gameId + configKey(w.config) + !!w.closed + (w.nativeId || "") : "";
 const active = (i) => state.windows?.[i];
@@ -135,8 +143,7 @@ function controls() {
   for (const live of liveViews.values()) live.pause(!!busy);
   const count = state.windows?.length || 0;
   for (const id of ["capture", "extract", "save", "reset", "clear"])
-    $(id).disabled =
-      !!busy || count < (["capture", "extract"].includes(id) ? 2 : 1);
+    $(id).disabled = !!busy || count < (id === "extract" ? 2 : 1);
   if (!busy)
     document
       .querySelectorAll("[data-needs-window]")
@@ -150,6 +157,13 @@ function controls() {
     !(state.windows || []).some((w) =>
       ["live", "comparator"].includes(w.config.source),
     );
+  const independent =
+    count < 2 ||
+    (state.windows || []).some((w) => Object.keys(w.config.bots || {}).length);
+  $("synchronize").disabled = !!busy || independent;
+  $("synchronize").title = independent
+    ? "Synchronization requires at least two manual views."
+    : "";
   $("restore").disabled = !!busy || !hasSavedViewSetup();
   $("savedViewHelp").textContent = hasSavedViewSetup()
     ? "Restores saved views, players, screens, cameras and panels. Off keeps your setup. The game moment always loads."
@@ -287,6 +301,7 @@ function render() {
       slots.every((s, i) => configKey(s) === configKey(configs[i])),
   );
   $("preset").value = preset ? preset[0] : "__custom";
+  $("slots").classList.toggle("one", configs.length === 1);
   $("slots").classList.toggle("two", configs.length === 2);
   $("viewCount").textContent = $("navCount").textContent = configs.length;
   const keep = new Set();
@@ -309,7 +324,22 @@ function render() {
             " / " +
             devices[s.profile] +
             " / " +
-            s.render.toUpperCase(),
+            s.render.toUpperCase() +
+            (Object.keys(s.bots || {}).length
+              ? " / Bots: " +
+                Object.entries(s.bots)
+                  .map(
+                    ([id, kind]) =>
+                      human(id) +
+                      " " +
+                      (kind === "ismcts"
+                        ? "ISMCTS"
+                        : kind === "heuristic"
+                          ? "Simple"
+                          : "Random"),
+                  )
+                  .join(", ")
+              : ""),
         ),
       );
       header.append(heading);
@@ -412,6 +442,7 @@ function field(host, labelText, key, values) {
   }
   input.onchange = () => {
     editDraft[key] = input.value;
+    if (key === "seat") editorBots();
     if (["source", "render", "layout"].includes(key)) {
       normalizeDraft();
       editorFields();
@@ -460,24 +491,88 @@ function editorFields() {
         ],
   );
   field(host, "Viewpoint", "seat", [
-    ...(
-      active(editing)?.seats || [
-        "hero_arien",
-        "hero_hanu",
-        "hero_brogan",
-        "hero_tigerclaw",
-      ]
-    ).map((id) => [id, human(id)]),
+    ...editorSeats.map((id) => [id, human(id)]),
     ["spectator", "Spectator"],
   ]);
 }
-function openEditor(i) {
+let editorSeats = [],
+  editorBotKinds = [];
+function editorBots() {
+  const enabled = editorBotKinds.length > 0 && editDraft.seat !== "spectator";
+  $("viewBots").hidden = !enabled;
+  $("viewBotsUnavailable").hidden = editorBotKinds.length > 0;
+  $("viewBotRows").replaceChildren();
+  if (!enabled) return;
+  const others = editorSeats.filter((id) => id !== editDraft.seat);
+  const choices = others.map((id) => editDraft.bots?.[id] || "manual");
+  $("viewBotPreset").value =
+    new Set(choices).size <= 1 ? choices[0] || "manual" : "custom";
+  for (const id of others) {
+    const label = el("label", "", human(id));
+    const select = el("select");
+    select.dataset.viewBotHero = id;
+    select.setAttribute("aria-label", human(id) + " controller");
+    fill(
+      select,
+      [
+        ["manual", "Manual"],
+        ...editorBotKinds.map((k) => [
+          k,
+          k === "ismcts" ? "ISMCTS" : k === "heuristic" ? "Simple" : "Random",
+        ]),
+      ],
+      editDraft.bots?.[id] || "manual",
+    );
+    select.onchange = () => {
+      editDraft.bots = { ...(editDraft.bots || {}) };
+      if (select.value === "manual") delete editDraft.bots[id];
+      else editDraft.bots[id] = select.value;
+      editorBots();
+    };
+    label.append(select);
+    $("viewBotRows").append(label);
+  }
+}
+$("viewBotPreset").onchange = () => {
+  const kind = $("viewBotPreset").value;
+  editDraft.bots =
+    kind === "manual"
+      ? {}
+      : Object.fromEntries(
+          editorSeats
+            .filter((id) => id !== editDraft.seat)
+            .map((id) => [id, kind]),
+        );
+  editorBots();
+};
+async function openEditor(i) {
+  try {
+    const situationId = draftSetup
+      ? $("situation").value
+      : state.situationId || $("situation").value;
+    const options = await read(
+      `/api/device/options?situationId=${encodeURIComponent(situationId)}`,
+    );
+    editorSeats = options.seats
+      .filter((s) => s.id !== "spectator")
+      .map((s) => s.id);
+    editorBotKinds = (options.botKinds || []).filter((k) =>
+      ["random", "heuristic", "ismcts"].includes(k),
+    );
+  } catch (error) {
+    showError(error);
+    return;
+  }
   editing = i;
-  editDraft = { ...configs[i] };
+  editDraft = structuredClone(configs[i]);
+  if (editDraft.seat !== "spectator" && !editorSeats.includes(editDraft.seat))
+    editDraft.seat = editorSeats[0];
   $("editorEyebrow").textContent = `VIEW ${String.fromCharCode(65 + i)}`;
   $("editorTitle").textContent =
     configs[i].label || sourceNames[configs[i].source];
   editorFields();
+  $("viewAutoSwitch").checked = !!editDraft.autoSwitch;
+  editorBots();
   const tools = $("editorTools");
   tools.replaceChildren();
   const action = (text, label, fn) => {
@@ -547,13 +642,14 @@ function openEditor(i) {
 $("editorForm").onsubmit = (event) => {
   event.preventDefault();
   const i = editing,
-    update = { ...editDraft };
+    update = { ...editDraft, autoSwitch: $("viewAutoSwitch").checked };
   $("editor").close();
   if (active(i) && !draftSetup)
     void task("Updating view…", () => call("configure", { index: i, update }));
   else {
     configs[i] = update;
     draftSetup = true;
+    $("restore").checked = false;
     render();
     notify("Setup changed. Load to apply.");
   }
@@ -720,7 +816,7 @@ function updateStatus() {
         : draftSetup
           ? "Setup changed. Load to apply."
           : count
-            ? `${count} views / clocks frozen`
+            ? `${count} ${count === 1 ? "view" : "views"} / clocks frozen`
             : "Select a situation and load it.");
   $("connection").textContent =
     running || state.busy ? "Working locally" : "Connected";
@@ -892,8 +988,8 @@ $("capture").onclick = () =>
     const indexes = state.windows
       .map((w) => w.index)
       .filter((i) => !excluded.has(i));
-    if (indexes.length < 2)
-      throw new Error("Select Capture on at least two views.");
+    if (indexes.length < 1)
+      throw new Error("Select Capture on at least one view.");
     const crop = $("cropEnabled").checked
       ? {
           selector: $("cropSelector").value,

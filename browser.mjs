@@ -75,7 +75,11 @@ export class Comparison {
     const port = await this.services.frontend(config.source);
     const clone =
       existingClone ||
-      (await this.api("/clone", { situation_id: this.situationId }));
+      (await this.api("/clone", {
+        situation_id: this.situationId,
+        human_seat: this.manualSeat(config),
+        bots: config.bots || {},
+      }));
     const profile = PROFILES[config.profile];
     const context = await this.browser.newContext({
       ...profile,
@@ -338,8 +342,30 @@ export class Comparison {
       ));
     if (!situation) throw new Error("Choose a saved situation.");
     const slots = slotsForSituation(configs, situation);
+    if (slots.some((s) => Object.keys(s.bots || {}).length)) {
+      const health = await this.api("/health", undefined, "GET");
+      if (
+        slots.some((s) =>
+          Object.values(s.bots || {}).some(
+            (kind) => !health.bot_kinds?.includes(kind),
+          ),
+        )
+      )
+        throw new Error(
+          "This backend has no requested bots. Configure the bots backend checkout.",
+        );
+    }
+    if (
+      this.sync.mode !== "none" &&
+      (slots.length === 1 ||
+        slots.some((s) => Object.keys(s.bots || {}).length))
+    )
+      await this.sync.setMode("none");
     await this.clear();
     this.situationId = situationId;
+    this.heroIds = Object.values(situation.checkpoint.state.teams).flatMap(
+      (t) => t.heroes.map((h) => h.id),
+    );
     // Wait for every attempt before cleanup, so a slower successful view cannot
     // leak its context/clone after another view fails. Keep configured slot order.
     const opened = await Promise.allSettled(
@@ -402,13 +428,88 @@ export class Comparison {
       : await capturePresentation(old.page, old.config.render);
     old.views[old.config.render] = current;
     const config = { ...old.config, ...update };
-    validateSlots([config, config]);
+    validateSlots([config]);
+    const botsChanged =
+      JSON.stringify(config.bots || {}) !==
+      JSON.stringify(old.config.bots || {});
+    if (botsChanged) {
+      if (Object.keys(config.bots || {}).length)
+        await this.sync.setMode("none");
+      await this.api("/bots", {
+        game_id: old.clone.game_id,
+        human_seat: this.manualSeat(config),
+        bots: config.bots || {},
+      });
+      // Keep controller metadata accurate even if reopening the renderer fails.
+      old.config.bots = config.bots;
+    }
+    const withoutBots = ({ bots, autoSwitch, ...rest }) => rest;
+    if (
+      !old.page.isClosed() &&
+      JSON.stringify(withoutBots(config)) ===
+        JSON.stringify(withoutBots(old.config))
+    ) {
+      old.config = config;
+      return this.status();
+    }
     await old.context.close().catch(() => {});
     const presentation = restoreSaved ? old.views[config.render] : null;
     const win = await this.open(config, presentation, old.clone);
     win.views = { ...old.views, [config.render]: presentation };
     this.windows[index] = win;
     return this.status();
+  }
+  manualSeat(config) {
+    return (
+      (this.heroIds || Object.keys(this.windows[0]?.clone.seats || {})).find(
+        (id) => !config.bots?.[id],
+      ) || config.seat
+    );
+  }
+  async switchSeat(index, seat) {
+    const win = this.window(index);
+    if (!win.clone.seats[seat]) return;
+    const presentation = await capturePresentation(win.page, win.config.render);
+    const url = new URL(win.page.url());
+    url.searchParams.set("token", win.clone.seats[seat]);
+    // Reuse the page/context and its assets; do not clone/reset the game or
+    // carry the old player's private card selection into the new viewpoint.
+    win.config = { ...win.config, seat };
+    await win.page.goto(url.href, {
+      waitUntil: "domcontentloaded",
+      timeout: 120000,
+    });
+    await this.ready(win);
+    win.warnings = await restorePresentation(
+      win.page,
+      {
+        render: win.config.render,
+        camera: presentation.camera,
+      },
+      win.config,
+    );
+  }
+  async followDecisions(
+    switcher = (index, seat) => this.switchSeat(index, seat),
+  ) {
+    for (const [index, win] of this.windows.entries()) {
+      if (!win.config.autoSwitch || win.page.isClosed()) continue;
+      try {
+        const { players } = await this.api(
+          `/games/${win.clone.game_id}/responders`,
+          undefined,
+          "GET",
+        );
+        const eligible = players.filter((id) => win.clone.seats[id]);
+        // Stable while the same hero still owes a choice, including multiple
+        // inputs in an action and concurrent/team decisions.
+        if (!eligible.length || eligible.includes(win.config.seat)) continue;
+        await switcher(index, eligible[0]);
+      } catch (error) {
+        win.config.autoSwitch = false;
+        win.warnings.push("Auto switch stopped: " + error.message);
+      }
+    }
   }
   async save(index, name) {
     const source = this.window(index);

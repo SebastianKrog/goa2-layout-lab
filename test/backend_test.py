@@ -276,17 +276,13 @@ class SituationTests(unittest.TestCase):
         )
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
     def test_device_bot_clone_drives_other_heroes_and_keeps_the_human_manual(self):
         from device_bots import bot_kinds
         if not bot_kinds():
             self.skipTest("Bots checkout not selected")
         source = self.post("/starter", {"name": "Bot planning test"})
         original = source["checkpoint"]
-        for kind in ("random", "heuristic"):
+        for kind in ("random", "heuristic", "ismcts"):
             specs = {hero: kind for hero in ("hero_hanu", "hero_brogan", "hero_tigerclaw")}
             clone = self.post("/clone", {"situation_id": source["id"], "human_seat": "hero_arien", "bots": specs})
             game = self.client.app.state.registry.get(clone["game_id"])
@@ -304,9 +300,9 @@ if __name__ == "__main__":
         unchanged = self.client.get(f"/__lab/situations/{source['id']}", headers=self.headers).json()
         self.assertEqual(unchanged["checkpoint"], original)
 
-    def test_device_bot_choices_reject_human_unknown_heroes_and_search_agents(self):
+    def test_device_bot_choices_reject_human_unknown_heroes_and_learned_config(self):
         source = self.post("/starter", {"name": "Bot validation test"})
-        for values in ({"hero_arien": "random"}, {"missing": "random"}, {"hero_hanu": "ismcts"}, []):
+        for values in ({"hero_arien": "random"}, {"missing": "random"}, {"hero_hanu": "learned"}, {"hero_hanu": {"kind": "ismcts", "search": {"policy_source": "learned"}}}, []):
             response = self.client.post("/__lab/clone", headers=self.headers, json={"situation_id": source["id"], "human_seat": "hero_arien", "bots": values})
             self.assertEqual(response.status_code, 422, response.text)
         with patch("device_bots.bot_kinds", return_value=[]):
@@ -344,3 +340,131 @@ if __name__ == "__main__":
         with self.client.websocket_connect(address) as replacement:
             self.assertEqual(replacement.receive_json()["type"], "STATE_UPDATE")
             self.assertIsNot(game.ws_connections[token], previous)
+
+
+    def test_live_controller_changes_keep_game_and_other_clones_untouched(self):
+        from device_bots import bot_kinds
+        if not bot_kinds():
+            self.skipTest("requires bot-capable backend")
+        source = self.post("/starter", {"name": "Per-view controllers"})
+        clone = self.post("/clone", {"situation_id": source["id"]})
+        untouched = self.post("/clone", {"situation_id": source["id"]})
+        registry = self.client.app.state.registry
+        game = registry.get(clone["game_id"])
+        # Keep runtime worker mutations separate from this controller-switch test.
+        with patch("device_bots.start_clone_bots") as start:
+            start.return_value = None
+            for kind in ("random", "heuristic", "ismcts"):
+                self.post("/bots", {"game_id": game.game_id, "human_seat": "hero_arien", "bots": {"hero_hanu": kind}})
+                self.assertEqual(game.bot_specs["hero_hanu"].kind, kind)
+                self.assertEqual(self.module.canonical_hash(game.session.state.model_dump(mode="json")), clone["hash"])
+                self.assertFalse(registry.get(untouched["game_id"]).bot_specs)
+            response = self.client.post("/__lab/bots", json={"game_id": game.game_id, "human_seat": "hero_arien", "bots": {"hero_arien": "random"}}, headers=self.headers)
+            self.assertEqual(response.status_code, 422)
+            self.assertEqual(game.bot_specs["hero_hanu"].kind, "ismcts")
+            self.post("/bots", {"game_id": game.game_id, "human_seat": "hero_arien", "bots": {}})
+        self.assertFalse(game.bot_specs)
+        self.assertFalse(game.removed)
+        self.assertEqual(self.client.post("/__lab/bots", json={"game_id": game.game_id, "bots": {}}).status_code, 403)
+
+
+    def test_live_bots_can_be_stopped_and_reassigned_without_reset(self):
+        from device_bots import bot_kinds
+        if not bot_kinds():
+            self.skipTest("requires bot-capable backend")
+        source = self.post("/starter", {})
+        clone = self.post("/clone", {"situation_id": source["id"]})
+        game = self.client.app.state.registry.get(clone["game_id"])
+        for kind in ("random", "heuristic", "ismcts"):
+            self.post("/bots", {"game_id": game.game_id, "human_seat": "hero_arien", "bots": {"hero_hanu": kind}})
+            deadline = time.monotonic() + 10
+            while "hero_hanu" not in game.session.state.pending_inputs:
+                self.assertLess(time.monotonic(), deadline)
+                time.sleep(0.02)
+            self.post("/bots", {"game_id": game.game_id, "human_seat": "hero_arien", "bots": {}})
+            self.assertIn("hero_hanu", game.session.state.pending_inputs)
+            self.assertNotIn("hero_arien", game.session.state.pending_inputs)
+            self.assertTrue(game.bot_task is None or game.bot_task.done())
+            self.assertFalse(game.removed)
+
+
+    def test_autoswitch_responders_follow_real_commits_and_request_owners(self):
+        from types import SimpleNamespace
+        from goa2.domain.models import GamePhase
+        source = self.post("/starter", {})
+        clone = self.post("/clone", {"situation_id": source["id"]})
+        game = self.client.app.state.registry.get(clone["game_id"])
+        route = f"/__lab/games/{game.game_id}/responders"
+        def players():
+            return self.client.get(route, headers=self.headers).json()["players"]
+        self.assertEqual(set(players()), set(clone["seats"]))
+        arien = game.session.state.get_hero("hero_arien")
+        response = self.client.post(f"/games/{game.game_id}/cards", json={"card_id": arien.hand[0].id}, headers={"Authorization": "Bearer " + clone["seats"]["hero_arien"]})
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertNotIn("hero_arien", players())
+        self.assertIn("hero_hanu", players())
+        saved_result = game.last_result
+        def request(owner, kind="SELECT_OPTION", context=None):
+            game.last_result = SimpleNamespace(input_request=SimpleNamespace(player_id=owner, request_type=SimpleNamespace(value=kind), context=context or {}))
+        request("hero_brogan")
+        self.assertEqual(players(), ["hero_brogan"], "Follow the responder, not current actor")
+        team = next(iter(game.session.state.teams.values()))
+        request("team:" + team.color.value)
+        self.assertEqual(set(players()), {str(h.id) for h in team.heroes})
+        request("simultaneous", "UPGRADE_PHASE", {"players": {"hero_arien": {"remaining": 0}, "hero_hanu": {"remaining": 1}}})
+        self.assertEqual(players(), ["hero_hanu"])
+        request("unknown")
+        self.assertEqual(players(), [])
+        game.last_result = saved_result
+        self.assertEqual(self.client.get(route).status_code, 403)
+
+    def test_autoswitch_tracks_readiness_without_changing_controllers(self):
+        from device_bots import bot_kinds
+        if not bot_kinds():
+            self.skipTest("requires bot-capable backend")
+        source = self.post("/starter", {"timed": True})
+        clone = self.post("/clone", {"situation_id": source["id"], "human_seat": "hero_arien", "bots": {"hero_hanu": "random", "hero_brogan": "heuristic"}})
+        route = f"/__lab/games/{clone['game_id']}/responders"
+        self.assertEqual(set(self.client.get(route, headers=self.headers).json()["players"]), {"hero_arien", "hero_tigerclaw"})
+        self.post("/device/stop", {"game_id": clone["game_id"]})
+        self.assertEqual(self.client.get(route, headers=self.headers).json()["players"], [])
+
+
+    def test_ismcts_uses_default_search_with_heuristics_and_no_neural_imports(self):
+        from device_bots import bot_kinds, clone_bot_specs
+        if "ismcts" not in bot_kinds():
+            self.skipTest("requires bot-capable backend")
+        from goa2.server.bot_factory import agent_for_spec
+        from goa2.server.bot_models import SearchSettings
+        from automata.agents.ismcts_agent import ISMCTSAgent
+        import builtins
+        source = self.post("/starter", {})
+        clone = self.post("/clone", {"situation_id": source["id"]})
+        game = self.client.app.state.registry.get(clone["game_id"])
+        original_import = builtins.__import__
+        def no_neural(name, *args, **kwargs):
+            if name == "torch" or name.startswith(("torch.", "automata.models.shared_encoder", "automata.training")):
+                raise AssertionError("Neural/training import: " + name)
+            return original_import(name, *args, **kwargs)
+        with patch("builtins.__import__", new=no_neural):
+            spec = clone_bot_specs({"human_seat": "hero_arien", "bots": {"hero_hanu": "ismcts"}}, game.session.state)["hero_hanu"]
+            self.assertEqual(spec.search, SearchSettings())
+            self.assertEqual(spec.search.policy_source, "heuristic")
+            self.assertEqual(spec.search.value_source, "heuristic")
+            self.assertIsNone(spec.search.artifact)
+            agent = agent_for_spec(spec, state=game.session.state)
+            self.assertIsInstance(agent, ISMCTSAgent)
+            hero = game.session.state.get_hero("hero_hanu")
+            from automata.search.ismcts.engine import SearchDeadlineExceeded
+            try:
+                choice = agent.choose_planning(game.session.state, hero)
+            except SearchDeadlineExceeded:
+                # With default budgets a search may finish no rollout in time;
+                # the existing server coordinator handles this with Simple.
+                pass
+            else:
+                self.assertIsNotNone(choice)
+
+
+if __name__ == "__main__":
+    unittest.main()

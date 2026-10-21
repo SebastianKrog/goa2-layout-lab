@@ -74,7 +74,7 @@ const status = await request("status"), views = await request("views");
 
 This deliberate restoreViews:false example ignores saved presentation and saved slots. Arrange the panels/selection/camera afterward; it is unsuitable by itself when the fixture's selected card or exact saved camera is essential.
 
-A two-phone comparison can use portrait/2d with desktop Base and a supported mobile Comparator. A third script view is {label:"A + userscript",source:"target",profile:"portrait",render:"2d",layout:"desktop",seat}. For three comparable phone columns set the other profiles to portrait too. Use render:"3d" and desktop layout/profile on both A and B for two desktop 3D views. The current slot validator requires two or three entries, Base desktop shell, and Target desktop/2d. Two different commits with both native mobile shells are not currently expressible via Base/Comparator; report that limit if requested rather than passing both through the one Comparator source.
+A two-phone comparison can use portrait/2d with desktop Base and a supported mobile Comparator. A third script view is {label:"A + userscript",source:"target",profile:"portrait",render:"2d",layout:"desktop",seat}. For three comparable phone columns set the other profiles to portrait too. Use render:"3d" and desktop layout/profile on both A and B for two desktop 3D views. The current slot validator accepts one, two or three entries, Base desktop shell, and Target desktop/2d. Two different commits with both native mobile shells are not currently expressible via Base/Comparator; report that limit if requested rather than passing both through the one Comparator source.
 
 ## Preserve saved presentation when changing the slot set
 
@@ -127,6 +127,6 @@ GET /api/device/views, POST /api/device-open {situationId,slot,restoreViews,bots
 POST /api/device-stop {id}. Keep returned capability links private. A stopped desk
 revokes all links. No frontend or production-backend edits are required.
 
-For a playable human hero with Random/Simple opponents or teammates, use
+For a playable human hero with Random/Simple/ISMCTS opponents or teammates, use
 [goa2-play-bots](../../goa2-play-bots/SKILL.md). Its device clone can run alongside
 the comparison; automation belongs to that clone only.
