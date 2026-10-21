@@ -858,3 +858,19 @@ it restore at zero rotation. The userscript continues using its separate saved
 rotation adapter. Frozen frontend revisions lacking native rotation reject an
 unsupported rotated camera copy explicitly. Equal viewports and matching panes
 are still required before judging visual differences.
+
+
+### Native mobile utilities (M8)
+
+Run `npm run test:mobile-utilities` for the focused Windows Chromium check against
+the configured frontend working tree. It owns ports 5980–5983/10980 and reuses
+shared planning, Gydion public-spells and six-upgrade situations. It checks live
+appearance/audio/language settings, reload persistence, fullscreen, the scoped
+Decisions route and retry, layered spell/Deck navigation and upgrade preview
+dismissal. Portrait, compact and short-landscape captures compare Live/mobile
+with the pinned userscript Target. A separate native commit checks actual history
+and spectator card masking after the paired captures. Generated evidence stays
+under `.layout-lab/reviews/m8-utilities-*` and `.layout-lab/reports/`.
+
+No native Linux tests or automatic phone activation are included. Browser touch
+and fullscreen checks do not establish physical-device acceptance.
