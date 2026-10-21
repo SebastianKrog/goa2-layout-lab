@@ -174,3 +174,18 @@ and the Userscript target, all in portrait 2D. Inspect the native mobile match
 header for separate L1/L2 counts. Older frontends/userscripts may show whole-board
 totals or lack per-lane counters; equality with those displays is not expected.
 The checkpoint was normalized and reopened in Windows Chromium during review.
+
+## Multiple pending upgrades
+
+[Arien - three pending upgrades](cards/upgrades/batches/3fd1f952c1a6.json)
+is a fabricated full Forgotten Island checkpoint with Arien at level 4, three
+upgrades pending, and Wasp on the opposing team (seed 20261021). No upgrade has
+been selected or committed. The normalized checkpoint was restored during M5
+verification and reopened with its saved viewpoints before promotion was finalized.
+
+Saved views use Arien in Base, the newest Comparator with native mobile,
+and Userscript target, all portrait 2D. This complements the existing single
+tier-II upgrade example. Use it to compare the current one-at-a-time picker
+with the userscript tree and the future M6 staged UI. M5 adds batch adapters,
+not a new Commit interface. With the batch-capable backend, the scoped offer
+advertises one or three selections; the engine validates their ordered legality.
