@@ -136,7 +136,9 @@ try {
           await choice.tap();
           // Reader selection is now a Router entry; wait for that presentation
           // to mount before checking a subsequent preference change.
-          await win.page.getByLabel("Public spell preview", { exact: true }).waitFor();
+          await win.page
+            .getByLabel("Public spell preview", { exact: true })
+            .waitFor();
           const label = await choice.getAttribute("aria-label");
           const sort = browser.getByRole("switch", {
             name: "Sort spells by color instead of rank",
@@ -354,6 +356,34 @@ try {
     page = runeWindow.page;
   async function choose(label) {
     const before = (await inspect(runeWindow)).hash;
+    const batch = page.locator("[data-mobile-rune-batch]");
+    if (await batch.count()) {
+      // Exercise the supported legacy single-choice transport against the new
+      // batch-capable server, then inspect its acknowledged progress in M6.
+      const rune = label.replace(/^Place /, "").toLowerCase();
+      await page
+        .getByRole("button", { name: "Choose " + rune, exact: true })
+        .tap();
+      assert.equal((await inspect(runeWindow)).hash, before);
+      await page.getByRole("button", { name: "Reset", exact: true }).tap();
+      await page.evaluate((rune) => {
+        const socket = [...window.__GOA2_LAB_SYNC__.sockets].find(
+          (s) => s.readyState === 1,
+        );
+        socket.send(
+          JSON.stringify({
+            type: "SUBMIT_INPUT",
+            request_id: window.__GOA2_LAB_STATE__.input_request.request_id,
+            selection: rune,
+          }),
+        );
+      }, rune);
+      await waitFor(
+        async () => (await inspect(runeWindow)).hash !== before,
+        "legacy single rune accepted",
+      );
+      return;
+    }
     const panel = page.getByRole("region", { name: "Game decision" });
     await panel.getByRole("button", { name: label, exact: true }).tap();
     assert.equal((await inspect(runeWindow)).hash, before);
@@ -368,7 +398,13 @@ try {
   await choose("Place Axe");
   await waitFor(
     async () =>
-      (await page.getByLabel("Acknowledged rune slots").innerText())
+      (
+        await page
+          .locator(
+            '[aria-label="Acknowledged rune slots"], [aria-label="Rune arrangement"]',
+          )
+          .innerText()
+      )
         .toLowerCase()
         .includes("axe"),
     "acknowledged first rune",
@@ -376,24 +412,24 @@ try {
   await page.reload({ waitUntil: "domcontentloaded" });
   await comparison.ready(runeWindow);
   assert.ok(
-    (await page.getByLabel("Acknowledged rune slots").innerText())
+    (
+      await page
+        .locator(
+          '[aria-label="Acknowledged rune slots"], [aria-label="Rune arrangement"]',
+        )
+        .innerText()
+    )
       .toLowerCase()
       .includes("axe"),
   );
+  await page.getByRole("button", { name: "Board", exact: true }).tap();
   await page
-    .getByRole("region", { name: "Game decision" })
-    .getByRole("button", { name: "Board", exact: true })
-    .tap();
-  await page
-    .getByRole("button", { name: "Return to decision", exact: true })
+    .getByRole("button", { name: /^Return to (decision|runes)$/, exact: true })
     .tap();
   const beforeUndo = JSON.stringify(
     await page.evaluate(() => window.__GOA2_LAB_STATE__),
   );
-  await page
-    .getByRole("region", { name: "Game decision" })
-    .getByRole("button", { name: "Undo", exact: true })
-    .tap();
+  await page.getByRole("button", { name: "Undo", exact: true }).tap();
   await waitFor(
     async () =>
       JSON.stringify(await page.evaluate(() => window.__GOA2_LAB_STATE__)) !==
@@ -418,7 +454,13 @@ try {
     await choose(skillLabel);
   }
   assert.ok(
-    !(await page.getByLabel("Acknowledged rune slots").innerText())
+    !(
+      await page
+        .locator(
+          '[aria-label="Acknowledged rune slots"], [aria-label="Rune arrangement"]',
+        )
+        .innerText()
+    )
       .toLowerCase()
       .includes("axe"),
   );

@@ -141,7 +141,9 @@ async function choice(text) {
   const panel = current.page.getByRole("region", { name: "Game decision" });
   await panel.getByRole("button", { name: text, exact: true }).tap();
   await accepted(() =>
-    panel.getByRole("button", { name: /^Confirm (choice|discard)$/, exact: true }).tap(),
+    panel
+      .getByRole("button", { name: /^Confirm (choice|discard)$/, exact: true })
+      .tap(),
   );
 }
 try {
@@ -259,14 +261,34 @@ try {
     await current.page.getByRole("button", { name: "Close inspection" }).tap();
     await showPane(current.page, "board", current.config);
   });
-  for (const rune of ["Axe", "Bird", "Anvil"]) {
-    const panel = current.page.getByRole("region", { name: "Game decision" });
-    const option = panel.getByRole("button", { name: new RegExp(rune, "i") });
-    await unchanged(() => option.tap());
-    await record("snorri-" + rune.toLowerCase() + "-confirmation");
+  if (await current.page.locator("[data-mobile-rune-batch]").count()) {
+    for (const rune of ["axe", "bird", "anvil"])
+      await unchanged(() =>
+        current.page
+          .getByRole("button", { name: "Choose " + rune, exact: true })
+          .tap(),
+      );
+    await record("snorri-staged-arrangement");
     await accepted(() =>
-      panel.getByRole("button", { name: /^Confirm (choice|discard)$/, exact: true }).tap(),
+      current.page
+        .getByRole("button", { name: "Commit runes", exact: true })
+        .tap(),
     );
+  } else {
+    for (const rune of ["Axe", "Bird", "Anvil"]) {
+      const panel = current.page.getByRole("region", { name: "Game decision" });
+      const option = panel.getByRole("button", { name: new RegExp(rune, "i") });
+      await unchanged(() => option.tap());
+      await record("snorri-" + rune.toLowerCase() + "-confirmation");
+      await accepted(() =>
+        panel
+          .getByRole("button", {
+            name: /^Confirm (choice|discard)$/,
+            exact: true,
+          })
+          .tap(),
+      );
+    }
   }
   await waitFor(
     () =>

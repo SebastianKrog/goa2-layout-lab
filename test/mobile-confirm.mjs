@@ -66,16 +66,23 @@ try {
           };
         }
       });
+      const batch =
+        (await page.locator("[data-mobile-upgrade-picker]").count()) > 0;
       const confirm = page.getByRole("button", {
-        name: "Confirm",
-        exact: true,
+        name: batch ? /^Commit 1 upgrades?$/ : "Confirm",
+        exact: !batch,
       });
       assert.equal(
         await confirm.isEnabled(),
         false,
         `${label}: stage a card first`,
       );
-      await page.getByRole("button", { name: /Expert Duelist/ }).tap();
+      await page
+        .getByRole("button", {
+          name: batch ? /^Choose Expert Duelist$/ : /Expert Duelist/,
+        })
+        .tap();
+      await confirm.tap({ trial: true });
       assert.equal(
         await confirm.isEnabled(),
         true,
@@ -86,7 +93,11 @@ try {
         before,
         `${label}: staging does not submit`,
       );
-      const picker = page.locator('[class*="pickerUpgrade_"]');
+      const picker = page.locator(
+        batch
+          ? '[data-mobile-upgrade-picker] > div[class*="scroll"]'
+          : '[class*="pickerUpgrade_"]',
+      );
       for (const end of [false, true]) {
         await picker.evaluate((element, end) => {
           element.scrollTop = end ? element.scrollHeight : 0;
@@ -182,7 +193,9 @@ try {
       );
       assert.deepEqual(submissions[0].selection, {
         hero_id: "hero_arien",
-        card_id: "expert_duelist",
+        ...(batch
+          ? { card_ids: ["expert_duelist"] }
+          : { card_id: "expert_duelist" }),
       });
       assert.equal(
         await page.locator("#mobile-pane-heading").count(),

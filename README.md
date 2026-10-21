@@ -767,3 +767,51 @@ masked. It checks a spectator can inspect Large/Image at three sizes and the
 Tiny row has solid rank-IV end accents without an initiative rail. It uses the
 usual spell-runner ports 4700-4703/9700. These remain Live-versus-frozen-target
 comparisons, and each owned diagnostic desk closes after capture.
+
+### Staged mobile upgrades and runes (M6)
+
+```sh
+npm run test:mobile-batches
+```
+
+This regression owns ports 5910-5913/10910 and tests the configured frontend
+working tree with shared situations `3fd1f952c1a6` (three upgrades) and
+`0601f17bbdab` (Snorri inscription). The backend must advertise upgrade
+`supports_preview` plus batch capabilities. Native mobile is checked against
+real engine offers at 390x844, 360x800 and 844x390; the pinned userscript Target
+is captured as a visual reference, not assumed to share native batch semantics.
+Checks cover separate hypothetical Preview, Reset, Board peek/camera, immutable
+staging, one accepted complete Commit, and viewport/navigation/five-point tap
+bounds. A recovery flow covers legacy single-rune acknowledgment, actual reload,
+Undo, reconnect and explicit batch confirmation without automatic replay.
+Reports and images are written under ignored `.layout-lab/runtime/mobile-batches-*`.
+Only owned services are closed. Normal checkout/ref/port overrides apply.
+
+`test:mobile-confirm` supports both the new single-upgrade Commit and the legacy
+Confirm picker, and continues testing desktop at all three sizes. Run it against
+an older backend checkout with `GOA2_LAB_BACKEND` to verify capability fallback.
+The gameplay and presentation regressions support batch rune staging while
+retaining legacy single-choice transport coverage.
+
+### Upgrade card visual states
+
+```sh
+npm run test:mobile-upgrade-parity
+```
+
+Uses isolated ports 5920-5923/10920 and the Live frontend versus frozen Base plus
+userscript. At portrait, compact and landscape sizes it exports original-size
+paired small-card crops, pixel diffs, viewport images and `cards.json` containing
+focused computed styles. Initial, staged, hypothetical Preview, hover and keyboard
+focus are compared. A local six-upgrade draft is restored through the engine and
+advanced with legacy single confirmations to verify observed item-history states.
+The runner asserts dimensions, icon geometry, border/background/shadow and opacity;
+it does not assume that arbitrary screenshot differences prove a regression.
+Animation is reduced consistently for stable viewed-card comparisons. The draft
+stays local under ignored data. No whole-page CSS traversal is performed.
+Evidence is under `.layout-lab/reviews/m6-parity-*`; owned services close on exit.
+
+For focused reruns use `npm run test:mobile-upgrade-parity -- --profile=portrait`
+(or `compact,landscape`). Each viewport also exports the standard combined-image,
+pixel-diff and overlay viewer report; its report metadata is saved in
+`<profile>-viewer.json`. `test:mobile-batches` accepts the same profile filter.
