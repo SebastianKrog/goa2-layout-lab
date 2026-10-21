@@ -1,7 +1,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { chromium } from "playwright";
-import { restorePresentation, capturePresentation } from "../presentation.mjs";
+import {
+  restorePresentation,
+  capturePresentation,
+  setCamera,
+} from "../presentation.mjs";
 
 test("saved mobile selection ignores hidden panes, waits for Hand, and restores safe inspection", async () => {
   const browser = await chromium.launch({ headless: true });
@@ -129,6 +133,51 @@ test("decision spell inspection restores through its parent without selecting a 
     assert.equal(captured.inspectionMobileParent, "cantrip");
     assert.equal(captured.inspectionMobileContext, "decision");
     assert.equal(await page.evaluate(() => window.unsafe), 0);
+  } finally {
+    await browser.close();
+  }
+});
+
+test("2D camera restore accepts old saves without rotation and preserves requested angles", async () => {
+  const browser = await chromium.launch({ headless: true });
+  try {
+    const page = await browser.newPage();
+    await page.setContent("<div>Camera fixture</div>");
+    await page.evaluate(() => {
+      let camera = { mode: "2d", k: 1, x: 0, y: 0, angle: 0 };
+      window.__GOA2_LAB_BRIDGE__ = {
+        camera2d: {
+          get: () => camera,
+          set: (value) => {
+            camera = { ...value, angle: value.angle ?? 0 };
+          },
+        },
+      };
+    });
+    await setCamera(page, { mode: "2d", k: 2, x: 0.1, y: -0.1 }, "2d");
+    await setCamera(
+      page,
+      { mode: "2d", k: 2, x: 0.1, y: -0.1, angle: 137 },
+      "2d",
+    );
+    assert.equal(
+      await page.evaluate(
+        () => window.__GOA2_LAB_BRIDGE__.camera2d.get().angle,
+      ),
+      137,
+    );
+    await page.evaluate(() => {
+      window.__GOA2_LAB_BRIDGE__.camera2d.set = (value) => {
+        window.__GOA2_LAB_BRIDGE__.camera2d.get = () => ({
+          ...value,
+          angle: 0,
+        });
+      };
+    });
+    await assert.rejects(
+      setCamera(page, { mode: "2d", k: 2, x: 0, y: 0, angle: 90 }, "2d"),
+      /did not settle/,
+    );
   } finally {
     await browser.close();
   }

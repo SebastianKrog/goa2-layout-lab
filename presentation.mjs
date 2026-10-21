@@ -437,7 +437,11 @@ export async function setCamera(page, camera, render) {
       Array.isArray(n) ? n : typeof n === "number" ? [n] : [],
     );
   const expected = numbers(camera),
-    got = numbers(actual || {});
+    got = numbers(
+      Object.fromEntries(
+        Object.keys(camera).map((key) => [key, actual?.[key]]),
+      ),
+    );
   if (
     expected.length !== got.length ||
     expected.some((n, i) => Math.abs(n - got[i]) > 0.015)

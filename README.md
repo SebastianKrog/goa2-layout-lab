@@ -840,3 +840,21 @@ selected-source sheen. It verifies the reduced-motion gradient and deterministic
 1-second animation frames against Target, including 4s/4.2s timings and pointer
 pass-through, then captures the selected rows. History/Nano/upgrade cases are
 excluded in this mode.
+
+
+### Native 2D camera and hero focus (M7)
+
+`npm run test:mobile-camera` uses owned Windows Chromium views and the configured
+backend services. Existing library situations cover Arien/Hanu focus, Razzle’s
+owned-piece focus and movement target selection. It checks keyboard inspection
+separately from centering, anchored pinch/twist, cancellation, portrait/compact/
+landscape centering in the unobscured Board area, fit/reset and camera restore.
+The final isolated clone submits a real movement target after a gesture. Paired
+reference captures are saved under `.layout-lab/reviews/m7-camera-*`. This is
+synthetic browser touch coverage; physical-device gestures remain M9 acceptance.
+
+Native camera presentations now include an optional `angle`. Older saves without
+it restore at zero rotation. The userscript continues using its separate saved
+rotation adapter. Frozen frontend revisions lacking native rotation reject an
+unsupported rotated camera copy explicitly. Equal viewports and matching panes
+are still required before judging visual differences.

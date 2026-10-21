@@ -35,7 +35,8 @@
     "test:mobile-elements": "node test/mobile-element-audit.mjs",
     "test:mobile-batches": "node test/mobile-batches.mjs",
     "test:mobile-upgrade-parity": "node test/mobile-upgrade-parity.mjs",
-    "test:mobile-card-visual": "node test/card-visual-parity.mjs"
+    "test:mobile-card-visual": "node test/card-visual-parity.mjs",
+    "test:mobile-camera": "node test/mobile-camera.mjs"
   },
   "devDependencies": {
     "@electron/get": "5.1.0",

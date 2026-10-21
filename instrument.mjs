@@ -232,6 +232,7 @@ export function instrument(code, id) {
       throw new Error(
         "Unsupported 2D camera revision: missing transform bridge anchor.",
       );
+    const rotationSupported = code.includes("gestureTransform");
     return code.replace(
       anchor,
       `${anchor}
@@ -240,12 +241,15 @@ export function instrument(code, id) {
         const bridge = {
           get: () => {
             const r = containerRef.current?.getBoundingClientRect();
-            return { mode: '2d', k: transform.k, x: transform.x / (r?.width || 1), y: transform.y / (r?.height || 1) };
+            return { mode: '2d', k: transform.k, x: transform.x / (r?.width || 1), y: transform.y / (r?.height || 1), angle: ${rotationSupported ? "transform.angle || 0" : "0"} };
           },
           set: (value) => {
             const r = containerRef.current?.getBoundingClientRect();
             if (!r?.width || !r?.height) throw new Error('2D board not ready');
-            setTransform(clampPan({ k: value.k, x: value.x * r.width, y: value.y * r.height }, r));
+            if (value.angle && !${rotationSupported}) throw new Error('This frontend revision does not support native 2D rotation');
+            if (![value.k,value.x,value.y,value.angle ?? 0].every(Number.isFinite) || value.k <= 0 || value.k > 6) throw new Error('Invalid 2D camera');
+            const next = clampPan({ k: value.k, x: value.x * r.width, y: value.y * r.height, angle: value.angle || 0 }, r, typeof mobile !== 'undefined' && mobile ? metrics()?.limits : undefined);
+            if (typeof apply === 'function') apply(next); else setTransform(next);
           }
         };
         api.camera2d = bridge;
