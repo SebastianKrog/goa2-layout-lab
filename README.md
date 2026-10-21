@@ -874,3 +874,13 @@ under `.layout-lab/reviews/m8-utilities-*` and `.layout-lab/reports/`.
 
 No native Linux tests or automatic phone activation are included. Browser touch
 and fullscreen checks do not establish physical-device acceptance.
+
+## Open a situation on another device
+
+Choose **Open on device** from Compare or a situation card, then **Start device
+website**. Scan the locally generated QR code on your phone. The device gets an
+independent clone plus an injected floating Report userscript. Reports save a
+screenshot without reporting controls, your comment, and a resumable situation
+back into the lab. Frontend and production backend code are untouched.
+See [device setup and reporting](docs/device-testing.md) for the private-LAN
+firewall helper, live updates, report locations and stop controls.

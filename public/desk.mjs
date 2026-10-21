@@ -1,3 +1,4 @@
+import { initDevicePanel } from "./device-panel.mjs";
 import { LiveView } from "./live.mjs";
 import { NativeView } from "./native.mjs";
 const $ = (id) => document.getElementById(id);
@@ -27,6 +28,7 @@ const paneNames = {
   log: "Log",
   settings: "Settings",
 };
+let openDevice;
 let catalog = {},
   state = {},
   configs = [],
@@ -635,10 +637,18 @@ function renderLibrary() {
     );
     const exportLink = el("a", "", "Export");
     exportLink.href = "/export/" + s.id;
+    if (/^device\/[a-f0-9]{12}$/.test(s.provenance?.report || "")) {
+      const reportLink = el("a", "", "View report");
+      reportLink.href = "/reports/" + s.provenance.report + "/index.html";
+      reportLink.target = "_blank";
+      reportLink.rel = "noreferrer";
+      card.append(reportLink);
+    }
     card.append(
       text,
       exportLink,
       button("Move", () => organizeSituation(s)),
+      button("Open on device", () => void openDevice(s.id)),
     );
     if (s.origin !== "library")
       card.append(button("Add to library", () => organizeSituation(s, true)));
@@ -1059,3 +1069,5 @@ document.addEventListener(
   },
   true,
 );
+
+openDevice = initDevicePanel({ selectedSituation, task, call, read, notify });

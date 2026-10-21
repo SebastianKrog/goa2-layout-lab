@@ -115,3 +115,14 @@ POST /api/synchronize {mode:"none"|"api"|"api-clicks"}. Any interacted view can 
 POST /api/reset {} resets all clones to the loaded checkpoint; {index:0} resets one and can leave it different from other windows. Save the intended checkpoint/presentation before exploring if exact restoration matters. Preserve each distinct window's game with POST /api/save {index,name}; one save contains that window's game plus all presentations, not every independently advanced game. Do not assume one save preserves several different live checkpoints.
 
 A human-ready handoff includes the active native app, desk URL, exact A/B/script SHAs, situation, slot intents, sync mode, any missing UI and instructions to reset. Leave the process running. Stop only its owned instance later with npm start -- --stop from an environment using the same desk port, or POST /api/shutdown. A report's static directory remains usable after shutdown; localhost desk/report URLs do not.
+
+## Physical device views
+
+Use the desk's **Open on device** action to start an independent clone of any
+saved situation. It returns a LAN link and locally generated QR code, without
+replacing comparison windows. The injected report userscript saves a screenshot,
+comment and resumable situation into the lab. See [device testing](../../../../docs/device-testing.md)
+for setup and limits. The private desk API exposes GET /api/device/options?situationId=ID,
+GET /api/device/views, POST /api/device-open {situationId,slot,restoreViews}, and
+POST /api/device-stop {id}. Keep returned capability links private. A stopped desk
+revokes all links. No frontend or production-backend edits are required.

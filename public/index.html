@@ -60,7 +60,8 @@
           </div>
           <div class="setup-bottom">
             <div class="setup-actions">
-              <button class="primary" id="load">Load</button
+              <button id="openDevice">Open on device</button
+              ><button class="primary" id="load">Load</button
               ><button id="save">Save situation</button
               ><button id="reset">Reset all</button
               ><button id="capture">Capture</button>
@@ -238,6 +239,73 @@
       </section>
       <div id="toast" role="status" hidden></div>
     </main>
+    <dialog id="deviceDialog" class="modal" aria-labelledby="deviceDialogTitle">
+      <div class="dialog-heading">
+        <h2 id="deviceDialogTitle">Open on device</h2>
+        <button
+          class="icon-button"
+          data-close="deviceDialog"
+          aria-label="Close device dialog"
+        >
+          &times;
+        </button>
+      </div>
+      <p>
+        Start a separate playable copy of this situation. Scan the QR code on
+        another device on the same Wi-Fi.
+      </p>
+      <form id="deviceForm">
+        <label
+          >Frontend<select id="deviceSource">
+            <option value="live">Live working tree</option>
+            <option value="comparator">Current build</option>
+            <option value="base">Base</option>
+            <option value="target">Userscript target</option>
+          </select></label
+        >
+        <label
+          >Layout<select id="deviceLayout">
+            <option value="mobile">Mobile 2D</option>
+            <option value="2d">Desktop 2D</option>
+            <option value="3d">Desktop 3D</option>
+          </select></label
+        >
+        <label>Player<select id="deviceSeat"></select></label>
+        <label class="check"
+          ><input id="deviceRestore" type="checkbox" checked />Restore saved
+          presentation where supported</label
+        >
+        <div class="dialog-footer">
+          <button type="submit" class="primary">Start device website</button>
+        </div>
+      </form>
+      <section id="deviceLink" hidden>
+        <img
+          id="deviceQR"
+          alt="QR code to open this device view"
+          width="256"
+          height="256"
+          style="display: block; max-width: 100%; margin: 16px auto"
+        />
+        <a
+          id="deviceURL"
+          target="_blank"
+          rel="noreferrer"
+          style="overflow-wrap: anywhere"
+        ></a>
+        <p class="muted">
+          Use the floating Report button to save a screenshot, comment and lab
+          situation. Reports exclude the reporting controls.
+        </p>
+      </section>
+      <p class="muted">
+        Windows: allow port 3300 on your private LAN with
+        <code>scripts/device-access.ps1</code> (Administrator PowerShell). The
+        desk stays private on localhost.
+      </p>
+      <div id="deviceViews"></div>
+    </dialog>
+
     <dialog id="editor" class="editor">
       <div class="dialog-heading">
         <div>

@@ -9,95 +9,96 @@ async function clickControl(page, control) {
 // These adapters perform presentation actions only. They never replay a
 // generic click trace, which could accidentally commit a card or submit input.
 export async function capturePresentation(page, render) {
-  return page.evaluate((render) => {
-    const root = document.documentElement;
-    const selected = document.querySelector('[data-pane][aria-pressed="true"]');
-    const script = !!window.GOA2Mobile2D;
-    const deckOpen = [...document.querySelectorAll("[data-lab-deck]")].some(
-      (e) => e.checkVisibility(),
-    );
-    const logOpen = !!document.querySelector(
-      '[data-lab-log="floating"] button[aria-expanded="true"]',
-    );
-    const rawPane = script
-      ? root.hasAttribute("data-m2-deck-open")
-        ? "deck"
-        : root.dataset.m2Panel || root.dataset.m2Mode || "board"
-      : selected?.dataset.pane ||
-        (deckOpen ? "deck" : logOpen ? "log" : "board");
-    const pane = rawPane === "tools" ? "settings" : rawPane;
-    const storage = {};
-    for (const key of Object.keys(localStorage)) {
-      if (
-        /^goa2[.:-]/i.test(key) &&
-        !/token|auth|credential|spectator/i.test(key)
-      )
-        storage[key] = localStorage.getItem(key);
-    }
-    const scroll = [...document.querySelectorAll("*")]
-      .filter((e) => e.scrollTop || e.scrollLeft)
-      .map((e) => ({
-        id: e.id || null,
-        className: typeof e.className === "string" ? e.className : null,
-        top: e.scrollTop,
-        left: e.scrollLeft,
-      }))
-      .filter((s) => s.id || s.className)
-      .slice(0, 40);
-    const hovered = [...document.querySelectorAll("[data-lab-card]")].find(
-      (e) => e.matches(":hover") || e.hasAttribute("data-lab-hover"),
-    );
-    const selectedCard = document.querySelector(
-      "[data-lab-card][data-lab-selected]",
-    );
-    return {
-      render,
-      pane,
-      storage,
-      gamePath: location.pathname,
-      scroll,
-      windowScroll: { x: scrollX, y: scrollY },
-      camera:
-        window.__GOA2_LAB_BRIDGE__?.[
-          render === "3d" ? "camera3d" : "camera2d"
-        ]?.get(),
-      rotation: window.GOA2Mobile2D?.__labRotation?.get(),
-      inspection3d: window.__GOA2_LAB_BRIDGE__?.inspection3d?.get(),
-      inspectionScript: window.GOA2Mobile2D?.__labInspection?.get(),
-      inspectionMobile:
-        document.querySelector("[data-lab-mobile-inspection]:not([inert])")
-          ?.dataset.labMobileInspection || null,
-      inspectionMobileParent:
-        document.querySelector("[data-lab-mobile-inspection][inert]")?.dataset
-          .labMobileInspection ||
-        document.querySelector("[data-decision-inspection]")?.dataset
-          .decisionParent ||
-        null,
-      inspectionMobileContext: document.querySelector(
-        "[data-decision-inspection]",
-      )
-        ? "decision"
-        : null,
-      spellBrowserMobile: (() => {
-        const browser = document.querySelector("[data-lab-mobile-spells]");
-        return browser
-          ? {
-              heroId: browser.dataset.labMobileSpells,
-              selectedId: browser.dataset.labMobileSpellSelection || null,
-            }
-          : null;
-      })(),
-      inspectedCard: hovered?.dataset.labCard || null,
-      altHeld: !!window.__GOA2_LAB_ALT__,
-      selectedCard: selectedCard?.dataset.labCard || null,
-      focusedHeroMobile:
-        document.querySelector(
-          "[data-mobile-board-summary][data-focused] [data-mobile-hero]",
-        )?.dataset.mobileHero || null,
-      inspectedHero: window.__GOA2_LAB_INSPECTED_HERO__ || null,
-      deckOpen,
-    };
-  }, render);
+  return page.evaluate(readPresentation, render);
+}
+
+export function readPresentation(render) {
+  const root = document.documentElement;
+  const selected = document.querySelector('[data-pane][aria-pressed="true"]');
+  const script = !!window.GOA2Mobile2D;
+  const deckOpen = [...document.querySelectorAll("[data-lab-deck]")].some((e) =>
+    e.checkVisibility(),
+  );
+  const logOpen = !!document.querySelector(
+    '[data-lab-log="floating"] button[aria-expanded="true"]',
+  );
+  const rawPane = script
+    ? root.hasAttribute("data-m2-deck-open")
+      ? "deck"
+      : root.dataset.m2Panel || root.dataset.m2Mode || "board"
+    : selected?.dataset.pane || (deckOpen ? "deck" : logOpen ? "log" : "board");
+  const pane = rawPane === "tools" ? "settings" : rawPane;
+  const storage = {};
+  for (const key of Object.keys(localStorage)) {
+    if (
+      /^goa2[.:-]/i.test(key) &&
+      !/token|auth|credential|spectator/i.test(key)
+    )
+      storage[key] = localStorage.getItem(key);
+  }
+  const scroll = [...document.querySelectorAll("*")]
+    .filter((e) => e.scrollTop || e.scrollLeft)
+    .map((e) => ({
+      id: e.id || null,
+      className: typeof e.className === "string" ? e.className : null,
+      top: e.scrollTop,
+      left: e.scrollLeft,
+    }))
+    .filter((s) => s.id || s.className)
+    .slice(0, 40);
+  const hovered = [...document.querySelectorAll("[data-lab-card]")].find(
+    (e) => e.matches(":hover") || e.hasAttribute("data-lab-hover"),
+  );
+  const selectedCard = document.querySelector(
+    "[data-lab-card][data-lab-selected]",
+  );
+  return {
+    render,
+    pane,
+    storage,
+    gamePath: location.pathname,
+    scroll,
+    windowScroll: { x: scrollX, y: scrollY },
+    camera:
+      window.__GOA2_LAB_BRIDGE__?.[
+        render === "3d" ? "camera3d" : "camera2d"
+      ]?.get(),
+    rotation: window.GOA2Mobile2D?.__labRotation?.get(),
+    inspection3d: window.__GOA2_LAB_BRIDGE__?.inspection3d?.get(),
+    inspectionScript: window.GOA2Mobile2D?.__labInspection?.get(),
+    inspectionMobile:
+      document.querySelector("[data-lab-mobile-inspection]:not([inert])")
+        ?.dataset.labMobileInspection || null,
+    inspectionMobileParent:
+      document.querySelector("[data-lab-mobile-inspection][inert]")?.dataset
+        .labMobileInspection ||
+      document.querySelector("[data-decision-inspection]")?.dataset
+        .decisionParent ||
+      null,
+    inspectionMobileContext: document.querySelector(
+      "[data-decision-inspection]",
+    )
+      ? "decision"
+      : null,
+    spellBrowserMobile: (() => {
+      const browser = document.querySelector("[data-lab-mobile-spells]");
+      return browser
+        ? {
+            heroId: browser.dataset.labMobileSpells,
+            selectedId: browser.dataset.labMobileSpellSelection || null,
+          }
+        : null;
+    })(),
+    inspectedCard: hovered?.dataset.labCard || null,
+    altHeld: !!window.__GOA2_LAB_ALT__,
+    selectedCard: selectedCard?.dataset.labCard || null,
+    focusedHeroMobile:
+      document.querySelector(
+        "[data-mobile-board-summary][data-focused] [data-mobile-hero]",
+      )?.dataset.mobileHero || null,
+    inspectedHero: window.__GOA2_LAB_INSPECTED_HERO__ || null,
+    deckOpen,
+  };
 }
 
 export async function showPane(page, pane, config) {

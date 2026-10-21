@@ -166,7 +166,7 @@ def create_app():
         except ValueError as error:
             raise HTTPException(400, str(error)) from error
 
-    def write(saved, name, *, provenance=None, presentations=None, situation_id=None):
+    def write(saved, name, *, provenance=None, presentations=None, situation_id=None, group=""):
         session, result = restore(saved)  # Fail before writing incompatible saves.
         ir = result.input_request if result else None
         situation = {
@@ -187,7 +187,10 @@ def create_app():
                 "responder": ir.player_id if ir else None,
             },
         }
-        return library.save(situation)
+        return library.save(situation, group=group)
+
+    from device_reports import install_device_reports
+    install_device_reports(app, checkpoint=checkpoint, write=write, root=root, now=real_time)
 
     @app.get("/__lab/health")
     def health():

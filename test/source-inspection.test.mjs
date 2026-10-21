@@ -246,6 +246,7 @@ test("desk exposes extraction modes and submits the selected pair without loadin
         ![
           "index.html",
           "desk.mjs",
+          "device-panel.mjs",
           "desk.css",
           "live.mjs",
           "native.mjs",

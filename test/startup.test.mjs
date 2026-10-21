@@ -1,4 +1,4 @@
-﻿import { test } from "node:test";
+import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import path from "node:path";
@@ -98,6 +98,7 @@ test("Stop desk is visible and usable on Compare while a load is busy", async ()
         ![
           "index.html",
           "desk.mjs",
+          "device-panel.mjs",
           "desk.css",
           "live.mjs",
           "native.mjs",

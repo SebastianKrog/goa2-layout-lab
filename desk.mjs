@@ -1,4 +1,5 @@
-﻿import http from "node:http";
+import http from "node:http";
+import { DeviceServer } from "./device-server.mjs";
 import fs from "node:fs/promises";
 import { existsSync } from "node:fs";
 import path from "node:path";
@@ -51,6 +52,7 @@ export async function startDesk({
       );
     return value;
   };
+  const devices = new DeviceServer(services, api);
   if (!["embedded", "browser", "windows"].includes(STARTUP.display))
     throw new Error("Choose --display=embedded, browser or windows.");
   const comparison = new Comparison(services, api, {
@@ -78,6 +80,7 @@ export async function startDesk({
     if (closing) return;
     closing = true;
     console.log("Stopping layout-lab windows and owned services...");
+    await devices.close().catch(console.error);
     await streams.close().catch(console.error);
     await comparison.close().catch(console.error);
     await services.close().catch(console.error);
@@ -105,6 +108,10 @@ export async function startDesk({
         ].includes(origin)
       )
         return send({ error: "Use the local comparison desk origin." }, 403);
+      if (req.method === "GET" && url.pathname === "/api/device/options")
+        return send(await devices.options(url.searchParams.get("situationId")));
+      if (req.method === "GET" && url.pathname === "/api/device/views")
+        return send(devices.status());
       if (req.method === "GET" && url.pathname === "/api/status")
         return send({
           ...comparison.status(),
@@ -210,6 +217,10 @@ export async function startDesk({
             await comparison.sync.queue;
             await streams.pause();
             switch (url.pathname) {
+              case "/api/device-open":
+                return await devices.open(body);
+              case "/api/device-stop":
+                return devices.stop(body.id);
               case "/api/load": {
                 const situation = await api(
                   `/situations/${encodeURIComponent(body.situationId || body.scenarioId || "")}`,
@@ -367,6 +378,8 @@ export async function startDesk({
           filename = path.join(TOOL, "public/native.mjs");
         else if (url.pathname === "/live.mjs")
           filename = path.join(TOOL, "public/live.mjs");
+        else if (url.pathname === "/device-panel.mjs")
+          filename = path.join(TOOL, "public/device-panel.mjs");
         else if (url.pathname === "/desk.mjs")
           filename = path.join(TOOL, "public/desk.mjs");
         else if (url.pathname === "/desk.css")
