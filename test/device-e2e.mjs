@@ -79,6 +79,9 @@ try {
   await phone
     .getByRole("dialog", { name: "Report an issue or idea" })
     .waitFor({ timeout: 60000 });
+  await phone
+    .getByAltText("Captured game screen without reporting controls")
+    .waitFor({ timeout: 60000 });
   const screenshot = await phone
     .getByAltText("Captured game screen without reporting controls")
     .getAttribute("src");

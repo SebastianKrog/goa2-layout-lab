@@ -18,8 +18,7 @@ presentation details are listed in `window.__GOA2_DEVICE_RESTORE_WARNINGS__`.
 
 The lab injects the floating **Report** userscript itself. No browser extension,
 frontend dependency, frontend source edit, or production backend change is needed.
-Tap it before writing your comment. It captures the game moment and screenshot
-before opening the form. Both the floating button and report dialog are excluded
+Tap it to open the form immediately and write while the screenshot is prepared. Both the floating button and report dialog are excluded
 from the screenshot. Save report stores:
 
 - `.layout-lab/situations/device-reports/<id>.json`: a validated, resumable lab
@@ -77,3 +76,5 @@ physical iOS/Android acceptance. Screenshot and checkpoint capture start togethe
 an incoming game update can fall between them.
 
 Device-report situation cards also offer **View report**, showing the full comment and screenshot together.
+
+Hold the Report button for about half a second, then drag it. A short vibration confirms move mode when the browser supports it. Its position is remembered. Close keeps the current form; Discard clears it for a new capture. Screenshot preparation yields regularly so typing stays responsive, shares repeated icon requests, and avoids encoding full-resolution offscreen card canvases.

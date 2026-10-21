@@ -1,3 +1,4 @@
+import { deviceImageBundle } from "./device-screenshot.mjs";
 import http from "node:http";
 import fs from "node:fs/promises";
 import path from "node:path";
@@ -257,6 +258,8 @@ export class DeviceServer {
         );
       if (url.pathname === "/__device/target.js")
         return send(200, session.targetScript || "", "text/javascript");
+      if (req.method === "GET" && url.pathname === "/__device/html-to-image.js")
+        return send(200, await deviceImageBundle(), "text/javascript");
       const files = {
         "/__device/report.js": "public/device-report.mjs",
         "/__device/html-to-image.js":
