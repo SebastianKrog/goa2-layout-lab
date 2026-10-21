@@ -189,3 +189,22 @@ tier-II upgrade example. Use it to compare the current one-at-a-time picker
 with the userscript tree and the future M6 staged UI. M5 adds batch adapters,
 not a new Commit interface. With the batch-capable backend, the scoped offer
 advertises one or three selections; the engine validates their ordered legality.
+
+
+## Upgrade item-history review
+
+[Arien - six pending upgrades for item history](cards/upgrades/batches/d296bd2e5d3d.json)
+starts before any upgrade is chosen, with six pending upgrades on the same full-map
+Arien/Wasp setup. It extends the three-upgrade example for comparing historical
+item awards after a later upgrade replaces an earlier tier-II card.
+
+Use single confirmations to observe the earlier choices before replacing them.
+The `test:mobile-upgrade-parity` compact item-history case uses four consecutive
+first-offered single choices on independent clones, then compares the Item marks
+in the upgrade trees. This saved starting point does not contain those later
+observations yet; batching past them is a different presentation history.
+
+The local draft and promoted library entry were reopened in Windows Chromium
+with native mobile and the userscript Target on Arien’s seat, with equal game
+hashes, the real upgrade prompt and no native render errors. Saved default slots
+also retain Base, newest Comparator/mobile and Target, all portrait 2D.

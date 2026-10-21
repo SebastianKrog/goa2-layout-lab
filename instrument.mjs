@@ -46,6 +46,18 @@ export function instrument(code, id) {
   if (normalized.endsWith("/mobile/MobileCardList.tsx")) {
     return code
       .replace(
+        '<button type="button" className={cardStyles.viewedSource} data-card-viewed={selectedId === card.id || undefined} aria-pressed={onSelect ? selectedId === card.id : undefined}',
+        '<button data-lab-card={card.id} data-lab-card-name={card.name} data-lab-selected={selectedId === card.id || undefined} data-lab-inspect-card={!onSelect ? card.id : undefined} type="button" className={cardStyles.viewedSource} data-card-viewed={selectedId === card.id || undefined} aria-pressed={onSelect ? selectedId === card.id : undefined}',
+      )
+      .replace(
+        '<button type="button" aria-pressed={onSelect ? selectedId === card.id : undefined}',
+        '<button data-lab-card={card.id} data-lab-card-name={card.name} data-lab-selected={selectedId === card.id || undefined} data-lab-inspect-card={!onSelect ? card.id : undefined} type="button" aria-pressed={onSelect ? selectedId === card.id : undefined}',
+      )
+      .replace(
+        "<button className={styles.inspectShortcut}",
+        "<button data-lab-inspect-card={card.id} className={styles.inspectShortcut}",
+      )
+      .replace(
         '<button type="button" aria-pressed={selectedId === card.id}',
         '<button data-lab-card={card.id} data-lab-card-name={card.name} data-lab-selected={selectedId === card.id || undefined} type="button" aria-pressed={selectedId === card.id}',
       )

@@ -176,7 +176,7 @@ try {
       );
       await unchanged(async () => {
         await current.page
-          .getByRole("button", { name: "Inspect Noble Blade", exact: true })
+          .getByRole("button", { name: "Noble Blade", exact: true })
           .tap();
         await current.page
           .getByRole("dialog", { name: "Inspect Noble Blade" })

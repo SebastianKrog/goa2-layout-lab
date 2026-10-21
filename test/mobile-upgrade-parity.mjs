@@ -1,4 +1,5 @@
-// Paired M6 presentation and printed-card state evidence; no decisions submitted.
+// Paired M6 presentation evidence. The separate item-history case advances
+// four single upgrades on isolated clones to observe earlier item awards.
 import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import { PNG } from "pngjs";
@@ -15,7 +16,7 @@ process.env.NODE_ENV = "production";
 process.env.WSLENV = [process.env.WSLENV, "NODE_ENV"].filter(Boolean).join(":");
 const { startDesk } = await import("../desk.mjs");
 const { captureReport } = await import("../report.mjs");
-const { DATA, TOOL } = await import("../config.mjs");
+const { DATA } = await import("../config.mjs");
 const desk = await startDesk({
   flags: new Set([
     "--headless",
@@ -222,23 +223,9 @@ try {
       );
     assert.deepEqual(c.windows[0].errors, []);
     if (profile === "compact") {
-      const fixture = JSON.parse(
-        await fs.readFile(
-          TOOL + "/situations/cards/upgrades/batches/3fd1f952c1a6.json",
-          "utf8",
-        ),
-      );
-      for (const key of ["id", "backend_revision", "saved_at", "summary"])
-        delete fixture[key];
-      fixture.name = "M6 visual review - observed upgrade item history";
-      fixture.checkpoint.state.pending_upgrades.hero_arien = 6;
-      // Import/clone restores the checkpoint through the real engine. Advance
-      // legacy single confirmations to observe T2 choices before T3 replaces one.
-      const saved = await c.api("/import", {
-        content: JSON.stringify(fixture),
-      });
+      // Reuse the normalized shared fixture; do not generate another local draft.
       await c.load(
-        saved.id,
+        "d296bd2e5d3d",
         [
           { source: "live", layout: "mobile" },
           { source: "target", layout: "desktop" },

@@ -225,6 +225,14 @@ try {
     }
   }
   console.log("PARITY OUTPUT:", out);
+} catch (error) {
+  for (const [i, w] of c.windows.entries()) {
+    console.error("ERROR", i, w.errors, w.assets);
+    await w.page
+      .screenshot({ path: out + "/failure-" + i + ".png" })
+      .catch(() => {});
+  }
+  throw error;
 } finally {
   await desk.close();
 }

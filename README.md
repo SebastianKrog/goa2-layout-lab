@@ -1,4 +1,4 @@
-﻿# GoA2 comparison desk
+# GoA2 comparison desk
 
 Play two or three independent copies of one saved situation inside the desk.
 Linux and macOS run the desk, Chromium, Vite and the isolated backend natively.
@@ -815,3 +815,28 @@ For focused reruns use `npm run test:mobile-upgrade-parity -- --profile=portrait
 (or `compact,landscape`). Each viewport also exports the standard combined-image,
 pixel-diff and overlay viewer report; its report metadata is saved in
 `<profile>-viewer.json`. `test:mobile-batches` accepts the same profile filter.
+
+### Shared card artwork and blur comparison
+
+`npm run test:mobile-card-visual` compares the live mobile renderers with the
+frozen baseline plus userscript in Windows Chromium. It opens independent clones
+of library situations for Arien Large upgrade/Deck readers, Small/Tiny Hand rows,
+Brogan history/Nano discards, and Gydion Large/Image public spells including
+rank IV as spectator. Use `-- --case=deck-large,spell-large --profile=portrait`
+for a focused rerun. Generic card Image rendering has no equivalent target mode;
+it is not presented as an equal-mode image comparison.
+
+Evidence is saved under `.layout-lab/reviews/cards-*`: viewport report links,
+per-card HTML/computed styles, artwork/mask/bar layers, and element crops. Hand,
+history and discard crops combine visible matches individually without resizing.
+The runner checks unchanged game hashes, native render errors and equal artwork
+filter/scale/mask/opacity for text cards. Large headers/footers must use 5px
+backdrop blur. No whole-document CSS is collected. The current crop helper cannot
+resolve some fixed target previews in landscape; the manifest records that gap
+and retains the full viewport report. Full images and reported source identities
+remain the evidence; passing sampled checks does not establish universal parity.
+Add `--selected` with `--case=deck-large,hand-small,spell-large` to compare the
+selected-source sheen. It verifies the reduced-motion gradient and deterministic
+1-second animation frames against Target, including 4s/4.2s timings and pointer
+pass-through, then captures the selected rows. History/Nano/upgrade cases are
+excluded in this mode.
