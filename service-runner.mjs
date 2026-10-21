@@ -71,6 +71,7 @@ if (action === "install") {
     commandArgs = [
       "run",
       "--locked",
+      "--no-default-groups",
       "python",
       "-m",
       "uvicorn",

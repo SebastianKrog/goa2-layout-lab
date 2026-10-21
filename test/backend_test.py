@@ -278,3 +278,69 @@ class SituationTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+    def test_device_bot_clone_drives_other_heroes_and_keeps_the_human_manual(self):
+        from device_bots import bot_kinds
+        if not bot_kinds():
+            self.skipTest("Bots checkout not selected")
+        source = self.post("/starter", {"name": "Bot planning test"})
+        original = source["checkpoint"]
+        for kind in ("random", "heuristic"):
+            specs = {hero: kind for hero in ("hero_hanu", "hero_brogan", "hero_tigerclaw")}
+            clone = self.post("/clone", {"situation_id": source["id"], "human_seat": "hero_arien", "bots": specs})
+            game = self.client.app.state.registry.get(clone["game_id"])
+            deadline = time.monotonic() + 10
+            while not set(specs).issubset(game.session.state.pending_inputs):
+                self.assertLess(time.monotonic(), deadline, "Other heroes did not commit")
+                time.sleep(0.02)
+            self.assertNotIn("hero_arien", game.session.state.pending_inputs)
+            self.assertEqual({h: spec.kind for h, spec in game.bot_specs.items()}, specs)
+            save = Path(os.environ["GOA2_SAVE_DIR"]) / f"{game.game_id}.json"
+            self.post("/device/stop", {"game_id": game.game_id})
+            self.assertTrue(game.removed)
+            self.assertTrue(game.bot_task is None or game.bot_task.done())
+            self.assertTrue(save.exists(), "Stopping keeps recovery saves")
+        unchanged = self.client.get(f"/__lab/situations/{source['id']}", headers=self.headers).json()
+        self.assertEqual(unchanged["checkpoint"], original)
+
+    def test_device_bot_choices_reject_human_unknown_heroes_and_search_agents(self):
+        source = self.post("/starter", {"name": "Bot validation test"})
+        for values in ({"hero_arien": "random"}, {"missing": "random"}, {"hero_hanu": "ismcts"}, []):
+            response = self.client.post("/__lab/clone", headers=self.headers, json={"situation_id": source["id"], "human_seat": "hero_arien", "bots": values})
+            self.assertEqual(response.status_code, 422, response.text)
+        with patch("device_bots.bot_kinds", return_value=[]):
+            response = self.client.post("/__lab/clone", headers=self.headers, json={"situation_id": source["id"], "human_seat": "hero_arien", "bots": {"hero_hanu": "random"}})
+            self.assertEqual(response.status_code, 422)
+            self.post("/clone", {"situation_id": source["id"]})
+
+    def test_timed_device_clone_readies_bots_and_waits_for_the_human(self):
+        from device_bots import bot_kinds
+        if not bot_kinds():
+            self.skipTest("Bots checkout not selected")
+        source = self.post("/starter", {"name": "Timed bots", "timed": True})
+        specs = {hero: "random" for hero in ("hero_hanu", "hero_brogan", "hero_tigerclaw")}
+        clone = self.post("/clone", {"situation_id": source["id"], "human_seat": "hero_arien", "bots": specs})
+        game = self.client.app.state.registry.get(clone["game_id"])
+        self.assertEqual(set(game.session.state.clock.ready_hero_ids), set(specs))
+        self.assertEqual(game.session.state.clock.status.value, "WAITING_FOR_PLAYERS")
+        self.assertFalse(game.session.state.pending_inputs)
+        self.post("/device/stop", {"game_id": game.game_id})
+
+
+    def test_reconnect_gets_initial_state_when_previous_transport_already_closed(self):
+        source = self.post("/starter", {"name": "Reconnect test"})
+        clone = self.post("/clone", {"situation_id": source["id"]})
+        game = self.client.app.state.registry.get(clone["game_id"])
+        token = clone["seats"]["hero_arien"]
+        address = f"/games/{game.game_id}/ws?token={token}"
+        with self.client.websocket_connect(address) as first:
+            self.assertEqual(first.receive_json()["type"], "STATE_UPDATE")
+            previous = game.ws_connections[token]
+        async def already_closed(message):
+            raise RuntimeError("Unexpected ASGI message 'websocket.close', after sending 'websocket.close' or response already completed.")
+        previous._send = already_closed
+        game.ws_connections[token] = previous
+        with self.client.websocket_connect(address) as replacement:
+            self.assertEqual(replacement.receive_json()["type"], "STATE_UPDATE")
+            self.assertIsNot(game.ws_connections[token], previous)

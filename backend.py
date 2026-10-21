@@ -13,6 +13,8 @@ import tempfile
 import time
 import uuid
 
+from device_bots import bot_kinds, clone_bot_specs, start_clone_bots, stop_clone_bots, cancel_bot_tasks
+
 FROZEN_MS = 1792238400000
 SCHEMA = 1
 
@@ -34,8 +36,9 @@ async def lab_lifespan(app):
     try:
         yield
     finally:
-        shutdown_heavy_pool()
+        await cancel_bot_tasks(registry)
         await stop_timers(registry)
+        shutdown_heavy_pool()
 
 
 def stable_state(value):
@@ -126,6 +129,9 @@ def restore(saved: dict):
 def create_app():
     # Only this dedicated process uses virtual wall time. asyncio's monotonic
     # clock remains real, keeping sockets and ordinary UI work responsive.
+    from device_transport import install_reconnect_compatibility
+
+    install_reconnect_compatibility()
     real_time = time.time
     time.time = lambda: FROZEN_MS / 1000
     time.time_ns = lambda: FROZEN_MS * 1_000_000
@@ -199,6 +205,7 @@ def create_app():
             "frozen_ms": FROZEN_MS,
             "schema": SCHEMA,
             "backend_revision": revision(),
+            "bot_kinds": bot_kinds(),
         }
 
     @app.get("/__lab/scenarios", include_in_schema=False)
@@ -371,7 +378,7 @@ def create_app():
             )
 
     @app.post("/__lab/clone")
-    def clone(body: dict):
+    async def clone(body: dict):
         try:
             situation = read(body.get("situation_id") or body.get("scenario_id"))
             session, result = restore(situation["checkpoint"])
@@ -380,8 +387,10 @@ def create_app():
                 422, f"Situation incompatible with this engine: {error}"
             ) from error
         heroes = [h.id for team in session.state.teams.values() for h in team.heroes]
+        specs = clone_bot_specs(body, session.state)
+        options = {"bot_specs": specs} if specs else {}
         game = app.state.registry.create_game(
-            session, heroes, hero_names=situation["checkpoint"].get("hero_names")
+            session, heroes, hero_names=situation["checkpoint"].get("hero_names"), **options
         )
         game.last_result = result
         records = situation["checkpoint"].get("replay_log")
@@ -392,6 +401,7 @@ def create_app():
             ]
             game.replay_recorder.restore_from_save(records)
         app.state.registry.save_game(game.game_id)
+        await start_clone_bots(game, app.state.registry)
         return {
             "game_id": game.game_id,
             "seats": game.hero_to_token,
@@ -400,6 +410,12 @@ def create_app():
             "presentations": situation.get("presentations", {}),
             "summary": situation["summary"],
         }
+
+    @app.post("/__lab/device/stop")
+    async def stop_device(body: dict):
+        game = app.state.registry.get(body["game_id"])
+        await stop_clone_bots(game)
+        return {"ok": True}
 
     @app.get("/__lab/games/{game_id}")
     async def inspect(game_id: str):

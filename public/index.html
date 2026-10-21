@@ -270,7 +270,27 @@
             <option value="3d">Desktop 3D</option>
           </select></label
         >
-        <label>Player<select id="deviceSeat"></select></label>
+        <label>Your hero<select id="deviceSeat"></select></label>
+        <fieldset id="deviceBots" hidden>
+          <legend>Other heroes</legend>
+          <label
+            >Set all others<select id="deviceBotPreset">
+              <option value="random">Random</option>
+              <option value="heuristic">Simple</option>
+              <option value="manual">Manual</option>
+              <option value="custom">Mixed</option>
+            </select></label
+          >
+          <p class="muted">
+            Random chooses legal actions at random. Simple uses basic rules.
+            Manual waits for a person.
+          </p>
+          <div id="deviceBotRows"></div>
+        </fieldset>
+        <p id="deviceBotsUnavailable" class="muted" hidden>
+          Bots are unavailable with this backend. See the device-testing guide
+          to enable the bots checkout.
+        </p>
         <label class="check"
           ><input id="deviceRestore" type="checkbox" checked />Restore saved
           presentation where supported</label
@@ -280,6 +300,7 @@
         </div>
       </form>
       <section id="deviceLink" hidden>
+        <p id="deviceRoster" class="muted"></p>
         <img
           id="deviceQR"
           alt="QR code to open this device view"

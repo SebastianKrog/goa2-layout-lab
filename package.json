@@ -37,7 +37,8 @@
     "test:mobile-upgrade-parity": "node test/mobile-upgrade-parity.mjs",
     "test:mobile-card-visual": "node test/card-visual-parity.mjs",
     "test:mobile-camera": "node test/mobile-camera.mjs",
-    "test:mobile-utilities": "node test/mobile-utilities.mjs"
+    "test:mobile-utilities": "node test/mobile-utilities.mjs",
+    "test:device-bots": "node test/device-bots-e2e.mjs"
   },
   "devDependencies": {
     "@electron/get": "5.1.0",

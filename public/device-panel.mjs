@@ -7,11 +7,22 @@ export function initDevicePanel({
 }) {
   const $ = (id) => document.getElementById(id);
   let situationId, activeId;
+  let seats = [],
+    botKinds = [];
+  const choices = new Map();
+  const names = { manual: "Manual", random: "Random", heuristic: "Simple" };
   function showLink(view) {
     activeId = view.id;
     $("deviceQR").src = view.qr;
     $("deviceURL").textContent = view.urls[0];
     $("deviceURL").href = view.urls[0];
+    $("deviceRoster").textContent = (view.roster || seats)
+      .filter((s) => s.id !== "spectator")
+      .map(
+        (s) =>
+          `${s.name}: ${s.id === view.config.seat ? "You" : names[view.bots?.[s.id] || "manual"]}`,
+      )
+      .join(" | ");
     $("deviceLink").hidden = false;
   }
   async function refresh() {
@@ -55,6 +66,44 @@ export function initDevicePanel({
     if (source === "target" && $("deviceLayout").value === "3d")
       $("deviceLayout").value = "2d";
   }
+  function renderBots() {
+    const human = $("deviceSeat").value;
+    const enabled = botKinds.length > 0 && human !== "spectator";
+    $("deviceBots").hidden = !enabled;
+    $("deviceBotsUnavailable").hidden = botKinds.length > 0;
+    $("deviceBotRows").replaceChildren(
+      ...seats
+        .filter((s) => s.id !== human && s.id !== "spectator")
+        .map((seat) => {
+          const row = document.createElement("label");
+          row.textContent = `${seat.name}${seat.team ? ` (${seat.team})` : ""}`;
+          const select = document.createElement("select");
+          select.dataset.botHero = seat.id;
+          for (const kind of ["manual", ...botKinds]) {
+            const option = document.createElement("option");
+            option.value = kind;
+            option.textContent = names[kind];
+            select.append(option);
+          }
+          const preset = $("deviceBotPreset").value;
+          select.value =
+            choices.get(seat.id) || (preset === "custom" ? "manual" : preset);
+          select.onchange = () => {
+            choices.set(seat.id, select.value);
+            $("deviceBotPreset").value = "custom";
+          };
+          row.append(select);
+          return row;
+        }),
+    );
+  }
+  $("deviceBotPreset").onchange = () => {
+    const kind = $("deviceBotPreset").value;
+    if (kind === "custom") return;
+    for (const seat of seats) choices.set(seat.id, kind);
+    renderBots();
+  };
+  $("deviceSeat").onchange = renderBots;
   $("deviceSource").onchange = constrain;
   $("deviceForm").onsubmit = (event) => {
     event.preventDefault();
@@ -62,7 +111,16 @@ export function initDevicePanel({
       "Starting device website…",
       async () => {
         const mode = $("deviceLayout").value;
+        const bots =
+          botKinds.length && $("deviceSeat").value !== "spectator"
+            ? Object.fromEntries(
+                [...$("deviceBotRows").querySelectorAll("select")]
+                  .filter((s) => s.value !== "manual")
+                  .map((s) => [s.dataset.botHero, s.value]),
+              )
+            : {};
         const view = await call("device-open", {
+          bots,
           situationId,
           restoreViews: $("deviceRestore").checked,
           slot: {
@@ -87,6 +145,11 @@ export function initDevicePanel({
       const options = await read(
         `/api/device/options?situationId=${encodeURIComponent(situationId)}`,
       );
+      seats = options.seats;
+      botKinds = (options.botKinds || []).filter((kind) =>
+        ["random", "heuristic"].includes(kind),
+      );
+      choices.clear();
       $("deviceSeat").replaceChildren(
         ...options.seats.map((seat) => {
           const option = document.createElement("option");
@@ -95,6 +158,7 @@ export function initDevicePanel({
           return option;
         }),
       );
+      renderBots();
       $("deviceLink").hidden = true;
       await refresh();
       constrain();

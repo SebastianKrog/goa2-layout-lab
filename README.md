@@ -884,3 +884,22 @@ screenshot without reporting controls, your comment, and a resumable situation
 back into the lab. Frontend and production backend code are untouched.
 See [device setup and reporting](docs/device-testing.md) for the private-LAN
 firewall helper, live updates, report locations and stop controls.
+
+### Play against Random or Simple bots
+
+Point `GOA2_LAB_BACKEND` in ignored `.env.layout-lab` at a backend checkout with
+bot support, such as `../goa2-backend-bots` on `bots-upstream`, and restart the lab
+when changing that setting. This is the `bots-upstream` branch of the backend
+fork, not a separate required GitHub repository. Serving omits development and
+training dependency groups.
+
+In **Open on device**, select **Your hero**, then set the **Other heroes** to
+**Random**, **Simple**, or individual choices. Choose **Live working tree** and
+**Mobile 2D** to test current phone edits, then **Start device website** and scan
+the QR. Bots control the other selected heroes on both teams; your hero stays
+manual. Timed situations may need your **Ready** confirmation, and lab clocks
+remain frozen. **Stop sharing** also stops that clone's bot workers.
+
+See [playing against bots](docs/device-testing.md#play-one-hero-with-bots) for
+configuration, reporting, API setup and verification. Agents should load
+[goa2-play-bots](agent/skills/goa2-play-bots/SKILL.md) for this workflow.

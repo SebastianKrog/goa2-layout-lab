@@ -123,6 +123,10 @@ saved situation. It returns a LAN link and locally generated QR code, without
 replacing comparison windows. The injected report userscript saves a screenshot,
 comment and resumable situation into the lab. See [device testing](../../../../docs/device-testing.md)
 for setup and limits. The private desk API exposes GET /api/device/options?situationId=ID,
-GET /api/device/views, POST /api/device-open {situationId,slot,restoreViews}, and
+GET /api/device/views, POST /api/device-open {situationId,slot,restoreViews,bots?}, and
 POST /api/device-stop {id}. Keep returned capability links private. A stopped desk
 revokes all links. No frontend or production-backend edits are required.
+
+For a playable human hero with Random/Simple opponents or teammates, use
+[goa2-play-bots](../../goa2-play-bots/SKILL.md). Its device clone can run alongside
+the comparison; automation belongs to that clone only.

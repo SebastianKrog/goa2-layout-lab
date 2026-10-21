@@ -8,10 +8,11 @@ Load the appropriate SKILL.md explicitly from this checkout; agent/skills/ is th
 
 | Task | Skill |
 | --- | --- |
+| Play one hero against Random/Simple bots on a phone or another device | [goa2-play-bots](agent/skills/goa2-play-bots/SKILL.md) |
 | Create, adapt, verify or organize a saved UI situation | [goa2-ui-situations](agent/skills/goa2-ui-situations/SKILL.md) |
 | Compare revisions, create combined images/diffs/reports, or prepare a human viewer | [goa2-compare-views](agent/skills/goa2-compare-views/SKILL.md) |
 
-The skills and their linked references own the workflow details. Use their instructions and bundled helpers rather than duplicating launch, API, capture or situation recipes here. For a task spanning both, prepare the situation first and pass it to the comparison workflow.
+The skills and their linked references own the workflow details. Use their instructions and bundled helpers rather than duplicating launch, API, capture or situation recipes here. When a play or comparison task needs a new situation, prepare the situation first and pass it to that workflow.
 
 These repository copies are the versioned source for lab work. Edit them here when the tool changes; personally installed copies may lag. Resolve helper paths relative to the selected skill directory rather than assuming a user-specific installation path.
 

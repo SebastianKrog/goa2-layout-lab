@@ -18,8 +18,11 @@ presentation details are listed in `window.__GOA2_DEVICE_RESTORE_WARNINGS__`.
 
 The lab injects the floating **Report** userscript itself. No browser extension,
 frontend dependency, frontend source edit, or production backend change is needed.
-Tap it to open the form immediately and write while the screenshot is prepared. Both the floating button and report dialog are excluded
-from the screenshot. Save report stores:
+Tap it to open the form immediately and write while the screenshot is prepared.
+Both the floating button and report dialog are excluded from the screenshot.
+Hold the button for about half a second, then drag it; a short vibration confirms
+move mode when supported. Its position is remembered. **Close** keeps the current
+form; **Discard** clears it for a new capture. Save report stores:
 
 - `.layout-lab/situations/device-reports/<id>.json`: a validated, resumable lab
   situation, with the reporting seat and captured presentation.
@@ -36,6 +39,90 @@ Use **Stop sharing** in the dialog to revoke a link and close its WebSockets.
 Closing the dialog leaves the website running; stopping the lab stops all device
 views. Opening another device link in the same browser profile replaces that
 profile's selected device view. Use another browser/profile for independent tabs.
+
+## Play one hero with bots
+
+Use a backend checkout on the
+[`bots-upstream` branch](https://github.com/SebastianKrog/goa2-backend/tree/bots-upstream)
+of the backend fork. The folder name below is a local checkout convention; a
+separate `goa2-backend-bots` GitHub repository is not required. In the lab's ignored
+`.env.layout-lab`, select it with:
+
+```dotenv
+GOA2_LAB_BACKEND=../goa2-backend-bots
+```
+
+Restart the lab after changing the backend path. Preserve any ongoing human games
+before restarting; an already configured running desk can be reused directly.
+This is a lab configuration change; the backend and frontend repositories need
+no edits. Runtime startup omits development/training dependency
+groups, so it does not install neural-network packages.
+
+Open any saved situation with **Open on device**. For current phone edits,
+choose **Live working tree** and **Mobile 2D**. Choose **Your hero**, then use
+**Set all others** to select **Random**, **Simple** or **Manual**, or choose each
+other hero's controller individually. Individual differences show **Mixed**.
+Random picks legal actions; Simple uses the fork's basic heuristic policy.
+Configure both teammates and opponents when playing alone;
+a Manual hero can leave the game waiting for another human. Your chosen hero
+always remains human-controlled.
+Bots are unavailable when watching as Spectator. A backend without bot support
+keeps the ordinary manual device flow and shows an availability message.
+
+Press **Start device website** and scan its QR code. Bots play the independent
+clone until a human decision is needed, including upgrades and rune choices.
+Timed situations still need the human's Ready confirmation; bots ready themselves.
+The lab's usual frozen clocks remain in effect, so this does not verify production
+timeouts. A lab-only transport shim tolerates already-closed sockets during rapid
+device reconnects; backend source is unchanged.
+
+**Stop sharing** also stops that device game's bot workers while retaining its
+local recovery save. Reports record which bots were selected as provenance, and
+the saved source situation itself stays unchanged. Reopening a report/saved
+situation does not automatically restart those bots; select controllers again.
+
+Agents should use the versioned [goa2-play-bots skill](../agent/skills/goa2-play-bots/SKILL.md)
+for setup and handoff.
+
+### Desk API
+
+Use the localhost desk origin (default `http://127.0.0.1:3200`) for orchestration.
+These endpoints work alongside comparison windows and existing device sessions:
+
+- `GET /api/device/options?situationId=<id>` returns actual hero IDs in `seats`
+  and supported policies in `botKinds` (`random`, `heuristic`, or empty if absent).
+- `GET /api/device/views` lists active shares; avoid creating duplicates when a
+  suitable session is already running.
+- `POST /api/device-open` creates an independent clone and returns its link/QR
+  metadata. Use real situation and hero IDs from the selected situation.
+- `POST /api/device-stop` with `{"id":"<returned-device-id>"}` revokes a share
+  and cancels its bot workers.
+
+Example request body for a supported mobile frontend:
+
+```json
+{
+  "situationId": "<saved-situation-id>",
+  "restoreViews": true,
+  "slot": {
+    "source": "live",
+    "seat": "<human-hero-id>",
+    "render": "2d",
+    "layout": "mobile",
+    "profile": "portrait"
+  },
+  "bots": {
+    "<other-hero-id>": "random",
+    "<another-hero-id>": "heuristic"
+  }
+}
+```
+
+**Simple** is `heuristic` in the API. Omit Manual heroes and the human seat from
+`bots`; do not send `manual` as a policy. Spectator plus bots is rejected. To play
+alone, include every other hero. No private lab/backend credential extraction is
+needed; call the desk rather than private clone endpoints. Treat the returned
+LAN URL as a temporary player capability, not a permanent join link.
 
 ## LAN setup
 
@@ -75,6 +162,25 @@ It leaves one device link ready and writes evidence under
 physical iOS/Android acceptance. Screenshot and checkpoint capture start together;
 an incoming game update can fall between them.
 
-Device-report situation cards also offer **View report**, showing the full comment and screenshot together.
+Device-report situation cards also offer **View report**, showing the full
+comment and screenshot together. Screenshot preparation yields regularly so typing
+stays responsive, shares repeated icon requests, and avoids encoding
+full-resolution offscreen card canvases.
 
-Hold the Report button for about half a second, then drag it. A short vibration confirms move mode when the browser supports it. Its position is remembered. Close keeps the current form; Discard clears it for a new capture. Screenshot preparation yields regularly so typing stays responsive, shares repeated icon requests, and avoids encoding full-resolution offscreen card canvases.
+For bot integration acceptance, run against an owned running test desk:
+
+```powershell
+npm run test:device-bots -- --env-file=.env.layout-lab
+```
+
+This exercises Random and Simple through the real device dialog, gateway and
+phone-sized Chromium. It submits QA human moves to check progression, stops its
+test clones, and leaves a fresh Random game ready. Evidence, including a local QR,
+is written under `.layout-lab/reviews/device-bots/`. This runner is for verifying
+the feature; ordinary play should use **Open on device** directly.
+
+The integration was checked with both policies committing the three other heroes,
+then advancing a real human card commit into resolution. The focused lab tests
+also cover human-seat exclusion, invalid controllers, unsupported backends, timed
+Ready handling, stopping workers while retaining recovery, and reconnects. This
+coverage does not establish full-match, every-hero or physical-phone acceptance.

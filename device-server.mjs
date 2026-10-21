@@ -73,12 +73,15 @@ export class DeviceServer {
       undefined,
       "GET",
     );
+    const health = await this.api("/health", undefined, "GET");
     return {
+      botKinds: health.bot_kinds || [],
       seats: [
         ...Object.values(situation.checkpoint.state.teams).flatMap((t) =>
           t.heroes.map((h) => ({
             id: h.id,
             name: situation.checkpoint.hero_names?.[h.id] || h.name || h.id,
+            team: t.color || h.team || "",
           })),
         ),
         { id: "spectator", name: "Spectator" },
@@ -95,6 +98,23 @@ export class DeviceServer {
     );
     const [slot] = validateSlots([body.slot, body.slot]);
     const [config] = slotsForSituation([slot, slot], situation);
+    const bots = body.bots ?? {};
+    const heroes = Object.values(situation.checkpoint.state.teams).flatMap(
+      (t) => t.heroes.map((h) => h.id),
+    );
+    if (
+      !bots ||
+      typeof bots !== "object" ||
+      Array.isArray(bots) ||
+      Object.entries(bots).some(
+        ([id, kind]) =>
+          !heroes.includes(id) ||
+          id === config.seat ||
+          !["random", "heuristic"].includes(kind),
+      ) ||
+      (Object.keys(bots).length && !heroes.includes(config.seat))
+    )
+      throw Error("Choose Random or Simple for other heroes only.");
     const savedSlots = situation.provenance?.slots || [];
     let sourceIndex = savedSlots.findIndex(
       (s) =>
@@ -119,8 +139,12 @@ export class DeviceServer {
       config.source === "target"
         ? instrumentScript((await this.services.script()).content)
         : null;
-    const clone = await this.api("/clone", { situation_id: situation.id });
     await this.listen();
+    const clone = await this.api("/clone", {
+      situation_id: situation.id,
+      human_seat: config.seat,
+      bots,
+    });
     const secret = randomBytes(32).toString("hex");
     const session = {
       secret,
@@ -129,6 +153,13 @@ export class DeviceServer {
       name: situation.name,
       config,
       presentation,
+      bots,
+      roster: Object.values(situation.checkpoint.state.teams).flatMap((t) =>
+        t.heroes.map((h) => ({
+          id: h.id,
+          name: situation.checkpoint.hero_names?.[h.id] || h.name || h.id,
+        })),
+      ),
       clone,
       port,
       targetScript,
@@ -151,6 +182,8 @@ export class DeviceServer {
       id: session.id,
       name: session.name,
       config: session.config,
+      bots: session.bots,
+      roster: session.roster,
       urls,
       qr: session.qr,
       localURL: `http://localhost:${this.port}/device/${session.secret}`,
@@ -159,11 +192,13 @@ export class DeviceServer {
   status() {
     return [...this.sessions.values()].map((s) => this.describe(s));
   }
-  stop(id) {
+  async stop(id) {
     const session = [...this.sessions.values()].find((s) => s.id === id);
     if (!session) throw Error("Device view not found.");
     this.sessions.delete(session.secret);
     for (const socket of session.sockets) socket.destroy();
+    if (Object.keys(session.bots).length)
+      await this.api("/device/stop", { game_id: session.clone.game_id });
     return { ok: true };
   }
   session(req) {
@@ -301,6 +336,7 @@ export class DeviceServer {
             viewport: body.viewport,
             provenance: {
               source_situation: session.situationId,
+              bots: session.bots,
               slots: [session.config, comparisonSlot],
               frontend_revision:
                 session.config.source === "live"
@@ -426,7 +462,9 @@ export class DeviceServer {
     request.end();
   }
   async close() {
-    this.sessions.clear();
+    await Promise.allSettled(
+      [...this.sessions.values()].map((s) => this.stop(s.id)),
+    );
     for (const socket of this.sockets) socket.destroy();
     if (this.server) await new Promise((resolve) => this.server.close(resolve));
   }
