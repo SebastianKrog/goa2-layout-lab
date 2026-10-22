@@ -90,7 +90,7 @@ export class NativeView {
   }
   destroy() {
     this.observer.disconnect();
-    views.delete(this.id);
+    if (views.get(this.id) === this) views.delete(this.id);
     schedule();
   }
 }

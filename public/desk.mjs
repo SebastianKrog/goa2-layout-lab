@@ -1,3 +1,4 @@
+import { initElementReportPanel } from "./element-report-panel.mjs";
 import { initDevicePanel } from "./device-panel.mjs";
 import { LiveView } from "./live.mjs";
 import { NativeView } from "./native.mjs";
@@ -43,6 +44,11 @@ let currentPage = "compare",
   expandedIndex = null;
 let editing = null,
   editDraft,
+  creating = false,
+  draftIndex = null,
+  inheritIndex = 0,
+  focusedIndex = 0,
+  editorCommitted = false,
   lastWindowKey = "",
   toastTimer;
 const excluded = new Set(),
@@ -65,7 +71,14 @@ const configKey = (c) =>
     Object.entries(c.bots || {}).sort(([a], [b]) => a.localeCompare(b)),
   ]);
 const viewKey = (w) =>
-  w ? w.gameId + configKey(w.config) + !!w.closed + (w.nativeId || "") : "";
+  w
+    ? (w.nativeId ? "native" : w.index) +
+      ":" +
+      w.gameId +
+      configKey(w.config) +
+      !!w.closed +
+      (w.nativeId || "")
+    : "";
 const active = (i) => state.windows?.[i];
 const matching = (i) =>
   active(i) && configKey(active(i).config) === configKey(configs[i]);
@@ -137,7 +150,7 @@ function controls() {
   document.body.classList.toggle("busy", running || !!state.busy);
   document
     .querySelectorAll(
-      "button:not(.nav-item):not([data-close]):not(#stop), select, input",
+      "button:not(.nav-item):not([data-close]):not(#stop):not(#elementReportSend), select, input",
     )
     .forEach((b) => (b.disabled = !!busy));
   for (const live of liveViews.values()) live.pause(!!busy);
@@ -164,6 +177,13 @@ function controls() {
   $("synchronize").title = independent
     ? "Synchronization requires at least two manual views."
     : "";
+  $("editor")
+    .querySelectorAll("[data-close]")
+    .forEach((b) => {
+      b.disabled = !!busy;
+    });
+  $("addView").disabled = !!busy || configs.length >= 3;
+  $("addView").title = configs.length >= 3 ? "Up to three views" : "Add a view";
   $("restore").disabled = !!busy || !hasSavedViewSetup();
   $("savedViewHelp").textContent = hasSavedViewSetup()
     ? "Restores saved views, players, screens, cameras and panels. Off keeps your setup. The game moment always loads."
@@ -289,11 +309,7 @@ function button(text, fn, cls = "") {
 }
 function render() {
   while (configs.length < Number($("count").value))
-    configs.push(
-      structuredClone(
-        configs.at(-1) || catalog.presets["Layout regression"][0],
-      ),
-    );
+    configs.push(structuredClone(configs.at(-1) || catalog.presets.Current[0]));
   configs.length = Number($("count").value);
   const preset = Object.entries(catalog.presets).find(
     ([, slots]) =>
@@ -312,6 +328,9 @@ function render() {
         letter = String.fromCharCode(65 + i),
         card = el("article", "slot");
       card.dataset.index = i;
+      card.onpointerdown = () => {
+        focusedIndex = i;
+      };
       const header = el("div", "slot-header");
       header.append(el("span", "view-letter", letter));
       const heading = el("div");
@@ -360,12 +379,27 @@ function render() {
         const empty = el(
           "div",
           "live-stage empty-view",
-          w?.closed ? "View closed" : "Load comparison to open this view",
+          w?.closed ? "View closed" : "Choose a situation and start this view",
         );
+        empty.append(button("Start", () => openEditor(i)));
         card.append(empty);
       }
       const actions = el("div", "slot-footer");
       actions.append(button("Edit view", () => openEditor(i)));
+      if (w)
+        actions.append(
+          button("Remove", () =>
+            task("Removing view...", async () => {
+              await call("views/remove", { index: i });
+              configs.splice(i, 1);
+              if (!configs.length)
+                configs = structuredClone(catalog.presets.Current);
+              $("count").value = configs.length;
+              expandedIndex = null;
+              excluded.clear();
+            }),
+          ),
+        );
       card.classList.toggle("expanded", expandedIndex === i);
       const expand = button(
         w?.closed ? "Reopen" : expandedIndex === i ? "Collapse" : "Expand",
@@ -446,6 +480,16 @@ function field(host, labelText, key, values) {
     if (["source", "render", "layout"].includes(key)) {
       normalizeDraft();
       editorFields();
+      fill(
+        $("viewPresentation"),
+        [
+          ["", "Keep current / inherit presentation"],
+          ...(catalog.presentations || [])
+            .filter((p) => p.render === editDraft.render)
+            .map((p) => [p.id, p.name]),
+        ],
+        "",
+      );
     }
   };
   input.oninput = () => {
@@ -546,31 +590,43 @@ $("viewBotPreset").onchange = () => {
   editorBots();
 };
 async function openEditor(i) {
-  try {
-    const situationId = draftSetup
-      ? $("situation").value
-      : state.situationId || $("situation").value;
-    const options = await read(
-      `/api/device/options?situationId=${encodeURIComponent(situationId)}`,
-    );
-    editorSeats = options.seats
-      .filter((s) => s.id !== "spectator")
-      .map((s) => s.id);
-    editorBotKinds = (options.botKinds || []).filter((k) =>
-      ["random", "heuristic", "ismcts"].includes(k),
-    );
-  } catch (error) {
-    showError(error);
-    return;
-  }
   editing = i;
+  creating = !active(i);
+  editorCommitted = false;
   editDraft = structuredClone(configs[i]);
+  const parent = active(creating ? inheritIndex : i);
+  const entries = catalog.situations.map((s) => [s.id, s.name]);
+  if (parent)
+    entries.unshift([
+      "__current",
+      creating
+        ? `Current state of view ${String.fromCharCode(65 + inheritIndex)}`
+        : "Keep current game state",
+    ]);
+  fill(
+    $("viewSituation"),
+    entries,
+    parent ? "__current" : $("situation").value,
+  );
+  if (!(await updateEditorRoster())) return;
+  editing = i;
   if (editDraft.seat !== "spectator" && !editorSeats.includes(editDraft.seat))
     editDraft.seat = editorSeats[0];
   $("editorEyebrow").textContent = `VIEW ${String.fromCharCode(65 + i)}`;
   $("editorTitle").textContent =
     configs[i].label || sourceNames[configs[i].source];
+  fill(
+    $("viewPresentation"),
+    [
+      ["", "Keep current / inherit presentation"],
+      ...(catalog.presentations || [])
+        .filter((p) => p.render === editDraft.render)
+        .map((p) => [p.id, p.name]),
+    ],
+    "",
+  );
   editorFields();
+  $("editorSubmit").textContent = creating ? "Start" : "Save";
   $("viewAutoSwitch").checked = !!editDraft.autoSwitch;
   editorBots();
   const tools = $("editorTools");
@@ -639,20 +695,94 @@ async function openEditor(i) {
   $("editor").showModal();
   controls();
 }
+async function updateEditorRoster() {
+  try {
+    const selected = $("viewSituation").value;
+    const parent = active(creating ? inheritIndex : editing);
+    const situationId =
+      selected === "__current"
+        ? parent?.situationId || state.situationId
+        : selected;
+    const options = await read(
+      `/api/device/options?situationId=${encodeURIComponent(situationId || "")}`,
+    );
+    editorSeats =
+      selected === "__current" && parent
+        ? parent.seats
+        : options.seats.filter((s) => s.id !== "spectator").map((s) => s.id);
+    editorBotKinds = (options.botKinds || []).filter((k) =>
+      ["random", "heuristic", "ismcts"].includes(k),
+    );
+    if (editDraft.seat !== "spectator" && !editorSeats.includes(editDraft.seat))
+      editDraft.seat = editorSeats[0];
+    editDraft.bots = Object.fromEntries(
+      Object.entries(editDraft.bots || {}).filter(([id]) =>
+        editorSeats.includes(id),
+      ),
+    );
+    return true;
+  } catch (error) {
+    showError(error);
+    return false;
+  }
+}
+$("viewSituation").onchange = async () => {
+  if (await updateEditorRoster()) {
+    editorFields();
+    editorBots();
+  }
+};
+$("addView").onclick = async () => {
+  if (configs.length >= 3) return;
+  inheritIndex = active(focusedIndex) ? focusedIndex : 0;
+  draftIndex = configs.length;
+  configs.push(
+    structuredClone(configs[inheritIndex] || catalog.presets.Current[0]),
+  );
+  $("count").value = configs.length;
+  expandedIndex = null;
+  render();
+  await openEditor(draftIndex);
+  if (!$("editor").open) cancelViewDraft();
+};
+function cancelViewDraft() {
+  if (draftIndex !== null) {
+    configs.splice(draftIndex, 1);
+    $("count").value = configs.length;
+    draftIndex = null;
+    render();
+  }
+}
+$("editor").addEventListener("cancel", (event) => {
+  if (running || state.busy) event.preventDefault();
+});
+$("editor").addEventListener("close", () => {
+  if (!editorCommitted) cancelViewDraft();
+});
 $("editorForm").onsubmit = (event) => {
   event.preventDefault();
-  const i = editing,
-    update = { ...editDraft, autoSwitch: $("viewAutoSwitch").checked };
-  $("editor").close();
-  if (active(i) && !draftSetup)
-    void task("Updating view…", () => call("configure", { index: i, update }));
-  else {
-    configs[i] = update;
-    draftSetup = true;
-    $("restore").checked = false;
-    render();
-    notify("Setup changed. Load to apply.");
-  }
+  const i = editing;
+  const update = { ...editDraft, autoSwitch: $("viewAutoSwitch").checked };
+  const selected = $("viewSituation").value;
+  void task(creating ? "Starting view..." : "Saving view...", async () => {
+    if (creating || selected !== "__current") {
+      await call("views/add", {
+        config: update,
+        ...(selected === "__current"
+          ? { fromIndex: inheritIndex }
+          : { situationId: selected }),
+        ...(!creating ? { index: i } : {}),
+      });
+    } else await call("configure", { index: i, update });
+    if ($("viewPresentation").value)
+      await call("presentation/apply", {
+        index: i,
+        id: $("viewPresentation").value,
+      });
+    editorCommitted = true;
+    draftIndex = null;
+    $("editor").close();
+  });
 };
 let organizing = null;
 function organizeSituation(situation, promote = false) {
@@ -733,7 +863,11 @@ function renderLibrary() {
     );
     const exportLink = el("a", "", "Export");
     exportLink.href = "/export/" + s.id;
-    if (/^device\/[a-f0-9]{12}$/.test(s.provenance?.report || "")) {
+    if (
+      /^(?:device\/[a-f0-9]{12}|element-[a-f0-9-]{36})$/.test(
+        s.provenance?.report || "",
+      )
+    ) {
       const reportLink = el("a", "", "View report");
       reportLink.href = "/reports/" + s.provenance.report + "/index.html";
       reportLink.target = "_blank";
@@ -751,7 +885,7 @@ function renderLibrary() {
     card.append(
       button("Open situation", () => {
         $("situation").value = s.id;
-        $("restore").checked = !!Object.keys(s.presentations || {}).length;
+        $("restore").checked = false;
         navigate("compare");
         void loadComparison();
       }),
@@ -889,7 +1023,7 @@ async function refreshConnection() {
     if (!initialized) {
       if (state.windows?.length && !state.busy) syncViews();
       else {
-        $("preset").value = catalog.settings?.preset || "Mobile migration";
+        $("preset").value = "Current";
         setPreset();
         draftSetup = false;
       }
@@ -932,7 +1066,7 @@ $("count").onchange = () => {
 $("situation").onchange = () => {
   draftSetup = $("situation").value !== state.situationId;
   updateStatus();
-  $("restore").checked = hasSavedViewSetup();
+  $("restore").checked = false;
   controls();
 };
 $("load").onclick = loadComparison;
@@ -960,10 +1094,20 @@ $("saveForm").onsubmit = (event) => {
   const index = Number($("saveFrom").value);
   $("saveDialog").close();
   void task("Saving situation…", async () => {
+    if ($("saveKind").value === "presentation") {
+      await call("presentation/save", { name, index });
+      notify("Presentation saved separately.");
+      return;
+    }
+    if ($("saveKind").value === "setup") {
+      await call("preset", { name, slots: configs });
+      notify("View setup saved in comparison tools.");
+      return;
+    }
     const s = await call("save", { name, index });
     await reloadCatalog();
     $("situation").value = s.id;
-    $("restore").checked = true;
+    $("restore").checked = false;
     notify("Situation saved.");
   });
 };
@@ -1167,3 +1311,5 @@ document.addEventListener(
 );
 
 openDevice = initDevicePanel({ selectedSituation, task, call, read, notify });
+
+initElementReportPanel({ read, call, notify, onSaved: reloadCatalog });

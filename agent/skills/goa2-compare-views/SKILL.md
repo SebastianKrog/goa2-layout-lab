@@ -7,6 +7,10 @@ description: Compare two GoA2 frontend commits in goa2-layout-lab, optionally wi
 
 Produce a comparison tied to exact frontend revisions and one reproducible situation. The requested result may be viewport/element images, HTML/CSS inspection, a static overlay/diff viewer, or a live desk left ready for a human. Choose the result the user asked for; use the native live viewer for animation and interaction review.
 
+## State boundaries and current desk
+
+Follow [the canonical terminology](../../../docs/terminology.md): Situation = game checkpoint; View = playable panel; Viewpoint = player/spectator seat; Presentation = UI-only state; View setup = source/device/layout/controllers. New Situation saves contain game state only. Save a Presentation separately when a menu or highlighted card must reopen. Older bundled fixtures require explicit `restoreViews:true`; do not silently restore their source/view settings. The empty desk defaults to one Live working tree view. Use its Start overlay and the right-hand Add view rail; new views inherit current progress without resetting existing views.
+
 ## Establish the comparison
 
 Locate goa2-layout-lab and the configured frontend/backend/userscript checkouts. Read the lab README and current config/API before applying these instructions to changed versions. Resolve requested frontend refs to full Git SHAs locally. Base is commit A, Comparator is commit B; optional Target is commit A plus the pinned userscript revision. The target is not the userscript applied to B. A live working tree is a separate mode and is not immutable commit evidence.
@@ -77,6 +81,16 @@ matches, unlike visible-only screenshot cropping. Inspect the outputs and source
 identity before drawing conclusions. Use a crop alongside the source export to
 show the actual result; HTML/CSS extraction does not render an isolated element,
 replay interactions, or capture canvas/WebGL pixels.
+
+## Report an element interactively
+
+For a user's div-level issue report, use **Report an element**, which activates
+all views, then click the glowing div and comment. It supports one to three
+views and captures cropped pixels, outer HTML, computed/matched CSS, per-view
+situations and revision metadata. Read [element reporting](../../../docs/element-reporting.md)
+for the draft/send APIs and matching limits. Capture occurs on selection;
+missing/ambiguous counterparts and changing game states must remain explicit.
+This is separate from the paired HTML/CSS extraction command's two-view limit.
 
 ## Leave a human viewer ready
 

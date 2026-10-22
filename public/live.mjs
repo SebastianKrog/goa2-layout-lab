@@ -152,7 +152,7 @@ export class LiveView {
         c.setPointerCapture(e.pointerId);
       }
       const p = point(e);
-      if (this.touch) {
+      if (this.touch && !document.body.classList.contains("report-selecting")) {
         if (
           event === "down" ||
           (event === "move" && this.points.has(e.pointerId))

@@ -46,7 +46,7 @@ export function launchSettings(
   }
   if (new Set(Object.values(ports)).size !== Object.keys(ports).length)
     throw new Error("Comparison service ports must be different.");
-  const preset = value("preset", "GOA2_LAB_PRESET", "mobile");
+  const preset = value("preset", "GOA2_LAB_PRESET", "current");
   const situationArg = args.find((arg) => arg.startsWith("--situation="));
   const situationId =
     situationArg === undefined
@@ -64,6 +64,7 @@ export function launchSettings(
     ),
     preset:
       {
+        current: "Current",
         mobile: "Mobile migration",
         "desktop-2d": "Layout regression",
         "desktop-3d": "3D regression",
@@ -109,6 +110,7 @@ const slot = (source, profile, render, layout = "desktop") => ({
   seat: "hero_arien",
 });
 export const PRESETS = {
+  Current: [slot("live", "desktop", "2d")],
   "Play solo": [slot("live", "portrait", "2d", "mobile")],
   "Mobile migration": [
     slot("base", "portrait", "2d"),
@@ -133,7 +135,7 @@ export function validateSlots(slots) {
       s.label !== undefined &&
       (typeof s.label !== "string" || s.label.length > 80)
     )
-      throw new Error("Viewpoint names must be at most 80 characters.");
+      throw new Error("View names must be at most 80 characters.");
     if (!["base", "comparator", "target", "live"].includes(s.source))
       throw new Error("Unknown frontend source.");
     if (!PROFILES[s.profile]) throw new Error("Unknown device profile.");

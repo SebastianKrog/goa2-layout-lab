@@ -7,6 +7,10 @@ description: Set up GoA2 layout-lab play with one human hero and Random, Simple 
 
 Leave playable independent lab clones ready for the human, with the requested hero and bot controllers. Keep orchestration and reporting in goa2-layout-lab.
 
+## State boundaries and current desk
+
+Follow [the canonical terminology](../../../docs/terminology.md): Situation = game checkpoint; View = playable panel; Viewpoint = player/spectator seat; Presentation = UI-only state; View setup = source/device/layout/controllers. New Situation saves contain game state only. Save a Presentation separately when a menu or highlighted card must reopen. Older bundled fixtures require explicit `restoreViews:true`; do not silently restore their source/view settings. The empty desk defaults to one Live working tree view. Use its Start overlay and the right-hand Add view rail; new views inherit current progress without resetting existing views.
+
 ## Prepare the lab
 
 Locate the lab checkout and read its [README](../../../README.md) and [device workflow](../../../docs/device-testing.md). Resolve these links from this versioned skill directory. Check current configuration and running desk before starting another instance; retain existing device sessions and comparison views.

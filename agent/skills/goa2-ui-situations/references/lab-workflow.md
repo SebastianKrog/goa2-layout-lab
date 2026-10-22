@@ -137,7 +137,7 @@ await request("synchronize", { mode: "none" });
 
 The fixed starter route is POST /api/starter. Replay import uses POST /api/import with kind:"replay", the JSONL content and decision:N; N applies exactly N recorded decisions. Do not invent a POST /api/fabricate or /api/set-state route; neither exists.
 
-A load with restoreViews:true may restore provenance.slots and presentations from the saved situation instead of the supplied slots. Use false when initially building a different slot set. Save the resulting situation again to persist its new slots and presentations.
+A load with restoreViews:true may restore provenance.slots and presentations from the saved situation instead of the supplied slots. Use false for normal loads and when building a different view setup. Save the game checkpoint, Presentation and View setup separately; true is only for explicitly reproducing historical bundles.
 
 ## Presentation and saving
 
@@ -146,7 +146,7 @@ A load with restoreViews:true may restore provenance.slots and presentations fro
 - POST /api/hero: {index,heroId}. The current 3D adapter opens bridge-based hero inspection. The 2D adapter scrolls to the instrumented hero and records focus; it does not itself open the Heroes menu or a hero tooltip. Use /api/pane with pane:"heroes" or the actual UI for that menu.
 - For local selection, wait for the requested panel and visible card control, then use the actual control or restorePresentation(page,{render:"2d",pane:"hand",selectedCard:"noble_blade"},slot). This is a JavaScript module adapter, not a public HTTP endpoint. The current adapter waits for native mobile navigation to mount and the card to become visible; check its returned warnings. Confirm capturePresentation().selectedCard after saving and reopening. In planning, a selected card is not yet committed. For pending choices, clicking a card can immediately submit it: do not use generic clicks to manufacture a highlight before saving.
 - GET /api/views reports config, presentation, canonical state hash, decision summary and userscript activation. It does not expose all choice options; inspect the owning page's actual __GOA2_LAB_STATE__ or the restored factory result when needed.
-- POST /api/save: {index,name} stores that window's game checkpoint and all windows' presentations/slots. It returns a new situation. POST /api/preset saves slots only.
+- POST /api/save: {index,name} stores only that view's game checkpoint and returns a new Situation. POST /api/presentation/save {index,name} captures UI state independently; POST /api/presentation/apply {index,id} reapplies it. POST /api/preset saves View setup slots only.
 - Reopen that new situation with restoreViews:true. Confirm exact meaningful state and panel/selection, not opaque IDs or byte-for-byte equality of newly generated requests.
 - GET /export/<situation-id> exports a credential-free saved situation. Treat unsupported presentation warnings as information to classify, not permission to patch missing UI into old sources.
 

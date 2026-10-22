@@ -80,6 +80,12 @@ await step(
       index: 1,
       name: "Acceptance phone hand / target deck",
     });
+    assert.deepEqual(saved.presentations, {});
+    // Explicitly construct a legacy bundle to keep import compatibility covered.
+    saved.presentations = Object.fromEntries(
+      (await get("/api/views")).map((v, i) => [i, v.presentation]),
+    );
+    saved.provenance.slots = PRESETS["Mobile migration"];
     assert.equal(saved.presentations[1].pane, "hand");
     assert.equal(saved.presentations[2].pane, "deck");
     assert.ok(!JSON.stringify(saved).includes("spectator_token"));
@@ -151,6 +157,10 @@ await step(
       index: 0,
       name: "Acceptance desktop 3D",
     });
+    fixture.presentations = Object.fromEntries(
+      (await get("/api/views")).map((v, i) => [i, v.presentation]),
+    );
+    fixture.provenance.slots = slots;
     fixture.presentations[1].camera = {
       mode: "3d",
       position: [2, 11, 9],
@@ -247,7 +257,11 @@ await step(
 await step("live CSS hot reload without changing the reference", async () => {
   const slots = structuredClone(PRESETS["Layout regression"]);
   slots[1].source = "live";
-  await action("load", { situationId: planning.id, slots, restoreViews: false });
+  await action("load", {
+    situationId: planning.id,
+    slots,
+    restoreViews: false,
+  });
   const before = await get("/api/views");
   const filename = path.join(ROOT, "src/components/pages/GameView.module.css");
   const probe =

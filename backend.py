@@ -380,7 +380,7 @@ def create_app():
     @app.post("/__lab/clone")
     async def clone(body: dict):
         try:
-            situation = read(body.get("situation_id") or body.get("scenario_id"))
+            situation = body.get("situation") or read(body.get("situation_id") or body.get("scenario_id"))
             session, result = restore(situation["checkpoint"])
         except (ValueError, KeyError, TypeError) as error:
             raise HTTPException(
@@ -422,6 +422,24 @@ def create_app():
         game = app.state.registry.get(body["game_id"])
         await stop_clone_bots(game)
         return {"ok": True}
+
+    @app.get("/__lab/games/{game_id}/checkpoint")
+    async def report_checkpoint(game_id: str):
+        # Read-only capture: report drafts must not create catalog entries.
+        game = app.state.registry.get(game_id)
+        async with game.lock:
+            saved = checkpoint(game.session, names=game.hero_names,
+                               replay=copy.deepcopy(game.replay_recorder.records) if game.replay_recorder else [])
+            ir = game.last_result.input_request if game.last_result else None
+            return {"hash": canonical_hash(game.session.state.model_dump(mode="json")),
+                    "situation": {"schema": SCHEMA, "id": uuid.uuid4().hex[:12],
+                                  "name": "Element report moment", "backend_revision": revision(),
+                                  "saved_at": real_time(), "checkpoint": saved,
+                                  "provenance": {}, "presentations": {},
+                                  "summary": {"phase": game.session.state.phase.value,
+                                              "round": game.session.state.round,
+                                              "decision": ir.request_type.value if ir else None,
+                                              "responder": ir.player_id if ir else None}}}
 
     @app.get("/__lab/games/{game_id}/responders")
     async def responders(game_id: str):

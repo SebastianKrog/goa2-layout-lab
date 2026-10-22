@@ -11,7 +11,7 @@
       <a class="brand" href="#compare">Layout lab</a>
       <nav aria-label="Workspace">
         <button class="nav-item active" data-page="compare">
-          Compare <span id="navCount">3</span>
+          Compare <span id="navCount">1</span>
         </button>
         <button class="nav-item" data-page="situations">
           Situations <span id="savedCount">0</span>
@@ -34,53 +34,52 @@
       <section id="comparePage" class="page">
         <h1 class="sr-only">Compare</h1>
         <section class="setup-panel" aria-label="Comparison setup">
-          <div class="setup-fields">
-            <label class="situation-field"
-              >Situation<select
-                id="situation"
-                aria-label="Saved situation"
-              ></select
-            ></label>
-            <label
-              >Setup<select id="preset" aria-label="Comparison"></select
-            ></label>
-            <label class="count-field"
-              >Views<select id="count" aria-label="Views">
-                <option value="1">1 view</option>
-                <option value="2">2 views</option>
-                <option value="3" selected>3 views</option>
-              </select></label
-            >
-            <label class="sync-control"
-              >Synchronize<select id="synchronize" aria-label="Synchronize">
-                <option value="none">None</option>
-                <option value="api">API requests</option>
-                <option value="api-clicks">API + clicks</option>
-              </select></label
-            >
-          </div>
-          <div class="setup-bottom">
-            <div class="setup-actions">
-              <button id="openDevice">Open on device</button
-              ><button class="primary" id="load">Load</button
-              ><button id="save">Save situation</button
-              ><button id="reset">Reset all</button
-              ><button id="capture">Capture</button>
+          <details class="advanced-setup">
+            <summary>Comparison tools &amp; legacy saved setups</summary>
+            <div class="setup-fields">
+              <label class="situation-field"
+                >Situation<select
+                  id="situation"
+                  aria-label="Saved situation"
+                ></select
+              ></label>
+              <label
+                >View setup<select id="preset" aria-label="View setup"></select
+              ></label>
+              <label class="count-field"
+                >Views<select id="count" aria-label="Views">
+                  <option value="1" selected>1 view</option>
+                  <option value="2">2 views</option>
+                  <option value="3">3 views</option>
+                </select></label
+              >
+              <label class="sync-control"
+                >Synchronize<select id="synchronize" aria-label="Synchronize">
+                  <option value="none">None</option>
+                  <option value="api">API requests</option>
+                  <option value="api-clicks">API + clicks</option>
+                </select></label
+              >
             </div>
-
+            <button class="primary" id="load">Load all views</button>
             <div class="saved-view-setup">
               <label class="check"
                 ><input
                   id="restore"
                   type="checkbox"
-                  checked
                   aria-describedby="savedViewHelp"
-                />Use saved view setup</label
-              >
-              <small id="savedViewHelp" class="muted"
-                >Restores saved views, players, screens, cameras and panels. Off
-                keeps your setup. The game moment always loads.</small
-              >
+                />Restore legacy bundled setup</label
+              ><small id="savedViewHelp" class="muted"></small>
+            </div>
+          </details>
+          <div class="setup-bottom">
+            <div class="setup-actions">
+              <button id="reportElement" aria-pressed="false">
+                Report an element</button
+              ><button id="openDevice">Open on device</button
+              ><button id="save">Save...</button
+              ><button id="reset">Reset all</button
+              ><button id="capture">Capture</button>
             </div>
           </div>
         </section>
@@ -93,7 +92,16 @@
           Browser preview uses streamed frames. For animations, use the Layout
           lab desktop window.
         </p>
-        <div id="slots" class="slots"></div>
+        <div class="view-workspace">
+          <div id="slots" class="slots one"></div>
+          <button
+            id="addView"
+            class="add-view"
+            title="Add a view with the current view settings"
+          >
+            +<span>Add view</span>
+          </button>
+        </div>
         <details class="source-tools" id="cropTools">
           <summary>Crop image capture to an element</summary>
           <label class="check"
@@ -345,6 +353,16 @@
         </button>
       </div>
       <form id="editorForm">
+        <label
+          >Game state<select id="viewSituation"></select
+          ><small id="viewSituationHelp"
+            >A situation contains game state only.</small
+          ></label
+        >
+        <label
+          >Presentation<select id="viewPresentation"></select
+          ><small>Menus, highlighted cards, camera and scroll.</small></label
+        >
         <div id="editorFields" class="editor-fields"></div>
         <label class="check"
           ><input id="viewAutoSwitch" type="checkbox" />Auto switch after each
@@ -382,13 +400,13 @@
         </details>
         <div class="dialog-footer">
           <button type="button" data-close="editor">Cancel</button
-          ><button class="primary" type="submit">Apply changes</button>
+          ><button class="primary" type="submit" id="editorSubmit">Save</button>
         </div>
       </form>
     </dialog>
     <dialog id="saveDialog" class="modal">
       <div class="dialog-heading">
-        <h2>Save situation</h2>
+        <h2>Save</h2>
         <button
           class="icon-button"
           data-close="saveDialog"
@@ -397,8 +415,17 @@
           &times;
         </button>
       </div>
-      <p>Game state from one view; viewpoints from all views.</p>
+      <p>
+        A situation saves only the game checkpoint. Save view setups separately.
+      </p>
       <form id="saveForm">
+        <label
+          >Save as<select id="saveKind">
+            <option value="situation">Situation (game checkpoint)</option>
+            <option value="presentation">Presentation (UI state)</option>
+            <option value="setup">View setup (settings)</option>
+          </select></label
+        >
         <label
           >Name<input
             id="name"
@@ -406,10 +433,10 @@
             maxlength="80"
             placeholder="e.g. Arien choosing a target"
             autocomplete="off" /></label
-        ><label>Game state from<select id="saveFrom"></select></label>
+        ><label>From view<select id="saveFrom"></select></label>
         <div class="dialog-footer">
-          <button type="button" id="savePreset">Save setup only</button
-          ><button type="submit" class="primary">Save situation</button>
+          <button type="button" id="savePreset" hidden>Save setup only</button
+          ><button type="submit" class="primary">Save</button>
         </div>
       </form>
     </dialog>
@@ -479,6 +506,38 @@
           <button type="button" data-close="organizeDialog">Cancel</button
           ><button class="primary" type="submit" id="organizeSubmit">
             Move
+          </button>
+        </div>
+      </form>
+    </dialog>
+    <dialog id="elementReportDialog" class="modal">
+      <div class="dialog-heading">
+        <h2>Report an element</h2>
+        <button
+          class="icon-button"
+          data-close="elementReportDialog"
+          aria-label="Close element report"
+        >
+          &times;
+        </button>
+      </div>
+      <p id="elementReportProgress" role="status">Preparing capture...</p>
+      <form id="elementReportForm">
+        <label
+          >Comment<textarea
+            id="elementReportComment"
+            rows="5"
+            maxlength="10000"
+            required
+            placeholder="What should be fixed? Enter sends; Shift+Enter adds a line."
+          ></textarea>
+        </label>
+        <p id="elementReportError" role="alert" hidden></p>
+        <div class="dialog-footer">
+          <button id="elementReportDiscard" type="button">Discard</button
+          ><button type="button" data-close="elementReportDialog">Close</button
+          ><button id="elementReportSend" class="primary" type="submit">
+            Send report
           </button>
         </div>
       </form>

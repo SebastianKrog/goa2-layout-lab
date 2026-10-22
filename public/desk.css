@@ -828,3 +828,90 @@ dialog::backdrop {
 .slots.one {
   grid-template-columns: minmax(0, 1fr);
 }
+
+.report-selecting .live-stage canvas {
+  cursor: crosshair !important;
+}
+#reportElement[aria-pressed="true"] {
+  background: #e3f3ff;
+  color: #005ba5;
+  border-color: #008cff;
+  box-shadow: 0 0 5px #008cff88;
+}
+#elementReportDialog textarea {
+  display: block;
+  width: 100%;
+  min-height: 130px;
+  resize: vertical;
+  font: inherit;
+  box-sizing: border-box;
+  margin-top: 8px;
+  padding: 10px;
+}
+#elementReportError {
+  color: #a52a1b;
+  white-space: pre-wrap;
+}
+
+/* The add control occupies its own full-height rail; views share the remainder. */
+.view-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 64px;
+  gap: 10px;
+  align-items: stretch;
+}
+.view-workspace .slots {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  overflow: visible;
+}
+.view-workspace .slots.one {
+  grid-template-columns: minmax(0, 1fr);
+}
+.view-workspace .slots.two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.add-view {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  width: 64px;
+  min-height: 380px;
+  border: 2px dashed #aab7ca;
+  background: #f1f5fc;
+  font-size: 24px;
+}
+.add-view span {
+  writing-mode: vertical-rl;
+  font-size: 14px;
+  font-weight: 600;
+}
+.advanced-setup {
+  margin-bottom: 8px;
+}
+.advanced-setup summary {
+  cursor: pointer;
+  color: #52627a;
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+.empty-view {
+  flex-direction: column;
+  gap: 16px;
+}
+#viewSituationHelp {
+  display: block;
+  margin: 6px 0 12px;
+  color: #64748b;
+  font-size: 12px;
+}
+@media (max-width: 650px) {
+  .view-workspace {
+    grid-template-columns: minmax(0, 1fr) 48px;
+    gap: 6px;
+  }
+  .add-view {
+    width: 48px;
+  }
+}

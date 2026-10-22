@@ -1,4 +1,5 @@
 import http from "node:http";
+import { ElementReports } from "./element-reports.mjs";
 import { DeviceServer } from "./device-server.mjs";
 import fs from "node:fs/promises";
 import { existsSync } from "node:fs";
@@ -66,9 +67,31 @@ export async function startDesk({
     busy = false,
     lastError = null,
     closing = false;
+  const elementReports = new ElementReports(comparison, {
+    schedule: (fn) => {
+      const work = queue.then(async () => {
+        busy = true;
+        try {
+          await comparison.sync.queue;
+          await streams.pause();
+          await fn();
+        } finally {
+          busy = false;
+          await streams.resume();
+        }
+      });
+      queue = work.catch((error) => {
+        lastError = error.message;
+      });
+      return work;
+    },
+  });
+  comparison.reporter = elementReports;
   let following = false;
   const followTimer = setInterval(() => {
     if (
+      elementReports.active ||
+      elementReports.draft?.stage === "capturing" ||
       following ||
       busy ||
       closing ||
@@ -77,8 +100,15 @@ export async function startDesk({
       return;
     following = true;
     const work = queue.then(async () => {
-      if (closing) return;
+      if (
+        closing ||
+        elementReports.active ||
+        elementReports.draft?.stage === "capturing"
+      )
+        return;
       await comparison.sync.queue;
+      if (elementReports.active || elementReports.draft?.stage === "capturing")
+        return;
       await comparison.followDecisions(async (index, seat) => {
         busy = true;
         try {
@@ -100,6 +130,10 @@ export async function startDesk({
   followTimer.unref();
   comparison.sync.busy = () => busy || closing;
   let presets = { ...PRESETS };
+  const presentationFile = path.join(DATA, "presentations.json");
+  const presentations = existsSync(presentationFile)
+    ? JSON.parse(await fs.readFile(presentationFile, "utf8"))
+    : [];
   const presetFile = path.join(DATA, "presets.json");
   if (existsSync(presetFile))
     presets = {
@@ -141,6 +175,8 @@ export async function startDesk({
         ].includes(origin)
       )
         return send({ error: "Use the local comparison desk origin." }, 403);
+      if (req.method === "GET" && url.pathname === "/api/element-report/status")
+        return send(elementReports.status());
       if (req.method === "GET" && url.pathname === "/api/device/options")
         return send(await devices.options(url.searchParams.get("situationId")));
       if (req.method === "GET" && url.pathname === "/api/device/views")
@@ -216,6 +252,7 @@ export async function startDesk({
         return send({
           situations,
           presets,
+          presentations,
           profiles: PROFILES,
           commits,
           root: ROOT,
@@ -239,6 +276,8 @@ export async function startDesk({
           chunks.push(chunk);
         }
         const body = JSON.parse(Buffer.concat(chunks).toString() || "{}");
+        if (url.pathname === "/api/element-report/comment")
+          return send(elementReports.setComment(body.id, body.comment));
         if (url.pathname === "/api/shutdown") {
           setTimeout(() => void close(), 100);
           return send({ ok: true });
@@ -250,6 +289,12 @@ export async function startDesk({
             await comparison.sync.queue;
             await streams.pause();
             switch (url.pathname) {
+              case "/api/element-report/mode":
+                return await elementReports.setEnabled(body.enabled === true);
+              case "/api/element-report/send":
+                return await elementReports.send(body.id, body.comment);
+              case "/api/element-report/discard":
+                return await elementReports.discard(body.id);
               case "/api/device-open":
                 return await devices.open(body);
               case "/api/device-stop":
@@ -272,6 +317,10 @@ export async function startDesk({
                   situation,
                 );
               }
+              case "/api/views/add":
+                return await comparison.addView(body);
+              case "/api/views/remove":
+                return await comparison.removeView(body.index);
               case "/api/synchronize":
                 return await comparison.sync.setMode(body.mode);
               case "/api/cheats":
@@ -304,6 +353,48 @@ export async function startDesk({
                     body.update,
                     body.restore !== false,
                   );
+                return comparison.status();
+              }
+              case "/api/presentation/save": {
+                const name = String(body.name || "").trim();
+                if (!name || name.length > 80)
+                  throw new Error(
+                    "Enter a presentation name (up to 80 characters).",
+                  );
+                const win = comparison.window(body.index ?? 0);
+                const { capturePresentation } = await import(
+                  "./presentation.mjs"
+                );
+                const item = {
+                  id: randomBytes(12).toString("hex"),
+                  name,
+                  render: win.config.render,
+                  state: await capturePresentation(win.page, win.config.render),
+                };
+                presentations.push(item);
+                await fs.writeFile(
+                  presentationFile,
+                  JSON.stringify(presentations, null, 2),
+                );
+                return item;
+              }
+              case "/api/presentation/apply": {
+                const win = comparison.window(body.index);
+                const item = presentations.find((p) => p.id === body.id);
+                if (!item) throw new Error("Presentation not found.");
+                if (item.render !== win.config.render)
+                  throw new Error(
+                    "Choose a presentation with the same renderer.",
+                  );
+                const { restorePresentation } = await import(
+                  "./presentation.mjs"
+                );
+                win.warnings = await restorePresentation(
+                  win.page,
+                  item.state,
+                  win.config,
+                );
+                win.initialPresentation = item.state;
                 return comparison.status();
               }
               case "/api/save":
@@ -361,7 +452,11 @@ export async function startDesk({
                     w.config,
                     views.get(i),
                     w.clone,
+                    i,
+                    w.situation,
                   );
+                  comparison.windows[i].initialPresentation =
+                    w.initialPresentation;
                 }
                 return comparison.status();
               }
@@ -411,6 +506,8 @@ export async function startDesk({
           filename = path.join(TOOL, "public/native.mjs");
         else if (url.pathname === "/live.mjs")
           filename = path.join(TOOL, "public/live.mjs");
+        else if (url.pathname === "/element-report-panel.mjs")
+          filename = path.join(TOOL, "public/element-report-panel.mjs");
         else if (url.pathname === "/device-panel.mjs")
           filename = path.join(TOOL, "public/device-panel.mjs");
         else if (url.pathname === "/desk.mjs")

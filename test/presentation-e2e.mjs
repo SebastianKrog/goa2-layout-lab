@@ -31,9 +31,27 @@ const saved = await request("/api/save", {
   index: 0,
   name: "Acceptance desktop deck and log",
 });
-assert.equal(saved.presentations[0].pane, "deck");
-assert.equal(saved.presentations[1].pane, "log");
-await request("/api/load", { situationId: saved.id, restoreViews: true });
+assert.deepEqual(saved.presentations, {});
+const presentations = await Promise.all(
+  [0, 1].map((index) =>
+    request("/api/presentation/save", {
+      index,
+      name: "Acceptance panel " + index,
+    }),
+  ),
+);
+assert.equal(presentations[0].state.pane, "deck");
+assert.equal(presentations[1].state.pane, "log");
+await request("/api/load", {
+  situationId: saved.id,
+  slots: PRESETS["Layout regression"],
+  restoreViews: false,
+});
+for (let index = 0; index < 2; index++)
+  await request("/api/presentation/apply", {
+    index,
+    id: presentations[index].id,
+  });
 let views = await request("/api/views");
 assert.deepEqual(
   views.map((v) => v.presentation.pane),

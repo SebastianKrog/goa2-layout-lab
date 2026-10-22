@@ -1,6 +1,7 @@
 # GoA2 comparison desk
 
-Play one, two or three independent copies of one saved situation inside the desk.
+Start with one current working-tree view, then add up to two independent views.
+Saved game situations, UI presentations and view setups have separate responsibilities; see [Lab terminology and saved state](docs/terminology.md).
 Linux and macOS run the desk, Chromium, Vite and the isolated backend natively.
 Windows runs the desk and emulated browsers locally and services in WSL. The regular
 development servers on ports 3000/8000 are separate.
@@ -45,7 +46,7 @@ node node_modules/playwright/cli.js install chromium
 
 The VS Code task **Layout lab: Start** runs the same command.
 The desk opens at **http://localhost:3200** with no situation loaded. Select a
-situation and press **Load** when ready. Starting the desk alone does not prepare
+situation through the view's **Start** overlay when ready. Use the right-hand **Add view** rail to clone its current state without resetting it. Starting the desk alone does not prepare
 frontend sources or create game clones. To load one explicitly at startup, use
 `npm run compare -- --situation=<saved-situation-id>`; `--preset` selects its views.
 The situation ID is in its JSON file or the desk catalog.
@@ -72,7 +73,7 @@ Views load concurrently and share preparation when they use the same source.
 The lab uses Vite directly with a same-origin HTTP/WebSocket proxy to its isolated
 backend; it does not start Cloudflare worker emulators. Game-state, camera, font
 and asset readiness checks still run before a view is ready. The desk catalog
-contains situation metadata and saved presentation setup; full checkpoints are
+contains situation metadata and independent presentations/view setups; full checkpoints are
 loaded only for game operations and exports. Production Worker behavior should
 be checked in the frontend project itself.
 
@@ -222,21 +223,16 @@ Use **Settings > Show Cheats controls** to reveal them for debugging. This visib
 
 ## Save and reproduce a situation
 
-1. Choose a situation on **Compare**, then **Load**. Import a local
-   save or a replay from **Saved situations**. Replay index N applies exactly
-   N recorded decisions.
-2. Play a window to the desired prompt. Change seats to act for other heroes.
-3. Set the desired player, panels, card/hero inspection and camera in each window.
-4. Click **Save situation**, enter a name and choose **Game state from**.
-   That game's full engine/rollback state is the checkpoint;
-   presentation settings from all windows are saved with it.
-5. Open it later with **Use saved view setup** enabled to restore saved view
-   count, sources, player seats, devices, cameras, panels and inspection/selection.
-   Turn it off to keep your current comparison setup. The saved game checkpoint
-   loads in both cases; this option only controls its presentation.
+1. Press **Start** on the default view, choose a Situation and start it. Import local saves or replays from **Saved situations** if needed. Replay index N applies exactly N recorded decisions.
+2. Play to the desired prompt. Change Viewpoint to act for another hero.
+3. Use **Save... > Situation**, enter a name and select the source view. This saves the full engine/rollback checkpoint only.
+4. To reproduce an open menu, selected card or camera, use **Save... > Presentation** separately. Choose that Presentation in the view settings overlay when reopening the Situation.
+5. Save source/device/layout/controller configurations independently with **Save... > View setup**. Add a view using the right-hand rail to inherit current game progress and UI state without resetting existing views.
+
+Historical combined fixtures can still restore their bundled sources, seats and UI state via **Comparison tools > Restore legacy bundled setup**. Normal loading leaves this unchecked. See [terminology and saved state](docs/terminology.md) for the exact boundaries.
 
 **Export** in Saved situations downloads a portable JSON bundle. Import it on another run
-to restore the checkpoint, presentation settings and source provenance. Source
+to restore the checkpoint (plus legacy presentation/source metadata when present). Source
 seat credentials are excluded; clones receive new tokens. Situation files contain
 the full developer checkpoint, including hidden game information, while the
 normal game UI continues receiving player-scoped views.
@@ -876,6 +872,16 @@ under `.layout-lab/reviews/m8-utilities-*` and `.layout-lab/reports/`.
 No native Linux tests or automatic phone activation are included. Browser touch
 and fullscreen checks do not establish physical-device acceptance.
 
+## Report a div across lab views
+
+Click **Report an element** to activate a crosshair picker in every view. Hover
+shows a glowing blue div outline; click opens the comment popup. **Enter** sends,
+**Shift+Enter** adds a line, and Close keeps your draft. The report gathers the
+selected div's image, outer HTML, computed/matched CSS, and a resumable situation
+from each view, with source/commit and view configuration metadata. Picker
+controls are excluded from captures. **Situations → View report** reopens it.
+See [element reporting](docs/element-reporting.md) for matching, files and limits.
+
 ## Open a situation on another device
 
 Choose **Open on device** from Compare or a situation card, then **Start device
@@ -894,11 +900,10 @@ iterations, a two-second decision timeout and two-round continuation horizon.
 There are no search tuning controls. Backend timeout/failure handling may fall
 back to Simple for an individual decision.
 
-Use **Views: 1 view** for a single playable board, or select the **Play solo**
-setup for one Live/mobile view. Two and three views remain available.
+The default is one Live/Desktop view. Use **Add view** for a second or third view; the **Play solo** setup under Comparison tools remains available for one Live/mobile view.
 In any regular view, open **Edit view**, choose the human **Viewpoint**, then
 set **Other heroes** to **Random**, **Simple**, **ISMCTS**, **Manual**, or mixed choices.
-**Apply changes** updates that clone's controllers without resetting its game.
+**Save** updates that clone's controllers without resetting its game.
 Before loading, these choices become part of that view's setup.
 
 In **Edit view**, enable **Auto switch after each action** to follow a player

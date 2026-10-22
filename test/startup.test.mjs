@@ -99,6 +99,7 @@ test("Stop desk is visible and usable on Compare while a load is busy", async ()
           "index.html",
           "desk.mjs",
           "device-panel.mjs",
+          "element-report-panel.mjs",
           "desk.css",
           "live.mjs",
           "native.mjs",
@@ -128,17 +129,13 @@ test("Stop desk is visible and usable on Compare while a load is busy", async ()
         "Stop stays within the viewport",
       );
     }
-    assert.equal(
-      await page
-        .getByRole("button", { name: "Load", exact: true })
-        .isDisabled(),
-      true,
-    );
+    assert.equal(await page.locator("#load").isDisabled(), true);
     assert.deepEqual(posts, []);
     busy = false;
     await page.waitForFunction(() => !document.body.classList.contains("busy"));
+    await page.locator(".advanced-setup summary").click();
     const savedSetup = page.getByRole("checkbox", {
-      name: "Use saved view setup",
+      name: "Restore legacy bundled setup",
       exact: true,
     });
     await page
@@ -154,7 +151,7 @@ test("Stop desk is visible and usable on Compare while a load is busy", async ()
       true,
       "Saved slots alone are a usable setup",
     );
-    assert.equal(await savedSetup.isChecked(), true);
+    assert.equal(await savedSetup.isChecked(), false);
     await savedSetup.uncheck();
     assert.equal(await savedSetup.isChecked(), false);
     busy = true;

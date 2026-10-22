@@ -171,6 +171,20 @@ class SituationTests(unittest.TestCase):
             imported["checkpoint"]["state"], captured["checkpoint"]["state"]
         )
 
+    def test_inline_clone_uses_current_checkpoint_without_saving_a_situation(self):
+        original = self.post("/starter", {})
+        source = self.post("/clone", {"situation_id": original["id"]})
+        game = self.client.app.state.registry.get(source["game_id"])
+        hero = next(h for team in game.session.state.teams.values() for h in team.heroes if h.id == "hero_arien")
+        hero.gold += 1
+        before = len(self.client.get("/__lab/situations", headers=self.headers).json())
+        snapshot = self.client.get(f"/__lab/games/{source['game_id']}/checkpoint", headers=self.headers).json()
+        added = self.post("/clone", {"situation": snapshot["situation"]})
+        self.assertEqual(added["hash"], snapshot["hash"])
+        self.assertNotEqual(added["hash"], source["hash"])
+        self.assertNotEqual(added["game_id"], source["game_id"])
+        self.assertEqual(len(self.client.get("/__lab/situations", headers=self.headers).json()), before)
+
     def test_timed_state_is_frozen_and_protected(self):
         self.assertEqual(self.client.get("/__lab/situations").status_code, 403)
         situation = self.post("/starter", {"timed": True})
@@ -464,6 +478,25 @@ class SituationTests(unittest.TestCase):
                 pass
             else:
                 self.assertIsNotNone(choice)
+
+
+    def test_element_report_checkpoint_is_read_only_resumable_and_has_no_credentials(self):
+        source = self.post("/starter", {})
+        clone = self.post("/clone", {"situation_id": source["id"]})
+        before = self.client.get("/__lab/situations?metadata=true", headers=self.headers).json()
+        route = f"/__lab/games/{clone['game_id']}/checkpoint"
+        self.assertEqual(self.client.get(route).status_code, 403)
+        response = self.client.get(route, headers=self.headers)
+        self.assertEqual(response.status_code, 200, response.text)
+        captured = response.json()
+        self.assertEqual(captured["hash"], clone["hash"])
+        self.assertEqual(self.client.get("/__lab/situations?metadata=true", headers=self.headers).json(), before)
+        payload = json.dumps(captured)
+        for credential in [*clone["seats"].values(), clone["spectator_token"]]:
+            self.assertNotIn(credential, payload)
+        imported = self.post("/import", {"content": captured["situation"]})
+        restored = self.post("/clone", {"situation_id": imported["id"]})
+        self.assertEqual(restored["hash"], clone["hash"])
 
 
 if __name__ == "__main__":

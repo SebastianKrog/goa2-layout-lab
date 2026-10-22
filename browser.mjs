@@ -69,15 +69,22 @@ export class Comparison {
       throw error;
     }
   }
-  async open(config, presentation, existingClone = null, slotIndex) {
+  async open(
+    config,
+    presentation,
+    existingClone = null,
+    slotIndex,
+    situation = null,
+  ) {
     if (presentation?.render && presentation.render !== config.render)
       presentation = presentation.modes?.[config.render];
     const port = await this.services.frontend(config.source);
     const clone =
       existingClone ||
       (await this.api("/clone", {
-        situation_id: this.situationId,
-        human_seat: this.manualSeat(config),
+        situation_id: situation?.id || this.situationId,
+        ...(situation ? { situation } : {}),
+        human_seat: this.manualSeat(config, situation),
         bots: config.bots || {},
       }));
     const profile = PROFILES[config.profile];
@@ -91,6 +98,8 @@ export class Comparison {
     const page = await context.newPage();
     const win = {
       config: { ...config },
+      situation,
+      initialPresentation: presentation,
       clone,
       context,
       page,
@@ -144,6 +153,7 @@ export class Comparison {
         },
       );
       await this.sync.attach(win);
+      await this.reporter?.attach(win);
       page.on("pageerror", (error) => win.errors.push(error.message));
       page.on("framenavigated", (frame) => {
         if (frame === page.mainFrame()) {
@@ -369,7 +379,9 @@ export class Comparison {
     // Wait for every attempt before cleanup, so a slower successful view cannot
     // leak its context/clone after another view fails. Keep configured slot order.
     const opened = await Promise.allSettled(
-      slots.map((slot, i) => this.open(slot, presentations[i], null, i)),
+      slots.map((slot, i) =>
+        this.open(slot, presentations[i], null, i, situation),
+      ),
     );
     this.windows = opened
       .filter((r) => r.status === "fulfilled")
@@ -399,11 +411,6 @@ export class Comparison {
     this.windows = [];
   }
   async reset(index) {
-    const situation = await this.api(
-      `/situations/${encodeURIComponent(this.situationId)}`,
-      undefined,
-      "GET",
-    );
     const indexes =
       index === undefined ? this.windows.map((_, i) => i) : [index];
     for (const i of indexes) {
@@ -411,7 +418,10 @@ export class Comparison {
       await this.closeWindow(old);
       this.windows[i] = await this.open(
         old.config,
-        situation?.presentations?.[i],
+        old.initialPresentation,
+        null,
+        i,
+        old.situation,
       );
     }
     return this.status();
@@ -437,7 +447,7 @@ export class Comparison {
         await this.sync.setMode("none");
       await this.api("/bots", {
         game_id: old.clone.game_id,
-        human_seat: this.manualSeat(config),
+        human_seat: this.manualSeat(config, old.situation),
         bots: config.bots || {},
       });
       // Keep controller metadata accurate even if reopening the renderer fails.
@@ -454,16 +464,26 @@ export class Comparison {
     }
     await old.context.close().catch(() => {});
     const presentation = restoreSaved ? old.views[config.render] : null;
-    const win = await this.open(config, presentation, old.clone);
+    const win = await this.open(
+      config,
+      presentation,
+      old.clone,
+      index,
+      old.situation,
+    );
     win.views = { ...old.views, [config.render]: presentation };
+    win.initialPresentation = old.initialPresentation;
     this.windows[index] = win;
     return this.status();
   }
-  manualSeat(config) {
+  manualSeat(config, situation = null) {
     return (
-      (this.heroIds || Object.keys(this.windows[0]?.clone.seats || {})).find(
-        (id) => !config.bots?.[id],
-      ) || config.seat
+      (situation
+        ? Object.values(situation.checkpoint.state.teams).flatMap((t) =>
+            t.heroes.map((h) => h.id),
+          )
+        : this.heroIds || Object.keys(this.windows[0]?.clone.seats || {})
+      ).find((id) => !config.bots?.[id]) || config.seat
     );
   }
   async switchSeat(index, seat) {
@@ -513,29 +533,61 @@ export class Comparison {
   }
   async save(index, name) {
     const source = this.window(index);
-    const presentations = {};
-    for (let i = 0; i < this.windows.length; i++) {
-      const win = this.windows[i];
-      const current = await capturePresentation(win.page, win.config.render);
-      presentations[i] = {
-        ...current,
-        modes: { ...win.views, [win.config.render]: current },
-      };
-    }
     return this.api("/capture", {
       game_id: source.clone.game_id,
       name,
-      presentations,
-      provenance: {
-        kind: "capture",
-        source_slot: index,
-        references: this.services.references,
-        comparator: this.services.comparator,
-        runtime: this.status().runtime,
-        script_checksum: this.status().script?.checksum,
-        slots: this.windows.map((w) => w.config),
-      },
+      provenance: { kind: "capture", source_situation: source.situation?.id },
     });
+  }
+  async addView({ config, situationId, fromIndex = 0, index }) {
+    if (index === undefined && this.windows.length >= 3)
+      throw new Error("The desk supports up to three views.");
+    if (index !== undefined) this.window(index);
+    let situation, presentation;
+    if (situationId) {
+      situation = await this.api(
+        `/situations/${encodeURIComponent(situationId)}`,
+        undefined,
+        "GET",
+      );
+    } else {
+      const source = this.window(fromIndex);
+      const captured = await this.api(
+        `/games/${source.clone.game_id}/checkpoint`,
+        undefined,
+        "GET",
+      );
+      situation = captured.situation;
+      situation.id = source.situation?.id || situation.id;
+      situation.name = (source.situation?.name || "Game") + " (current state)";
+      presentation = await capturePresentation(
+        source.page,
+        source.config.render,
+      );
+    }
+    const [resolved] = slotsForSituation([config], situation);
+    if (Object.keys(resolved.bots || {}).length)
+      await this.sync.setMode("none");
+    const destination = index ?? this.windows.length;
+    const win = await this.open(
+      resolved,
+      presentation,
+      null,
+      destination,
+      situation,
+    );
+    if (index !== undefined) await this.closeWindow(this.windows[index]);
+    this.windows[destination] = win;
+    this.situationId = this.windows[0].situation?.id;
+    return this.status();
+  }
+  async removeView(index) {
+    const win = this.window(index);
+    await this.closeWindow(win);
+    this.windows.splice(index, 1);
+    if (this.windows.length < 2) await this.sync.setMode("none");
+    this.situationId = this.windows[0]?.situation?.id || null;
+    return this.status();
   }
   async cameraCopy(from, indexes) {
     const source = this.window(from);
@@ -586,6 +638,8 @@ export class Comparison {
       windows: this.windows.map((w, index) => ({
         index,
         config: w.config,
+        situationId: w.situation?.id || this.situationId,
+        situationName: w.situation?.name,
         gameId: w.clone.game_id,
         nativeId: w.context?.nativeId,
         closed: w.page.isClosed?.() || false,
