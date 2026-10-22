@@ -1,8 +1,8 @@
 # Release tracking
 
-The first tracked release is **1.0-preview**, dated 2026-10-22.
-It establishes a baseline for the lab's existing features; earlier Git history
-remains the record of development before that release.
+Version tracking began with **1.0-preview**. The first published stable release
+is **1.0** (`1.0.0`), dated 2026-10-22. Earlier Git history remains the record
+of development before the preview baseline.
 
 ## Version source
 
@@ -30,7 +30,7 @@ Keep the current released version until preparing the next release.
 1. Choose the version and update package metadata without an automatic Git commit:
 
    ```sh
-   npm version 1.0.0-preview.1 --no-git-tag-version
+   npm version 1.0.1 --no-git-tag-version
    ```
 
 2. Move Unreleased entries into a dated release entry and update the README's

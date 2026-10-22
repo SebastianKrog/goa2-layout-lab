@@ -56,5 +56,5 @@
     "node": ">=22.12.0"
   },
   "description": "Local one-, two- and three-view comparison workspace for GoA2 frontend development",
-  "version": "1.0.0-preview"
+  "version": "1.0.0"
 }

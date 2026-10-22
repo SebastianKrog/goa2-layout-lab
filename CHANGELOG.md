@@ -6,6 +6,27 @@ defines the corresponding package versions and tags.
 
 ## Unreleased
 
+## 1.0 — 2026-10-22
+
+First stable release, including the complete 1.0-preview feature set.
+
+### Changed
+
+- Group shared Situations, Layouts, and Decision States under `library/` and
+  replace the long Situation catalog README with a concise library guide.
+- Move lab implementation and the shared state contract into `src/`.
+  Keep the small root launcher compatible with npm and sibling VS Code tasks.
+- Update runtime paths, factory scripts, tests, documentation, and repository
+  skills for the new structure. Saved library JSON content is unchanged.
+- Track the stable package version as `1.0.0`.
+
+### Verification
+
+- 68 Node tests passed; one platform-specific test skipped.
+- 43 Python tests passed.
+- Native workspace acceptance and the five-example Situation factory passed.
+- All 155 moved library JSON files retained identical contents.
+
 ## 1.0-preview — 2026-10-22
 
 First tracked preview release. Earlier development is included in this baseline.

@@ -1,6 +1,6 @@
 # GoA2 Layout Lab
 
-**1.0-preview** · [Changelog](CHANGELOG.md)
+**1.0** · [Changelog](CHANGELOG.md)
 
 A local workspace for comparing Guards of Atlantis II interfaces, reproducing
 game moments, and collecting useful reports. Start with one View of your current
@@ -92,5 +92,5 @@ See [testing](docs/testing.md) for browser/native acceptance checks,
 [AGENTS.md](AGENTS.md) for repository skills, and
 [plans](docs/plans/README.md) for design records and remaining work.
 
-This is the first tracked preview release. See the [changelog](CHANGELOG.md)
+This is the first stable release. See the [changelog](CHANGELOG.md)
 for its scope and [release workflow](docs/releases.md) for versioning.
