@@ -26,7 +26,7 @@ _Two independent phone Views in the browser desk, using the live frontend._
 Keep the frontend and backend checkouts alongside this repository:
 
 ```text
-goa2-shared-repositories-folder/
+shared-repositories/
   goa2-layout-lab/
   goa2-frontend/
   goa2-backend/
