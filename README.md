@@ -18,6 +18,7 @@ _Two independent phone Views in the browser desk, using the live frontend._
 - Save reproducible Situations, including the viewing player, open panels, selected cards, and supported preferences.
 - Open a Situation on a physical device using a link or QR code, and play against Random, Simple, or ISMCTS bots.
 - Inspect a queue of Situations, report elements across Views, and collect screenshots, HTML/CSS, comments, and revision evidence.
+- **Automated agents** can make precise comparisons of UI-changes by comparing rendering, HTML and CSS easily in a reproducable manner.
 
 ## Start
 
