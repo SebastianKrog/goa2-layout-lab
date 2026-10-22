@@ -1,17 +1,23 @@
 // Real desk UI with isolated API fixtures: no game servers or user sessions touched.
 import fs from "node:fs/promises";
 import path from "node:path";
-import { TOOL, PRESETS, PROFILES, STARTUP, REFERENCES } from "../../config.mjs";
+import {
+  TOOL,
+  PRESETS,
+  PROFILES,
+  STARTUP,
+  REFERENCES,
+} from "../../src/config.mjs";
 
 export async function deskFixture(context, { views = 0, files = {} } = {}) {
   const situations = [];
   for (const file of (
-    await fs.readdir(path.join(TOOL, "situations"), { recursive: true })
+    await fs.readdir(path.join(TOOL, "library/situations"), { recursive: true })
   )
     .filter((f) => f.endsWith(".json"))
     .sort()) {
     const s = JSON.parse(
-      await fs.readFile(path.join(TOOL, "situations", file), "utf8"),
+      await fs.readFile(path.join(TOOL, "library/situations", file), "utf8"),
     );
     situations.push({
       ...s,

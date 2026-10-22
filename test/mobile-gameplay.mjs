@@ -13,12 +13,12 @@ for (const [name, port] of Object.entries({
 })) {
   process.env[`GOA2_LAB_${name}_PORT`] ??= String(port);
 }
-const { TOOL, DATA, BACKEND } = await import("../config.mjs");
-const { startDesk } = await import("../desk.mjs");
+const { TOOL, DATA, BACKEND } = await import("../src/config.mjs");
+const { startDesk } = await import("../src/desk.mjs");
 const { showPane, capturePresentation, restorePresentation } = await import(
-  "../presentation.mjs"
+  "../src/presentation.mjs"
 );
-const { waitFor } = await import("../services.mjs");
+const { waitFor } = await import("../src/services.mjs");
 const output = path.join(DATA, "situation-recipes/mobile-gameplay");
 const python =
   process.env.GOA2_LAB_PYTHON ||

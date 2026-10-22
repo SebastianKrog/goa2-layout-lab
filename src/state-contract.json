@@ -18,8 +18,5 @@
     "goa2:remote-pointers-visible",
     "goa2:resolution-queue"
   ],
-  "sessionStoragePrefixes": [
-    "goa2-mobile-deck-plan-v1:",
-    "goa2-mobile-build:"
-  ]
+  "sessionStoragePrefixes": ["goa2-mobile-deck-plan-v1:", "goa2-mobile-build:"]
 }

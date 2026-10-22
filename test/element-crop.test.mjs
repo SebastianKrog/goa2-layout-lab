@@ -6,9 +6,9 @@ import http from "node:http";
 import { pathToFileURL } from "node:url";
 import { chromium } from "playwright";
 import { PNG } from "pngjs";
-import { DATA } from "../config.mjs";
-import { normalizeCrop, resolveCrop, cropImage } from "../element-crop.mjs";
-import { stableScreenshot, captureReport, reportHTML } from "../report.mjs";
+import { DATA } from "../src/config.mjs";
+import { normalizeCrop, resolveCrop, cropImage } from "../src/element-crop.mjs";
+import { stableScreenshot, captureReport, reportHTML } from "../src/report.mjs";
 
 test("crop options reject ambiguous configuration and use one-based occurrences", () => {
   assert.equal(normalizeCrop(null), null);

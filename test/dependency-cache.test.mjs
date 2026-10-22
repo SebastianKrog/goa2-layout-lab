@@ -2,8 +2,11 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { DATA } from "../config.mjs";
-import { dependencyRuntime, reuseDependencies } from "../dependency-cache.mjs";
+import { DATA } from "../src/config.mjs";
+import {
+  dependencyRuntime,
+  reuseDependencies,
+} from "../src/dependency-cache.mjs";
 
 test("committed sources reuse compatible dependencies without sharing live or incompatible installs", async () => {
   const cache = await fs.mkdtemp(path.join(DATA, "dependency-test-"));

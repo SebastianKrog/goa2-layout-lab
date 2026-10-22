@@ -2,8 +2,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import http from "node:http";
 import { chromium } from "playwright";
-import { DeviceServer } from "../device-server.mjs";
-import { restorePresentation } from "../presentation.mjs";
+import { DeviceServer } from "../src/device-server.mjs";
+import { restorePresentation } from "../src/presentation.mjs";
 
 const config = {
   source: "live",
@@ -92,7 +92,9 @@ test("desktop and phone restore nested spell inspections and decision-context ch
       );
       const phone = await browser.newPage();
       await phone.goto(link.urls[0]);
-      await phone.getByRole("button", {name:"Report testing issue"}).waitFor();
+      await phone
+        .getByRole("button", { name: "Report testing issue" })
+        .waitFor();
       assert.equal(await phone.locator("#childPanel").isVisible(), true);
       assert.deepEqual(
         await phone.evaluate(() => window.__GOA2_DEVICE_RESTORE_WARNINGS__),

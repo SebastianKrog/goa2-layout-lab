@@ -10,7 +10,7 @@ for (const [k, v] of Object.entries({
   process.env[`GOA2_LAB_${k}_PORT`] = String(v);
 import path from "node:path";
 import { execFileSync } from "node:child_process";
-const { DATA, BACKEND, TOOL } = await import("../config.mjs");
+const { DATA, BACKEND, TOOL } = await import("../src/config.mjs");
 execFileSync(
   process.env.GOA2_LAB_PYTHON ||
     path.join(
@@ -28,8 +28,8 @@ execFileSync(
 const output = path.join(DATA, "reviews", `shell-parity-${Date.now()}`);
 await fs.mkdir(output, { recursive: true });
 const records = [];
-const { startDesk } = await import("../desk.mjs");
-const { captureReport } = await import("../report.mjs");
+const { startDesk } = await import("../src/desk.mjs");
+const { captureReport } = await import("../src/report.mjs");
 const desk = await startDesk({
   flags: new Set([
     "--verification",

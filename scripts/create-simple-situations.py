@@ -25,6 +25,7 @@ parser.add_argument(
 )
 args = parser.parse_args()
 sys.path.insert(0, str(args.backend.resolve() / "src"))
+sys.path.insert(0, str(LAB / "src"))
 
 from goa2.bootstrap import register_all_effects
 from goa2.domain.input import InputRequestType
@@ -40,7 +41,7 @@ from goa2.engine.steps import (
 )
 from goa2.server.map_paths import resolve_map_path
 
-spec = importlib.util.spec_from_file_location("fixture_lab_backend", LAB / "backend.py")
+spec = importlib.util.spec_from_file_location("fixture_lab_backend", LAB / "src/backend.py")
 lab = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(lab)
 register_all_effects()

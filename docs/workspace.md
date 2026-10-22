@@ -64,7 +64,7 @@ Use **Settings > Show Cheats controls** to reveal them for debugging. This visib
 4. Menus, selected cards, camera and preferences are part of the saved Situation. **Save... > Presentation template** also makes these values reusable. **Save... > Decision State** saves game-only state; **Create from Decision State** composes another Situation.
 5. Save view arrangement, source/device/UI mode/controllers and synchronization independently with **Save... > Layout**. Add a view using the right-hand rail to inherit current game progress and UI state without resetting existing views.
 
-Old situations have been ported into composed Situations and separate suggested Layouts. Runtime accepts the new model only; see [state storage and porting](./state-model.md). See [terminology and saved state](./terminology.md) for the exact boundaries.
+Old situations have been ported into composed Situations and separate suggested Layouts. Runtime accepts the new model only; see [state storage and porting](state-model.md). See [terminology and saved state](terminology.md) for the exact boundaries.
 
 **Export** in Saved situations downloads a portable JSON bundle. Import it on another run
 to restore the exact Decision State and composed Presentation. Source
@@ -76,7 +76,7 @@ Saved Layout overrides, Presentation templates and local drafts live under ignor
 
 ### Situation library and folders
 
-Use **situations** throughout the lab. Shared fixtures belong in `situations/<folder>/<id>.json` and are included in the repository. New saves, imports and generated situations go to `.layout-lab/situations/` as local drafts. Older formats require the [offline porting tool](./state-model.md#porting-older-situations); runtime imports accept composed Situations only.
+Use **situations** throughout the lab. Shared fixtures belong in `library/situations/<folder>/<id>.json` and are included in the repository. New saves, imports and generated situations go to `.layout-lab/situations/` as local drafts. Older formats require the [offline porting tool](state-model.md#porting-older-situations); runtime imports accept composed Situations only.
 
 The **Situations** page supports search by name, hero or folder and groups entries
 by folder and Library / Local drafts. **New situation** holds creation/import
@@ -85,7 +85,7 @@ sharing and promotion under **More**. The folder filter includes subfolders; Com
 
 Choose **Add to library** on a local draft to create a new shared copy in the selected folder. The draft is retained, machine-specific runtime provenance is removed, and nothing is committed automatically. Review the JSON and commit it alongside the implementation when ready. Ordinary saves never overwrite shared fixtures.
 
-The library includes normal and timed planning under `situations/planning/`, plus five basic card examples under `situations/cards/`: selection, action choice, a tier II upgrade, defense and discard. See [the situation library](../situations/README.md) for the saved moments and regeneration command. Each schema 2 Situation references an exact Decision State and includes its Presentation. Decision States are stored separately; no running server or runtime game IDs are required to reopen the moment.
+The library includes normal and timed planning under `library/situations/planning/`, plus five basic card examples under `library/situations/cards/`: selection, action choice, a tier II upgrade, defense and discard. See [the situation library](../library/README.md) for the saved moments and regeneration command. Each schema 2 Situation references an exact Decision State and includes its Presentation. Decision States are stored separately; no running server or runtime game IDs are required to reopen the moment.
 
 Automation uses `GET /api/catalog` (`situations`, each with `origin` and `group`), `POST /api/load {situationId, slots}`, and `POST /api/organize {id, group, shared}`. Setting `shared:true` promotes a local draft or moves a shared fixture. Setting it to false moves a local draft. Group paths are relative and validated on the service host.
 

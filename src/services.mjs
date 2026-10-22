@@ -111,7 +111,7 @@ export async function waitFor(check, description, timeout = 180_000) {
   );
 }
 function wsl(args, options = {}) {
-  const { script = path.join(TOOL, "wsl-service.sh"), ...spawnOptions } =
+  const { script = path.join(TOOL, "src/wsl-service.sh"), ...spawnOptions } =
     options;
   return spawn(
     "wsl.exe",
@@ -381,14 +381,14 @@ export class Services {
     // the tool while a service runs cannot change its shutdown instructions.
     const script = `${pidfile}.sh`;
     if (this.mode === "wsl")
-      await fs.copyFile(path.join(TOOL, "wsl-service.sh"), script);
+      await fs.copyFile(path.join(TOOL, "src/wsl-service.sh"), script);
     if (this.closing) throw new Error("The comparison desk is shutting down.");
     const child =
       this.mode === "wsl"
         ? wsl(full, { script, stdio: ["ignore", "pipe", "pipe"] })
         : spawn(
             process.execPath,
-            [path.join(TOOL, "service-runner.mjs"), ...full],
+            [path.join(TOOL, "src/service-runner.mjs"), ...full],
             { cwd: ROOT, stdio: ["ignore", "pipe", "pipe"] },
           );
     const log = createWriteStream(`${pidfile}.launcher.log`);

@@ -2,9 +2,9 @@
 import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { startDesk } from "../desk.mjs";
-import { DATA, PORTS, PRESETS } from "../config.mjs";
-import { showPane } from "../presentation.mjs";
+import { startDesk } from "../src/desk.mjs";
+import { DATA, PORTS, PRESETS } from "../src/config.mjs";
+import { showPane } from "../src/presentation.mjs";
 const app = await startDesk({ flags: new Set(["--headless", "--no-open"]) });
 const origin = `http://127.0.0.1:${PORTS.desk}`;
 const out = path.join(DATA, "reviews/autoswitch");

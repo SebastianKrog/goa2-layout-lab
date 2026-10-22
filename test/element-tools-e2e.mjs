@@ -13,11 +13,11 @@ for (const [key, port] of Object.entries({
   BACKEND: 10700,
 }))
   process.env[`GOA2_LAB_${key}_PORT`] ??= String(port);
-const { DATA, TOOL, PORTS } = await import("../config.mjs");
-const { startDesk } = await import("../desk.mjs");
-const { resolveCrop, normalizeCrop } = await import("../element-crop.mjs");
+const { DATA, TOOL, PORTS } = await import("../src/config.mjs");
+const { startDesk } = await import("../src/desk.mjs");
+const { resolveCrop, normalizeCrop } = await import("../src/element-crop.mjs");
 const { PNG } = await import("pngjs");
-const { expandMatched } = await import("../source-inspection.mjs");
+const { expandMatched } = await import("../src/source-inspection.mjs");
 const root = path.join(DATA, "reviews", "element-tools-" + Date.now());
 await fs.mkdir(root, { recursive: true });
 const records = [];

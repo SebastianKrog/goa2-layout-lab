@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import http from "node:http";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { TOOL, PRESETS, PROFILES } from "../config.mjs";
+import { TOOL, PRESETS, PROFILES } from "../src/config.mjs";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -18,7 +18,7 @@ import {
   computedChanges,
   extractSources,
   inspectionHTML,
-} from "../source-inspection.mjs";
+} from "../src/source-inspection.mjs";
 
 test("inspection requires two distinct existing views and an element selector", () => {
   for (const indexes of [[], [0], [0, 0], [0, 3], [0, 1, 2], [-1, 1], [0, 0.5]])

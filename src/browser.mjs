@@ -37,7 +37,7 @@ export class Comparison {
   }
   async launch() {
     if (this.options.native) {
-      const { NativeDesktop } = await import("./desktop/driver.mjs");
+      const { NativeDesktop } = await import("../desktop/driver.mjs");
       this.desktop = new NativeDesktop({ userData: this.options.userData });
       await this.desktop.launch();
       this.browser = this.desktop;

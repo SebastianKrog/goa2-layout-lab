@@ -1,8 +1,8 @@
-import { toPresentation } from "../presentation-model.mjs";
-import { PORTS } from "../config.mjs";
+import { toPresentation } from "../src/presentation-model.mjs";
+import { PORTS } from "../src/config.mjs";
 // Additional adapter checks on an explicitly marked verification desk.
 import assert from "node:assert/strict";
-import { PRESETS } from "../config.mjs";
+import { PRESETS } from "../src/config.mjs";
 
 async function request(route, body) {
   const response = await fetch(`http://localhost:${PORTS.desk}${route}`, {

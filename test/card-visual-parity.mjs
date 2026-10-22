@@ -11,10 +11,10 @@ for (const [k, p] of Object.entries({
   process.env[`GOA2_LAB_${k}_PORT`] ??= String(p);
 process.env.NODE_ENV = "production";
 process.env.WSLENV = [process.env.WSLENV, "NODE_ENV"].filter(Boolean).join(":");
-const { startDesk } = await import("../desk.mjs");
-const { DATA } = await import("../config.mjs");
-const { showPane } = await import("../presentation.mjs");
-const { captureReport } = await import("../report.mjs");
+const { startDesk } = await import("../src/desk.mjs");
+const { DATA } = await import("../src/config.mjs");
+const { showPane } = await import("../src/presentation.mjs");
+const { captureReport } = await import("../src/report.mjs");
 const cases = [
   ...["history", "nano"].map((kind) => ({
     key: kind,

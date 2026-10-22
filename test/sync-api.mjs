@@ -1,8 +1,8 @@
 // Focused Windows broker checks; no frontend source preparation required.
 import assert from "node:assert/strict";
 import { WebSocket } from "ws";
-import { startDesk } from "../desk.mjs";
-import { PORTS } from "../config.mjs";
+import { startDesk } from "../src/desk.mjs";
+import { PORTS } from "../src/config.mjs";
 const desk = await startDesk({
   flags: new Set([
     "--verification",

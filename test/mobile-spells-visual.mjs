@@ -10,10 +10,10 @@ for (const [k, v] of Object.entries({
   BACKEND: 9700,
 }))
   process.env[`GOA2_LAB_${k}_PORT`] ??= String(v);
-const { DATA, BACKEND, TOOL } = await import("../config.mjs");
-const { startDesk } = await import("../desk.mjs");
-const { showPane } = await import("../presentation.mjs");
-const { captureReport } = await import("../report.mjs");
+const { DATA, BACKEND, TOOL } = await import("../src/config.mjs");
+const { startDesk } = await import("../src/desk.mjs");
+const { showPane } = await import("../src/presentation.mjs");
+const { captureReport } = await import("../src/report.mjs");
 const rank4 = process.argv.includes("--rank4");
 if (rank4)
   execFileSync(

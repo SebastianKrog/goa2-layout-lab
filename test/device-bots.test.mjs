@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import { chromium } from "playwright";
-import { DeviceServer } from "../device-server.mjs";
+import { DeviceServer } from "../src/device-server.mjs";
 
 const seats = ["arien", "hanu", "brogan", "tigerclaw"].map((name) => ({
   id: `hero_${name}`,

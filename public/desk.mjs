@@ -933,7 +933,7 @@ function organizeSituation(situation, promote = false) {
   $("organizeNote").textContent = promote
     ? "Creates a repo-visible copy for Git review. Your local draft is kept."
     : situation.origin === "library"
-      ? "Moves the shared JSON file within situations/."
+      ? "Moves the shared JSON file within library/situations/."
       : "Moves the local draft within .layout-lab/situations/.";
   $("organizeGroup").value = situation.group || "";
   $("organizeDialog").showModal();

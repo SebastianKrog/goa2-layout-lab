@@ -3,8 +3,8 @@ import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { chromium } from "playwright";
-import { startDesk } from "../desk.mjs";
-import { DATA, PORTS, STARTUP } from "../config.mjs";
+import { startDesk } from "../src/desk.mjs";
+import { DATA, PORTS, STARTUP } from "../src/config.mjs";
 const native = STARTUP.display === "embedded";
 const app = await startDesk({
   flags: new Set([

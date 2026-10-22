@@ -4,13 +4,13 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { DATA } from "../config.mjs";
-import { Services } from "../services.mjs";
+import { DATA } from "../src/config.mjs";
+import { Services } from "../src/services.mjs";
 import {
   backendSnapshot,
   frontendSnapshot,
   wslCacheRoot,
-} from "../wsl-cache.mjs";
+} from "../src/wsl-cache.mjs";
 
 const git = (cwd, ...args) =>
   execFileSync("git", args, {

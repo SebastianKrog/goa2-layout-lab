@@ -10,10 +10,10 @@ for (const [key, port] of Object.entries({
   BACKEND: 10500,
 }))
   process.env[`GOA2_LAB_${key}_PORT`] ??= String(port);
-const { DATA, BACKEND, TOOL } = await import("../config.mjs");
-const { startDesk } = await import("../desk.mjs");
-const { captureReport } = await import("../report.mjs");
-const { showPane } = await import("../presentation.mjs");
+const { DATA, BACKEND, TOOL } = await import("../src/config.mjs");
+const { startDesk } = await import("../src/desk.mjs");
+const { captureReport } = await import("../src/report.mjs");
+const { showPane } = await import("../src/presentation.mjs");
 execFileSync(
   process.env.GOA2_LAB_PYTHON ||
     path.join(
@@ -42,7 +42,7 @@ execFileSync(
   ],
   { stdio: "ignore", windowsHide: true },
 );
-const { waitFor } = await import("../services.mjs");
+const { waitFor } = await import("../src/services.mjs");
 const output = path.join(DATA, "reviews", "turn-states-" + Date.now());
 await fs.mkdir(output, { recursive: true });
 const records = [];

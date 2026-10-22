@@ -10,10 +10,10 @@ for (const [k, p] of Object.entries({
   process.env[`GOA2_LAB_${k}_PORT`] ??= String(p);
 process.env.NODE_ENV = "production";
 process.env.WSLENV = [process.env.WSLENV, "NODE_ENV"].filter(Boolean).join(":");
-const { startDesk } = await import("../desk.mjs");
-const { DATA } = await import("../config.mjs");
-const { captureReport } = await import("../report.mjs");
-const { setCamera, showPane } = await import("../presentation.mjs");
+const { startDesk } = await import("../src/desk.mjs");
+const { DATA } = await import("../src/config.mjs");
+const { captureReport } = await import("../src/report.mjs");
+const { setCamera, showPane } = await import("../src/presentation.mjs");
 const desk = await startDesk({
   flags: new Set([
     "--headless",
@@ -148,10 +148,14 @@ try {
       await c.api("/games/" + c.windows[0].clone.game_id, undefined, "GET")
     ).hash;
     // Preserve an uncommitted Hand selection before keyboard-activating Board controls.
-    await showPane(n,'hand',c.windows[0].config);
-    await n.locator('[data-mobile-panel="hand"] [data-lab-card]').first().click();
-    await n.keyboard.press('Escape');await n.keyboard.press('Escape');
-    await n.getByRole('button',{name:'Focus Hanu',exact:true}).waitFor();
+    await showPane(n, "hand", c.windows[0].config);
+    await n
+      .locator('[data-mobile-panel="hand"] [data-lab-card]')
+      .first()
+      .click();
+    await n.keyboard.press("Escape");
+    await n.keyboard.press("Escape");
+    await n.getByRole("button", { name: "Focus Hanu", exact: true }).waitFor();
     const before = await camera(n);
     await n
       .getByRole("button", { name: "Focus Hanu", exact: true })
@@ -241,7 +245,7 @@ try {
       const targetPage = c.windows[1].page;
       // Start the legacy reference at this viewport instead of carrying its old
       // native pan plus userscript centering remainder through a resize.
-      await targetPage.reload({waitUntil:"domcontentloaded"});
+      await targetPage.reload({ waitUntil: "domcontentloaded" });
       await c.ready(c.windows[1]);
       if (
         await targetPage

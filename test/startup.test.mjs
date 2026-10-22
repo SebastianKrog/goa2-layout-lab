@@ -3,8 +3,8 @@ import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { chromium } from "playwright";
-import { launchSettings, PRESETS, PROFILES, TOOL } from "../config.mjs";
-import { loadStartupSituation } from "../startup.mjs";
+import { launchSettings, PRESETS, PROFILES, TOOL } from "../src/config.mjs";
+import { loadStartupSituation } from "../src/startup.mjs";
 
 test("startup stays empty unless a saved situation ID is explicitly supplied", async () => {
   assert.equal(launchSettings([], {}).situationId, null);

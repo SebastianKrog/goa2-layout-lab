@@ -5,7 +5,7 @@ import {
   restorePresentation,
   capturePresentation,
   setCamera,
-} from "../presentation.mjs";
+} from "../src/presentation.mjs";
 
 test("saved mobile selection ignores hidden panes, waits for Hand, and restores safe inspection", async () => {
   const browser = await chromium.launch({ headless: true });

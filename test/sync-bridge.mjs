@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import http from "node:http";
 import { WebSocketServer } from "ws";
 import { chromium } from "playwright";
-import { installBridge, ACTIONS } from "../synchronize.mjs";
+import { installBridge, ACTIONS } from "../src/synchronize.mjs";
 const events = [],
   received = [];
 const server = http.createServer((req, res) => {

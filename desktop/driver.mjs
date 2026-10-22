@@ -1,7 +1,7 @@
 ﻿import { _electron } from "playwright";
 import path from "node:path";
-import { TOOL } from "../config.mjs";
-import { waitFor } from "../services.mjs";
+import { TOOL } from "../src/config.mjs";
+import { waitFor } from "../src/services.mjs";
 import { electronExecutable } from "./executable.mjs";
 export class NativeDesktop {
   constructor({ userData } = {}) {

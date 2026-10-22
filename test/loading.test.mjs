@@ -1,10 +1,10 @@
 ﻿import assert from "node:assert/strict";
 import { test } from "node:test";
 import { EventEmitter } from "node:events";
-import { Services } from "../services.mjs";
-import { Comparison } from "../browser.mjs";
-import { PRESETS } from "../config.mjs";
-import { localAPIProxy } from "../local-api-proxy.mjs";
+import { Services } from "../src/services.mjs";
+import { Comparison } from "../src/browser.mjs";
+import { PRESETS } from "../src/config.mjs";
+import { localAPIProxy } from "../src/local-api-proxy.mjs";
 
 test("concurrent Base/Target starts share one service and failed starts can retry", async () => {
   const services = new Services("test");

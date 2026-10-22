@@ -5,8 +5,8 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { PNG } from "pngjs";
 import { NativeDesktop } from "../desktop/driver.mjs";
-import { DATA, TOOL, PROFILES } from "../config.mjs";
-import { delay, waitFor } from "../services.mjs";
+import { DATA, TOOL, PROFILES } from "../src/config.mjs";
+import { delay, waitFor } from "../src/services.mjs";
 const desktop = new NativeDesktop(),
   contexts = [],
   pages = [];

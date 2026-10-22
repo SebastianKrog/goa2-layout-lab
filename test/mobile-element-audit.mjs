@@ -13,7 +13,7 @@ for (const [key, port] of Object.entries({
   BACKEND: 10900,
 }))
   process.env[`GOA2_LAB_${key}_PORT`] ??= String(port);
-const { DATA, TOOL } = await import("../config.mjs");
+const { DATA, TOOL } = await import("../src/config.mjs");
 const lab = {
   head: execFileSync("git", [`--work-tree=${TOOL}`, "rev-parse", "HEAD"], {
     cwd: TOOL,
@@ -29,10 +29,10 @@ const lab = {
     .update(await fs.readFile(fileURLToPath(import.meta.url)))
     .digest("hex"),
 };
-const { startDesk } = await import("../desk.mjs");
-const { showPane } = await import("../presentation.mjs");
-const { captureReport } = await import("../report.mjs");
-const { extractSources } = await import("../source-inspection.mjs");
+const { startDesk } = await import("../src/desk.mjs");
+const { showPane } = await import("../src/presentation.mjs");
+const { captureReport } = await import("../src/report.mjs");
+const { extractSources } = await import("../src/source-inspection.mjs");
 const root = path.join(DATA, "reviews", "m1-m4-elements-" + Date.now());
 await fs.mkdir(root, { recursive: true });
 const records = [];

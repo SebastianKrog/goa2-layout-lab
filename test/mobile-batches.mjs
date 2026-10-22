@@ -11,8 +11,8 @@ for (const [k, p] of Object.entries({
   process.env[`GOA2_LAB_${k}_PORT`] ??= String(p);
 process.env.NODE_ENV = "production";
 process.env.WSLENV = [process.env.WSLENV, "NODE_ENV"].filter(Boolean).join(":");
-const { startDesk } = await import("../desk.mjs");
-const { DATA } = await import("../config.mjs");
+const { startDesk } = await import("../src/desk.mjs");
+const { DATA } = await import("../src/config.mjs");
 let desk;
 const report = [];
 const root = DATA + "/runtime/mobile-batches-" + Date.now();

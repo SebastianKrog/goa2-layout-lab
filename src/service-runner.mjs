@@ -45,7 +45,7 @@ if (action === "install") {
     const [root, file] = args;
     pidfile = file;
     command = process.execPath;
-    commandArgs = [path.join(TOOL, "service-runner.mjs"), "install", root];
+    commandArgs = [path.join(TOOL, "src/service-runner.mjs"), "install", root];
     cwd = root;
   } else if (action === "serve") {
     const [root, port, file] = args;
@@ -54,7 +54,7 @@ if (action === "install") {
     commandArgs = [
       path.join(root, "node_modules/vite/bin/vite.js"),
       "--config",
-      path.join(TOOL, "vite.lab.mjs"),
+      path.join(TOOL, "src/vite.lab.mjs"),
     ];
     cwd = root;
     Object.assign(env, {
@@ -90,7 +90,9 @@ if (action === "install") {
         process.env.GOA2_LAB_VENV ||
         path.join(DATA, "runtime", `venv-${process.platform}-${process.arch}`),
       UV_LINK_MODE: "copy",
-      PYTHONPATH: [TOOL, path.join(BACKEND, "src")].join(path.delimiter),
+      PYTHONPATH: [path.join(TOOL, "src"), path.join(BACKEND, "src")].join(
+        path.delimiter,
+      ),
       GOA2_LAB_TOKEN: token,
       GOA2_LAB_DATA: DATA,
       GOA2_PREWARM_WORKERS: "0",

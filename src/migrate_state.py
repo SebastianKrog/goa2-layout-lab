@@ -209,8 +209,8 @@ class StateMigration:
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--shared", type=Path, default=Path(__file__).parent / "situations")
-    parser.add_argument("--data", type=Path, default=Path(__file__).parent / ".layout-lab")
+    parser.add_argument("--shared", type=Path, default=Path(__file__).resolve().parents[1] / "library" / "situations")
+    parser.add_argument("--data", type=Path, default=Path(__file__).resolve().parents[1] / ".layout-lab")
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--apply", action="store_true")
     mode.add_argument("--rollback", metavar="TRANSACTION")

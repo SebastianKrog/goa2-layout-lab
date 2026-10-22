@@ -3,8 +3,8 @@ import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { PNG } from "pngjs";
-import { startDesk } from "../desk.mjs";
-import { PORTS, STARTUP, DATA } from "../config.mjs";
+import { startDesk } from "../src/desk.mjs";
+import { PORTS, STARTUP, DATA } from "../src/config.mjs";
 const native = STARTUP.display === "embedded";
 const app = await startDesk({
   flags: new Set([

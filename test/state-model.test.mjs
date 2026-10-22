@@ -1,6 +1,6 @@
-import { LiveAssets } from "../live-assets.mjs";
+import { LiveAssets } from "../src/live-assets.mjs";
 import { execFileSync } from "node:child_process";
-import { checkoutEvidence } from "../services.mjs";
+import { checkoutEvidence } from "../src/services.mjs";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs/promises";
@@ -14,8 +14,8 @@ import {
   adapterPresentation,
   USER_STATE_KEYS,
   SESSION_STORAGE_PREFIXES,
-} from "../presentation-model.mjs";
-import { Layouts, makeLayout, layoutSlots } from "../layouts.mjs";
+} from "../src/presentation-model.mjs";
+import { Layouts, makeLayout, layoutSlots } from "../src/layouts.mjs";
 
 const state = (viewpoint, sessionState = {}, userState = {}) => ({
   schema: 2,

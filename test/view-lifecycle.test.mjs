@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { Comparison } from "../browser.mjs";
-import { PRESETS } from "../config.mjs";
+import { Comparison } from "../src/browser.mjs";
+import { PRESETS } from "../src/config.mjs";
 const config = PRESETS.Current[0];
 function situation(id) {
   return {

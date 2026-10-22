@@ -8,7 +8,10 @@ const envFile = process.argv
   ?.slice(11);
 if (envFile) process.loadEnvFile(path.resolve(envFile));
 
-export const TOOL = path.dirname(fileURLToPath(import.meta.url));
+export const TOOL = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "..",
+);
 // ROOT is the frontend checkout; TOOL and all local data belong to this repo.
 export const ROOT = path.resolve(
   process.env.GOA2_LAB_FRONTEND || path.join(TOOL, "../goa2-frontend"),

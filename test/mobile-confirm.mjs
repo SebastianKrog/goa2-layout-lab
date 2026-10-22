@@ -12,9 +12,9 @@ for (const [key, port] of Object.entries({
 }))
   process.env[`GOA2_LAB_${key}_PORT`] ??= String(port);
 
-const { startDesk } = await import("../desk.mjs");
-const { DATA, PROFILES } = await import("../config.mjs");
-const { waitFor } = await import("../services.mjs");
+const { startDesk } = await import("../src/desk.mjs");
+const { DATA, PROFILES } = await import("../src/config.mjs");
+const { waitFor } = await import("../src/services.mjs");
 const desk = await startDesk({
   flags: new Set([
     "--verification",

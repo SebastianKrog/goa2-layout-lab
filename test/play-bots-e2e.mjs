@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { chromium } from "playwright";
-import { DATA, PORTS } from "../config.mjs";
+import { DATA, PORTS } from "../src/config.mjs";
 const origin = `http://127.0.0.1:${PORTS.desk}`;
 const out = path.join(DATA, "reviews/play-bots");
 await fs.mkdir(out, { recursive: true });

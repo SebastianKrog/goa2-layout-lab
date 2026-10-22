@@ -6,7 +6,7 @@ import path from "node:path";
 import http from "node:http";
 import { chromium } from "playwright";
 import { PNG } from "pngjs";
-import { ElementReports } from "../element-reports.mjs";
+import { ElementReports } from "../src/element-reports.mjs";
 import { installElementPicker } from "../public/element-picker.mjs";
 
 const until = async (fn) => {

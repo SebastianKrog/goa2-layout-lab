@@ -153,7 +153,7 @@ def create_app():
     root = Path(os.environ["GOA2_LAB_DATA"]).resolve()
     from situations import SituationStore
 
-    library = SituationStore(Path(__file__).parent / "situations", root)
+    library = SituationStore(Path(__file__).resolve().parents[1] / "library" / "situations", root)
     app = normal_app()
     app.router.lifespan_context = lab_lifespan
     token = os.environ["GOA2_LAB_TOKEN"]

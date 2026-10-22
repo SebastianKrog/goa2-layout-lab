@@ -1,10 +1,10 @@
-import { toPresentation } from "../presentation-model.mjs";
+import { toPresentation } from "../src/presentation-model.mjs";
 // Explicit acceptance run; refuses to attach to a normal interactive desk.
 import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { DATA, ROOT, PRESETS, REFERENCES, PORTS } from "../config.mjs";
-import { delay, waitFor } from "../services.mjs";
+import { DATA, ROOT, PRESETS, REFERENCES, PORTS } from "../src/config.mjs";
+import { delay, waitFor } from "../src/services.mjs";
 
 const base = `http://localhost:${PORTS.desk}`;
 async function get(route) {

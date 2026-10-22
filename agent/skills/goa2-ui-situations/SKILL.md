@@ -25,11 +25,11 @@ Infer a useful default from the request and record it. Ask only when alternative
 
 ## Find the current implementation
 
-Locate the sibling repositories or configured checkout overrides. Read the lab's README, config.mjs, backend.py and presentation.mjs as needed. Defaults are siblings named goa2-layout-lab, goa2-backend, goa2-frontend and goa2-mobile-2d-patch; do not bake a Windows drive path into factories.
+Locate the sibling repositories or configured checkout overrides. Read the lab's README, src/config.mjs, src/backend.py and src/presentation.mjs as needed. Defaults are siblings named goa2-layout-lab, goa2-backend, goa2-frontend and goa2-mobile-2d-patch; do not bake a Windows drive path into factories.
 
 Use [references/lab-workflow.md](references/lab-workflow.md) for creation, import, saving, reload and handoff details. Read only the matching sections of [references/recipes.md](references/recipes.md) for the requested situation. Source paths there are search starting points: confirm fields, IDs and request shapes in the checked-out backend.
 
-For the five basic card examples, first inspect the shared situations/cards/ library and situations/README.md. The repo script scripts/create-simple-situations.py is the executed factory for planning selection, action choice, one tier II upgrade, defense and discard. Reuse those situations or adapt that script instead of reconstructing their setup from memory. See lab-workflow.md for what was actually verified.
+For the five basic card examples, first inspect the shared library/situations/cards/ library and library/README.md. The repo script scripts/create-simple-situations.py is the executed factory for planning selection, action choice, one tier II upgrade, defense and discard. Reuse those situations or adapt that script instead of reconstructing their setup from memory. See lab-workflow.md for what was actually verified.
 
 The lab's starter endpoint currently makes the fixed Arien/Hanu versus Brogan/Tigerclaw game. Passing a hero roster to that endpoint does not customize it. For Snorri, Gydion or Emmitt, use a real custom GameSetup, an appropriate existing save, or a replay.
 
@@ -43,7 +43,7 @@ Use the shortest reliable route:
 
 Use existing backend fixtures as construction references, not as rule-test assignments. EffectScenarioBuilder makes generic heroes and synthetic boards; its hero named hero_gydion is not automatically a fully initialized registry Gydion. For frontend fixtures, normally keep a full-map GameSetup and adapt only the useful step sequence/context from a test.
 
-Use registered cards and enum values. Maintain live card zones, actor/turn and context consistently; keep the master card catalogue as the model expects. Directly setting setup data such as level or rune_slots is appropriate for a display fixture. Do not manufacture a frontend STATE_UPDATE, overwrite window.__GOA2_LAB_STATE__, invent an input_request, or change production engine/card implementations to make a prompt appear.
+Use registered cards and enum values. Maintain live card zones, actor/turn and context consistently; keep the master card catalogue as the model expects. Directly setting setup data such as level or rune_slots is appropriate for a display fixture. Do not manufacture a frontend STATE_UPDATE, overwrite window.**GOA2_LAB_STATE**, invent an input_request, or change production engine/card implementations to make a prompt appear.
 
 Load effects through goa2.bootstrap.register_all_effects() before constructing/resolving custom hero situations.
 
@@ -82,7 +82,7 @@ Prefer an isolated lab session with distinct ports when setup/reload would repla
 
 ## Store and group situations
 
-Use **situation** consistently. The lab exposes catalog.situations and situationId in load requests. Reuse the shared repo library in situations/<group>/ before fabricating another copy. New user- or agent-generated checkpoints go to ignored .layout-lab/situations/; factory scratch files go to .layout-lab/situation-recipes/.
+Use **situation** consistently. The lab exposes catalog.situations and situationId in load requests. Reuse the shared repo library in library/situations/<group>/ before fabricating another copy. New user- or agent-generated checkpoints go to ignored .layout-lab/situations/; factory scratch files go to .layout-lab/situation-recipes/.
 
 Choose a focused folder such as cards/defense, cards/upgrades, heroes/gydion, heroes/snorri, heroes/emmitt or menus. Grouping is a real directory tree, not a naming prefix. Move a draft with POST /api/organize {id,group,shared:false}. After reopening and confirming the visual contract, add reusable fixtures to the shared library with {id,group,shared:true}. Promotion returns a new ID and keeps the local draft. Review that repo-visible JSON; commit only when authorized. Never put the curated library inside ignored runtime data.
 

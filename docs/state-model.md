@@ -9,13 +9,13 @@ Situations, Presentations, Layouts, Reviews and Review Runs use schema 2. Decisi
 States have their own schema 1; this is a separate record type.
 
 ```text
-situations/<folder>/<situation-id>.json
+library/situations/<folder>/<situation-id>.json
   schema: 2, kind: situation
   decisionStateId: <SHA-256 of exact checkpoint>
   presentation: {schema: 2, viewpoint?, sessionState: {}, userState: {}}
-decision-states/<hash>.json
+library/decision-states/<hash>.json
   schema: 1, kind: decision-state, id: <hash>, checkpoint: {...}
-layouts/<layout-id>.json
+library/layouts/<layout-id>.json
   schema: 2, kind: layout, views: [...], synchronization: none|api|api-clicks
 ```
 
@@ -27,7 +27,7 @@ checkpoint serialization, including large integers.
 
 Game-only save names live in the Decision State store's `labels.json`; labels do
 not change checkpoint identity. Presentation templates live in
-`.layout-lab/presentation-templates.json`. Shared and local `layouts/` files supply
+`.layout-lab/presentation-templates.json`. Shared `library/layouts/` and local `.layout-lab/layouts/` files supply
 Layouts; `.layout-lab/layouts.json` stores local overrides loaded last. Editing a
 file-backed Layout retains its identity and persists only the override.
 
@@ -36,7 +36,7 @@ Review revisions, frozen Run inputs and report attribution.
 
 ## Presentation contracts and restoration
 
-`state-contract.json` defines supported User State keys and temporary Session State
+`src/state-contract.json` defines supported User State keys and temporary Session State
 storage prefixes. Python and JavaScript normalize the same fixtures in
 `test/presentation-contract.json`. Canonical envelopes reject obsolete versions,
 invalid state/value types and storage keys outside those boundaries, including
@@ -44,7 +44,7 @@ renderer-specific Session States.
 
 Clone the exact Decision State, resolve the effective Viewpoint, seed supported
 preferences before frontend startup, then restore Session State through semantic
-controls. Desktop and device transports share `presentation-plan.mjs` for ordered
+controls. Desktop and device transports share `src/presentation-plan.mjs` for ordered
 spell-browser and nested inspection restoration. Unsupported controls produce
 warnings; restoration must not submit game actions.
 
@@ -67,13 +67,13 @@ concurrent reads and accounts for cached bytes once.
 ## Porting older situations
 
 The running lab accepts composed Situations only. Older bundles are handled by
-`migrate_state.py` and its offline `state_migration_legacy.py` converter. Run with
+`src/migrate_state.py` and its offline `src/state_migration_legacy.py` converter. Run with
 the configured backend's Python environment; for example:
 
 ```powershell
-& ../goa2-backend-bots/.venv/Scripts/python.exe migrate_state.py
-& ../goa2-backend-bots/.venv/Scripts/python.exe migrate_state.py --apply
-& ../goa2-backend-bots/.venv/Scripts/python.exe migrate_state.py --rollback <transaction-id>
+& ../goa2-backend-bots/.venv/Scripts/python.exe src/migrate_state.py
+& ../goa2-backend-bots/.venv/Scripts/python.exe src/migrate_state.py --apply
+& ../goa2-backend-bots/.venv/Scripts/python.exe src/migrate_state.py --rollback <transaction-id>
 ```
 
 The default inventory is read-only. Use `--shared <situations-directory>` and

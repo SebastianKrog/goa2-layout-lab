@@ -173,9 +173,10 @@ export async function startDesk({
   const presentations = existsSync(presentationFile)
     ? JSON.parse(await fs.readFile(presentationFile, "utf8"))
     : [];
-  const layouts = await new Layouts(DATA, path.join(TOOL, "layouts")).init(
-    presets,
-  );
+  const layouts = await new Layouts(
+    DATA,
+    path.join(TOOL, "library/layouts"),
+  ).init(presets);
   presets = layouts.slotsByName();
   if (!presets[STARTUP.preset])
     throw new Error(`Unknown startup preset: ${STARTUP.preset}`);

@@ -9,9 +9,9 @@ for (const [key, port] of Object.entries({
   BACKEND: 10400,
 }))
   process.env[`GOA2_LAB_${key}_PORT`] ??= String(port);
-const { DATA, PORTS } = await import("../config.mjs");
-const { startDesk } = await import("../desk.mjs");
-const { captureReport } = await import("../report.mjs");
+const { DATA, PORTS } = await import("../src/config.mjs");
+const { startDesk } = await import("../src/desk.mjs");
+const { captureReport } = await import("../src/report.mjs");
 const output = path.join(DATA, "reviews", "library-reopen-" + Date.now());
 await fs.mkdir(output, { recursive: true });
 const records = [];

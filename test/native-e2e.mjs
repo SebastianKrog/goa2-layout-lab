@@ -2,9 +2,9 @@
 import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { startDesk } from "../desk.mjs";
-import { PORTS, DATA, PRESETS } from "../config.mjs";
-import { waitFor, delay } from "../services.mjs";
+import { startDesk } from "../src/desk.mjs";
+import { PORTS, DATA, PRESETS } from "../src/config.mjs";
+import { waitFor, delay } from "../src/services.mjs";
 const origin = `http://localhost:${PORTS.desk}`;
 const desk = await startDesk({
   flags: new Set(["--verification", "--no-auto-load"]),
@@ -105,7 +105,6 @@ try {
     await request("load", {
       situationId: situation.id,
       slots: PRESETS["Mobile migration"],
-
     });
     await ready(3);
     let views = await request("views");
@@ -231,7 +230,6 @@ try {
     await request("load", {
       situationId: situation.id,
       slots: PRESETS["Layout regression"],
-
     });
     await ready(2);
     before = await request("views");
@@ -255,7 +253,6 @@ try {
   await request("load", {
     situationId: situation.id,
     slots,
-
   });
   await ready(2);
   before = await request("views");

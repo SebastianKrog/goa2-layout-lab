@@ -80,7 +80,7 @@ reports.
 | Report an element across Views                           | [Element reports](docs/element-reporting.md)                                    |
 | Inspect queues and rerun earlier reviews                 | [Reviews and evidence](docs/reviews.md)                                         |
 | Understand saved state or port old Situations            | [Terminology](docs/terminology.md) · [Storage and porting](docs/state-model.md) |
-| Browse the shared fixtures                               | [Situation library](situations/README.md)                                       |
+| Browse the shared fixtures                               | [Situation library](library/README.md)                                          |
 
 ## Development
 

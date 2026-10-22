@@ -2,17 +2,22 @@
 
 ## Discover and pin sources
 
-Resolve the lab root, frontend checkout, backend and optional userscript checkout from config.mjs and GOA2_LAB_FRONTEND / GOA2_LAB_BACKEND / GOA2_LAB_PATCH. TOOL is the lab, ROOT is the frontend, DATA is ignored .layout-lab. Do not copy this installation's absolute paths into portable scripts.
+Resolve the lab root, frontend checkout, backend and optional userscript checkout from src/config.mjs and GOA2_LAB_FRONTEND / GOA2_LAB_BACKEND / GOA2_LAB_PATCH. TOOL is the lab, ROOT is the frontend, DATA is ignored .layout-lab. Do not copy this installation's absolute paths into portable scripts.
 
 Resolve A and B in the frontend repository using Git argument arrays, without switching the user's branch:
 
-~~~javascript
-import {execFileSync} from "node:child_process";
-const resolve = (repo, ref) => execFileSync("git", ["rev-parse", "--verify", ref + "^{commit}"], {cwd:repo,encoding:"utf8",windowsHide:true}).trim();
+```javascript
+import { execFileSync } from "node:child_process";
+const resolve = (repo, ref) =>
+  execFileSync("git", ["rev-parse", "--verify", ref + "^{commit}"], {
+    cwd: repo,
+    encoding: "utf8",
+    windowsHide: true,
+  }).trim();
 const baseSha = resolve(frontendRoot, requestedA);
 const compareSha = resolve(frontendRoot, requestedB);
 const scriptSha = resolve(patchRoot, requestedScriptRef); // when using Target
-~~~
+```
 
 Confirm the requested revisions exist locally. Do not silently substitute HEAD, fetch another remote, or change the checkout. If the request says newest comparator, resolve the configured branch (normally mobile-migration) once and record that SHA. Base and Comparator exports are immutable Git archives cached by the lab. Model assets are copied from the working checkout only when their checksum matches that commit's scripts/model-assets.json. Missing model bytes or unsupported instrumentation are real preparation failures; inspect the supplied error and repo asset preparation command rather than drawing an incomplete scene.
 
@@ -24,20 +29,20 @@ Read GET /api/status and /api/catalog if a desk is already running. Frozen Base/
 
 From the lab root, in a persistent terminal:
 
-~~~sh
+```sh
 npm start -- --base-ref=BASE_SHA --comparator-ref=COMPARE_SHA --script-ref=SCRIPT_SHA --preset=desktop-2d --no-auto-load
-~~~
+```
 
 Use --preset=desktop-3d for two desktop 3D defaults or --preset=mobile for the three migration defaults; explicit load slots below determine the actual views when --no-auto-load is used. Omit --script-ref for two views when no script ref was requested. Defaults still resolve the configured script SHA but no script is injected without Target. For automated static capture, add --headless --no-open --verification. These flags are not a live human viewer.
 
-Windows defaults to a Windows desk/browser and WSL services. Linux/macOS default to native services. Use the existing configured environment; do not run Linux/WSLg acceptance suites on this installation. To isolate an instance set all five GOA2_LAB_*_PORT variables in its process environment, for example DESK=3300, BASE=3301, COMPARATOR=3302, LIVE=3303, BACKEND=8300. Also use that desk port in every subsequent request. Do not kill occupied-port owners.
+Windows defaults to a Windows desk/browser and WSL services. Linux/macOS default to native services. Use the existing configured environment; do not run Linux/WSLg acceptance suites on this installation. To isolate an instance set all five GOA2*LAB*\*\_PORT variables in its process environment, for example DESK=3300, BASE=3301, COMPARATOR=3302, LIVE=3303, BACKEND=8300. Also use that desk port in every subsequent request. Do not kill occupied-port owners.
 
 For a detached Windows human viewer, set those environment variables and launch hidden with logs; the Electron app itself is the visible interface:
 
-~~~powershell
+```powershell
 $labNode = (Get-Command node).Source
 $viewer = Start-Process -FilePath $labNode -ArgumentList @('launch.mjs', "--base-ref=$baseSha", "--comparator-ref=$compareSha", '--no-auto-load') -WorkingDirectory $labRoot -WindowStyle Hidden -RedirectStandardOutput "$labRoot/.layout-lab/runtime/viewer.stdout.log" -RedirectStandardError "$labRoot/.layout-lab/runtime/viewer.stderr.log" -PassThru
-~~~
+```
 
 Ensure the log directory exists first. Add --script-ref when requested. Keep the owning process/terminal alive through handoff. Preparation can take minutes on a cold cache; check status/logs and keep the user informed instead of launching duplicate instances.
 
@@ -45,12 +50,12 @@ Ensure the log directory exists first. Add --script-ref when requested. Keep the
 
 Use the public local desk API, without extracting the private backend credential:
 
-~~~javascript
+```javascript
 const origin = "http://127.0.0.1:3300";
 async function request(name, body) {
   const response = await fetch(origin + "/api/" + name, {
     method: body === undefined ? "GET" : "POST",
-    headers: {"content-type":"application/json"},
+    headers: { "content-type": "application/json" },
     body: body === undefined ? undefined : JSON.stringify(body),
     signal: AbortSignal.timeout(600000),
   });
@@ -59,18 +64,34 @@ async function request(name, body) {
   return value;
 }
 const catalog = await request("catalog");
-const situation = catalog.situations.find(s => s.id === requestedSituationId);
-if (!situation) throw Error("Requested situation is not in this desk's library");
+const situation = catalog.situations.find((s) => s.id === requestedSituationId);
+if (!situation)
+  throw Error("Requested situation is not in this desk's library");
 const seat = "hero_arien"; // use the actual chooser, e.g. hero_brogan for defense/discard
 const slots = [
-  {label:"Commit A",source:"base",profile:"desktop",render:"2d",uiMode:"desktop",seat},
-  {label:"Commit B",source:"comparator",profile:"desktop",render:"2d",uiMode:"desktop",seat},
+  {
+    label: "Commit A",
+    source: "base",
+    profile: "desktop",
+    render: "2d",
+    uiMode: "desktop",
+    seat,
+  },
+  {
+    label: "Commit B",
+    source: "comparator",
+    profile: "desktop",
+    render: "2d",
+    uiMode: "desktop",
+    seat,
+  },
 ];
-await request("load", {situationId:situation.id,slots});
-await request("synchronize", {mode:"none"});
-await request("cheats", {show:false});
-const status = await request("status"), views = await request("views");
-~~~
+await request("load", { situationId: situation.id, slots });
+await request("synchronize", { mode: "none" });
+await request("cheats", { show: false });
+const status = await request("status"),
+  views = await request("views");
+```
 
 Loading retains the supplied View settings and applies the Situation's composed Presentation. Use `overrides` to pin an intentional Viewpoint, panel or camera, and record such overrides when judging parity.
 
@@ -82,12 +103,30 @@ A Situation contains one explicit Presentation. Distinct saved player/UI variant
 
 ```js
 const slots = [
-  {source:"base",profile:"desktop",render:"3d",uiMode:"desktop",seat,
-   overrides:{viewpoint:seat,sessionState:{render:"3d",pane:"board",camera:null}}},
-  {source:"comparator",profile:"desktop",render:"3d",uiMode:"desktop",seat,
-   overrides:{viewpoint:seat,sessionState:{render:"3d",pane:"board",camera:null}}},
+  {
+    source: "base",
+    profile: "desktop",
+    render: "3d",
+    uiMode: "desktop",
+    seat,
+    overrides: {
+      viewpoint: seat,
+      sessionState: { render: "3d", pane: "board", camera: null },
+    },
+  },
+  {
+    source: "comparator",
+    profile: "desktop",
+    render: "3d",
+    uiMode: "desktop",
+    seat,
+    overrides: {
+      viewpoint: seat,
+      sessionState: { render: "3d", pane: "board", camera: null },
+    },
+  },
 ];
-await request("load",{situationId:situation.id,slots});
+await request("load", { situationId: situation.id, slots });
 ```
 
 Use Save Situation to capture a new moment; Save Layout stores View settings independently. Presentation templates can be applied without changing the game. There is no bundled legacy restore mode.

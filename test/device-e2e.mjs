@@ -3,7 +3,7 @@ import { chromium } from "playwright";
 import fs from "node:fs/promises";
 import path from "node:path";
 import assert from "node:assert/strict";
-import { DATA, PORTS } from "../config.mjs";
+import { DATA, PORTS } from "../src/config.mjs";
 const origin = `http://127.0.0.1:${PORTS.desk}`;
 const request = async (route, body) => {
   const response = await fetch(origin + route, {
@@ -109,7 +109,6 @@ try {
   const reopened = await request("/api/device-open", {
     situationId: id,
     slot: original.config,
-
   });
   const replay = await browser.newPage({
     viewport: { width: 390, height: 844 },

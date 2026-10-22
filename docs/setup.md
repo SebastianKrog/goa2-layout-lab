@@ -12,7 +12,7 @@ GitHub/
   goa2-mobile-2d-patch/     # optional userscript target
 ```
 
-The lab does not need to be inside the frontend checkout. The shared situation library lives in tracked `situations/` folders. Local drafts,
+The lab does not need to be inside the frontend checkout. The shared situation library lives in tracked `library/situations/` folders. Local drafts,
 reports and backend recovery files stay in this repo's ignored `.layout-lab/`
 directory. Native Linux/macOS also keep service caches there. The Windows-to-WSL
 adapter keeps service caches on WSL's Linux filesystem as described below.

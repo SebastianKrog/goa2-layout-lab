@@ -10,10 +10,10 @@ for (const [key, port] of Object.entries({
   BACKEND: 10300,
 }))
   process.env[`GOA2_LAB_${key}_PORT`] ??= String(port);
-const { DATA, BACKEND, TOOL } = await import("../config.mjs");
-const { startDesk } = await import("../desk.mjs");
-const { showPane } = await import("../presentation.mjs");
-const { captureReport } = await import("../report.mjs");
+const { DATA, BACKEND, TOOL } = await import("../src/config.mjs");
+const { startDesk } = await import("../src/desk.mjs");
+const { showPane } = await import("../src/presentation.mjs");
+const { captureReport } = await import("../src/report.mjs");
 execFileSync(
   process.env.GOA2_LAB_PYTHON ||
     path.join(

@@ -6,7 +6,7 @@ import { pipeline } from "node:stream/promises";
 import { randomUUID } from "node:crypto";
 import { downloadArtifact } from "@electron/get";
 import yauzl from "yauzl";
-import { DATA } from "../config.mjs";
+import { DATA } from "../src/config.mjs";
 const require = createRequire(import.meta.url);
 export async function electronExecutable() {
   if (process.env.GOA2_LAB_ELECTRON_EXECUTABLE)

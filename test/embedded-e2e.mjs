@@ -3,8 +3,8 @@ import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { chromium } from "playwright";
-import { PORTS, DATA, PRESETS } from "../config.mjs";
-import { waitFor, delay } from "../services.mjs";
+import { PORTS, DATA, PRESETS } from "../src/config.mjs";
+import { waitFor, delay } from "../src/services.mjs";
 const origin = `http://localhost:${PORTS.desk}`;
 async function request(name, body) {
   const r = await fetch(origin + "/api/" + name, {
@@ -42,7 +42,6 @@ try {
   await request("load", {
     situationId: situation.id,
     slots: PRESETS["Mobile migration"],
-
   });
   await page.goto(origin);
   const ready = async (count, width) => {
@@ -172,7 +171,6 @@ try {
   await request("load", {
     situationId: situation.id,
     slots: PRESETS["Layout regression"],
-
   });
   await ready(2, 1440);
   let before = await request("views");
@@ -192,7 +190,6 @@ try {
   await request("load", {
     situationId: situation.id,
     slots,
-
   });
   await ready(2, 1440);
   before = await request("views");

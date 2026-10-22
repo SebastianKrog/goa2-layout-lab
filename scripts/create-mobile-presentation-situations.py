@@ -13,6 +13,7 @@ parser.add_argument('--backend', type=Path, default=Path(os.environ.get('GOA2_LA
 parser.add_argument('--output', type=Path, default=LAB / '.layout-lab/situation-recipes/mobile-presentation')
 args = parser.parse_args()
 sys.path.insert(0, str(args.backend.resolve() / 'src'))
+sys.path.insert(0, str(LAB / "src"))
 from goa2.bootstrap import register_all_effects
 from goa2.domain.models import CardState, StatType, GamePhase, TeamColor
 from goa2.domain.time_control import TimeControlConfig, ClockStatus
@@ -21,7 +22,7 @@ from goa2.domain.models.marker import MarkerType
 from goa2.engine.session import GameSession
 from goa2.engine.setup import GameSetup
 from goa2.server.map_paths import resolve_map_path
-spec = importlib.util.spec_from_file_location('presentation_fixture_lab', LAB / 'backend.py')
+spec = importlib.util.spec_from_file_location('presentation_fixture_lab', LAB / 'src/backend.py')
 lab = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(lab)
 register_all_effects()

@@ -400,7 +400,7 @@ export class DeviceServer {
         return send(200, await deviceImageBundle(), "text/javascript");
       const files = {
         "/__device/report.js": "public/device-report.mjs",
-        "/__device/presentation-plan.js": "presentation-plan.mjs",
+        "/__device/presentation-plan.js": "src/presentation-plan.mjs",
         "/__device/html-to-image.js":
           "node_modules/html-to-image/dist/html-to-image.js",
       };

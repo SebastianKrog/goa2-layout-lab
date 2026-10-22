@@ -3,11 +3,11 @@ import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import path from "node:path";
 import net from "node:net";
-import { selectRuntime } from "../runtime.mjs";
-import { Services, available, waitFor } from "../services.mjs";
-import { DATA } from "../config.mjs";
-import { launchSettings, REFERENCES } from "../config.mjs";
-import { TOOL } from "../config.mjs";
+import { selectRuntime } from "../src/runtime.mjs";
+import { Services, available, waitFor } from "../src/services.mjs";
+import { DATA } from "../src/config.mjs";
+import { launchSettings, REFERENCES } from "../src/config.mjs";
+import { TOOL } from "../src/config.mjs";
 import { execFileSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 
@@ -25,7 +25,7 @@ test("env-file loading preserves shell values and CLI overrides", async () => {
     );
     await fs.writeFile(
       script,
-      `import { STARTUP } from ${JSON.stringify(pathToFileURL(path.join(TOOL, "config.mjs")).href)}; console.log(JSON.stringify(STARTUP));`,
+      `import { STARTUP } from ${JSON.stringify(pathToFileURL(path.join(TOOL, "src/config.mjs")).href)}; console.log(JSON.stringify(STARTUP));`,
     );
     const env = Object.fromEntries(
       Object.entries(process.env).filter(

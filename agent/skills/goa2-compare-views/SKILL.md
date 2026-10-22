@@ -15,7 +15,7 @@ Follow [the canonical terminology](../../../docs/terminology.md): Decision State
 
 Locate goa2-layout-lab and the configured frontend/backend/userscript checkouts. Read the lab README and current config/API before applying these instructions to changed versions. Resolve requested frontend refs to full Git SHAs locally. Base is commit A, Comparator is commit B; optional Target is commit A plus the pinned userscript revision. The target is not the userscript applied to B. A live working tree is a separate mode and is not immutable commit evidence.
 
-Use the existing shared situations/ library. If the requested moment is missing, use the available goa2-ui-situations skill to fabricate/save it, then return here. Choose the actual chooser's seat; a defender/discarding hero can differ from the active actor. Record the situation ID/path and exact visual condition.
+Use the existing shared library/situations/ library. If the requested moment is missing, use the available goa2-ui-situations skill to fabricate/save it, then return here. Choose the actual chooser's seat; a defender/discarding hero can differ from the active actor. Record the situation ID/path and exact visual condition.
 
 Use [references/setup-and-viewer.md](references/setup-and-viewer.md) for launch/ref selection, one/two/three-slot APIs, saved presentation handling, synchronization and human handoff. Preserve an existing user's games/viewpoints before replacing their comparison. An owned instance on distinct ports usually avoids that replacement. Do not stop another desk or normal dev servers.
 

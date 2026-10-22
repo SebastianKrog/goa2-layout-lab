@@ -10,13 +10,14 @@ parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--backend", type=Path, default=root.parent / "goa2-backend")
 args = parser.parse_args()
 sys.path.insert(0, str(args.backend / "src"))
+sys.path.insert(0, str(root / "src"))
 from goa2.bootstrap import register_all_effects
 from goa2.engine.setup import GameSetup
 from goa2.engine.session import GameSession
 from goa2.server.map_paths import resolve_map_path
 from goa2.domain.input import InputResponse
 from goa2.domain.models import TeamColor
-spec = importlib.util.spec_from_file_location("resolution_lab", root / "backend.py")
+spec = importlib.util.spec_from_file_location("resolution_lab", root / "src/backend.py")
 lab = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(lab)
 register_all_effects()

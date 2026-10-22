@@ -9,12 +9,12 @@ import {
   PRESETS,
   gameURL,
   ROOT,
-} from "../config.mjs";
-import { instrument, instrumentScript } from "../instrument.mjs";
-import { imageDiff, strip, reportHTML } from "../report.mjs";
+} from "../src/config.mjs";
+import { instrument, instrumentScript } from "../src/instrument.mjs";
+import { imageDiff, strip, reportHTML } from "../src/report.mjs";
 import net from "node:net";
-import { available, waitFor } from "../services.mjs";
-import { Comparison } from "../browser.mjs";
+import { available, waitFor } from "../src/services.mjs";
+import { Comparison } from "../src/browser.mjs";
 
 test("two duplicate desktop 3D viewpoints are valid; userscript cannot use 3D", () => {
   const slots = structuredClone(PRESETS["3D regression"]);

@@ -140,7 +140,7 @@ async function removeStage(stage, parent) {
 async function run(args, env) {
   const child = spawn(
     process.execPath,
-    [path.join(TOOL, "service-runner.mjs"), ...args],
+    [path.join(TOOL, "src/service-runner.mjs"), ...args],
     { env, stdio: "inherit" },
   );
   // The service runner owns its detached process group and forwards shutdown.

@@ -5,7 +5,7 @@ import { once } from "node:events";
 import { WebSocket, WebSocketServer } from "ws";
 import { chromium } from "playwright";
 import { PNG } from "pngjs";
-import { DeviceServer } from "../device-server.mjs";
+import { DeviceServer } from "../src/device-server.mjs";
 
 test("device links scope HTTP/WS to a clone, inject reporting, generate QR and revoke access", async () => {
   let iconRequests = 0;

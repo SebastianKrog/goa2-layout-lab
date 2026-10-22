@@ -2,8 +2,8 @@
 import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { startDesk } from "../desk.mjs";
-import { DATA, PORTS } from "../config.mjs";
+import { startDesk } from "../src/desk.mjs";
+import { DATA, PORTS } from "../src/config.mjs";
 const app = await startDesk({
   flags: new Set(["--verification", "--headless", "--no-open"]),
 });

@@ -11,7 +11,7 @@ import sys
 import shutil
 from unittest.mock import patch
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 
 class SituationTests(unittest.TestCase):
@@ -35,7 +35,7 @@ class SituationTests(unittest.TestCase):
         ]:
             os.environ[env] = str(Path(cls.temp.name) / sub)
         spec = importlib.util.spec_from_file_location(
-            "lab_backend", Path(__file__).parents[1] / "backend.py"
+            "lab_backend", Path(__file__).parents[1] / "src/backend.py"
         )
         cls.module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(cls.module)
@@ -47,8 +47,8 @@ class SituationTests(unittest.TestCase):
         from situations import SituationStore
 
         cls.library = Path(cls.temp.name) / "library"
-        shutil.copytree(Path(__file__).parents[1] / "situations", cls.library)
-        shutil.copytree(Path(__file__).parents[1] / "decision-states", Path(cls.temp.name) / "decision-states")
+        shutil.copytree(Path(__file__).parents[1] / "library/situations", cls.library)
+        shutil.copytree(Path(__file__).parents[1] / "library/decision-states", Path(cls.temp.name) / "decision-states")
         with patch(
             "situations.SituationStore",
             side_effect=lambda shared, data: SituationStore(cls.library, data),

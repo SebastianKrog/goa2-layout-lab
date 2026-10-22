@@ -15,7 +15,7 @@ import {
 import { resolveCrop, cropImage } from "./element-crop.mjs";
 import { capturePresentation } from "./presentation.mjs";
 import { escapeHTML } from "./report.mjs";
-import { installElementPicker } from "./public/element-picker.mjs";
+import { installElementPicker } from "../public/element-picker.mjs";
 
 function authoredCSS(snapshot) {
   const rules = new Set();
