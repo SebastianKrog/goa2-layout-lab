@@ -5,10 +5,10 @@ import copy
 import hashlib
 import json
 import re
+from pathlib import Path
 
 SITUATION_SCHEMA = 2
 PRESENTATION_SCHEMA = 2
-from pathlib import Path
 _CONTRACT = json.loads((Path(__file__).parent / "state-contract.json").read_text(encoding="utf-8"))
 USER_STATE_KEYS = frozenset(_CONTRACT["userStateKeys"])
 SESSION_STORAGE_PREFIXES = tuple(_CONTRACT["sessionStoragePrefixes"])
@@ -26,29 +26,54 @@ def identifier(value, *, decision=False):
     return value
 
 
-def presentation(value=None, viewpoint=None):
-    """Unset means inherit; JSON null explicitly resets a field to adapter defaults."""
-    value = copy.deepcopy(value or {})
-    if value.get("schema") == PRESENTATION_SCHEMA:
+_UNSET = object()
+
+
+def presentation(value=_UNSET, viewpoint=_UNSET):
+    """Normalize raw adapter captures and canonical Presentation envelopes."""
+    if value is _UNSET:
+        value = {}
+    if not isinstance(value, dict):
+        raise ValueError("Presentation must be an object")
+    value = copy.deepcopy(value)
+    if "schema" in value and value["schema"] != PRESENTATION_SCHEMA:
+        raise ValueError("Unsupported Presentation schema")
+    if any(k in value for k in ("schema", "viewpoint", "sessionState", "userState")):
         if not isinstance(value.get("sessionState", {}), dict) or not isinstance(value.get("userState", {}), dict):
             raise ValueError("Presentation states must be objects")
-        result = value
+        result = {"schema": PRESENTATION_SCHEMA, "sessionState": {}, "userState": {}, **value}
     else:
-        storage = value.pop("storage", {}) or {}
+        storage = value.pop("storage", {})
         if not isinstance(storage, dict):
             raise ValueError("Presentation storage must be an object")
         user = {k: v for k, v in storage.items() if k in USER_STATE_KEYS}
-        session_storage = {k: v for k, v in storage.items() if k.startswith(SESSION_STORAGE_PREFIXES)}
-        unsupported = [k for k in storage if k not in user and k not in session_storage]
+        scoped = {k: v for k, v in storage.items() if k.startswith(SESSION_STORAGE_PREFIXES)}
+        unsupported = sorted(k for k in storage if k not in user and k not in scoped)
         result = {"schema": PRESENTATION_SCHEMA, "sessionState": value, "userState": user}
-        if session_storage:
-            result["sessionState"]["storage"] = session_storage
+        if scoped:
+            result["sessionState"]["storage"] = scoped
         if unsupported:
-            result["warnings"] = ["Unsupported saved storage key: " + k for k in sorted(unsupported)]
-    for key, val in result.get("userState", {}).items():
+            result["warnings"] = ["Unsupported saved storage key: " + k for k in unsupported]
+    for key, val in result["userState"].items():
         if key not in USER_STATE_KEYS or not (val is None or isinstance(val, str)):
             raise ValueError("Unsupported User State setting: " + key)
-    if viewpoint is not None:
+    def validate_session(session):
+        if not isinstance(session, dict):
+            raise ValueError("Session State must be an object")
+        if "storage" in session:
+            storage = session["storage"]
+            if not isinstance(storage, dict):
+                raise ValueError("Presentation storage must be an object")
+            for key, val in storage.items():
+                if not key.startswith(SESSION_STORAGE_PREFIXES) or not (val is None or isinstance(val, str)):
+                    raise ValueError("Unsupported Session State storage key: " + key)
+        if "modes" in session:
+            if not isinstance(session["modes"], dict):
+                raise ValueError("Session State modes must be an object")
+            for mode in session["modes"].values():
+                validate_session(mode)
+    validate_session(result["sessionState"])
+    if viewpoint is not _UNSET:
         result["viewpoint"] = viewpoint
     if "viewpoint" in result and result["viewpoint"] is not None and not isinstance(result["viewpoint"], str):
         raise ValueError("Viewpoint must be a player, spectator, or null")
@@ -75,82 +100,6 @@ def validate_situation(value):
     return value
 
 
-def layout(configs, name="Imported layout", identity=None, synchronization="none"):
-    views = []
-    for config in configs:
-        view = copy.deepcopy(config)
-        view["uiMode"] = view.pop("layout", view.get("uiMode", "desktop"))
-        if "seat" in view:
-            view.setdefault("overrides", {})["viewpoint"] = view.pop("seat")
-        views.append(view)
-    return {"schema": 2, "kind": "layout", "id": identity or digest([name, configs])[:24],
-            "name": name, "views": views, "synchronization": synchronization}
-
-
-def compose_legacy(value):
-    """Return a Decision State, deterministic Situation variants and suggested Layout.
-
-    Offline porting only: retain unknown metadata without duplicating checkpoints.
-    Runtime accepts only the resulting new-schema records.
-    """
-    if value.get("schema") == SITUATION_SCHEMA:
-        validate_situation(value)
-        record = copy.deepcopy(value)
-        legacy = record.pop("legacy", None)
-        if legacy:
-            provenance = legacy.get("provenance", {})
-            record["provenance"] = {k: copy.deepcopy(v) for k, v in provenance.items() if k != "slots"}
-            extra = {k: copy.deepcopy(v) for k, v in legacy.items() if k not in {"id","name","schema","summary","backend_revision","saved_at","provenance","presentations"}}
-            if extra:
-                record["metadata"] = extra
-        return None, [record], None, []
-    if value.get("schema", 1) != 1:
-        raise ValueError("Unsupported legacy Situation schema")
-    old_id = identifier(value.get("id"))
-    state = decision_state(value.get("checkpoint"))
-    legacy = {k: copy.deepcopy(v) for k, v in value.items()
-              if k not in {"checkpoint", "origin", "group"}}
-    slots = value.get("provenance", {}).get("slots", [])
-    presentations = value.get("presentations", {}) or {}
-    if not isinstance(presentations, dict) or not isinstance(slots, list):
-        raise ValueError("Invalid bundled Presentation or view setup")
-    warnings, variants, seen = [], [], set()
-    indexes = sorted(set(str(i) for i in range(len(slots))) | set(presentations),
-                     key=lambda k: (0, int(k)) if k.isdigit() else (1, k)) or ["0"]
-    for key in indexes:
-        index = int(key) if key.isdigit() else -1
-        slot = slots[index] if 0 <= index < len(slots) else {}
-        source = presentations.get(key) or {}
-        viewpoint = slot.get("seat") or value.get("provenance", {}).get("seat")
-        composed = presentation(source, viewpoint)
-        if not source:
-            composed["sessionState"] = {"pane": "board", "selectedCard": None, "inspectedCard": None}
-            composed["restoration"] = "defaulted; no historical Session State was saved"
-        # Adapter identity is meaningful even where the visible fields happen to match.
-        if slot.get("layout") or slot.get("render"):
-            composed["adapter"] = {"uiMode": slot.get("layout", "desktop"), "render": slot.get("render", "2d")}
-        signature = digest(composed)
-        if signature in seen:
-            continue
-        seen.add(signature)
-        variant_id = old_id if not variants else digest([old_id, signature])[:24]
-        record = {"schema": SITUATION_SCHEMA, "kind": "situation", "id": variant_id,
-                  "name": value.get("name", "Imported situation") + ("" if not variants else " (variant " + str(len(variants) + 1) + ")"),
-                  "decisionStateId": state["id"], "presentation": composed,
-                  "summary": copy.deepcopy(value.get("summary", {})),
-                  "backend_revision": value.get("backend_revision"), "saved_at": value.get("saved_at"),
-                  "provenance": {k: copy.deepcopy(v) for k,v in value.get("provenance",{}).items() if k != "slots"},
-                  "metadata": {k: copy.deepcopy(v) for k,v in legacy.items() if k not in {"id","name","schema","summary","backend_revision","saved_at","provenance","presentations"}},
-                  "migration": {"sourceId": old_id, "sourceSlot": key}}
-        validate_situation(record)
-        variants.append(record)
-        warnings.extend(composed.get("warnings", []))
-    if len(variants) > 1:
-        warnings.append("Bundled views expanded into " + str(len(variants)) + " Situations; the original ID selects slot " + variants[0]["migration"]["sourceSlot"] + ".")
-    suggested = layout(slots, value.get("name", "Imported") + " - suggested layout", digest([old_id, "layout"])[:24]) if slots else None
-    return state, variants, suggested, warnings
-
-
 def current_record(record, checkpoint=None):
     validate_situation(record)
     result = copy.deepcopy(record)
@@ -159,28 +108,45 @@ def current_record(record, checkpoint=None):
     return result
 
 
-def portable_situation(value):
-    """Compose factory output into a portable v2 import bundle.
+def make_layout(configs, name="Suggested layout"):
+    views = []
+    for config in configs:
+        view = copy.deepcopy(config)
+        if "layout" in view:
+            raise ValueError("Use uiMode in Layout views")
+        if "seat" in view:
+            view.setdefault("presentationDefaults", {})["viewpoint"] = view.pop("seat")
+        views.append(view)
+    return {"schema": 2, "kind": "layout", "id": digest([name, views])[:24],
+            "name": name, "views": views, "synchronization": "none"}
 
-    Factory-side assembly may use the old per-view recipe, but exported records
-    carry explicit Presentations and suggested Layouts. Variants are imported as
-    separate Situations; executable choices are never applied automatically.
-    """
+
+def portable_situation(value):
+    """Build portable composed records from explicit canonical factory inputs."""
     original = copy.deepcopy(value)
-    if "checkpoint" in original and original.get("kind") != "situation":
-        original["schema"] = 1  # Factory assembly is converted before export.
-    original.setdefault("id", digest([original.get("name"), original.get("checkpoint")])[:12])
-    state, variants, suggested, _ = compose_legacy(original)
-    if state is None:
+    if ("schema" in original and original["schema"] != 2) or "presentations" in original or "slots" in original.get("provenance", {}):
+        raise ValueError("Factory output requires canonical Presentation and separate Layout")
+    if original.get("kind") == "situation":
+        validate_situation(original)
         return original
+    state = decision_state(original.pop("checkpoint"))
+    primary_id = original.pop("id", digest([original.get("name"), state["id"]])[:12])
+    presentations = [original.pop("presentation"), *original.pop("additionalPresentations", [])]
+    suggested = original.pop("suggestedLayout", None)
     records = []
-    for variant in variants:
-        record = {k: v for k, v in variant.items() if k not in {"legacy", "migration"}}
-        record["decisionState"] = state
-        provenance = original.get("provenance", {})
-        record["provenance"] = {k: copy.deepcopy(v) for k, v in provenance.items() if k != "slots"}
+    for index, saved in enumerate(presentations):
+        if not isinstance(saved, dict) or saved.get("schema") != 2:
+            raise ValueError("Factory output requires a schema 2 Presentation")
+        composed = presentation(saved)
+        record = {**original, "schema": 2, "kind": "situation",
+                  "id": primary_id if index == 0 else digest([primary_id, index, composed])[:24],
+                  "decisionStateId": state["id"], "presentation": composed}
+        if index:
+            record["name"] += " (variant " + str(index + 1) + ")"
+        validate_situation(record)
         records.append(record)
     primary = records[0]
+    primary["decisionState"] = state
     if len(records) > 1:
         primary["additionalSituations"] = records[1:]
     if suggested:

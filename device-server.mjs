@@ -1,3 +1,4 @@
+import { presentationEvidence } from "./presentation-model.mjs";
 import {
   resolveView,
   adapterPresentation,
@@ -74,12 +75,14 @@ export class DeviceServer {
     this.server = server;
     this.port = server.address().port;
   }
-  async options(situationId) {
-    const situation = await this.api(
-      `/situations/${encodeURIComponent(situationId)}`,
-      undefined,
-      "GET",
-    );
+  async options(situationId, savedSituation = null) {
+    const situation =
+      savedSituation ||
+      (await this.api(
+        `/situations/${encodeURIComponent(situationId)}`,
+        undefined,
+        "GET",
+      ));
     const health = await this.api("/health", undefined, "GET");
     return {
       botKinds: health.bot_kinds || [],
@@ -99,7 +102,9 @@ export class DeviceServer {
     if (this.sessions.size >= 8)
       throw Error("Stop a device view before opening another (maximum eight).");
     const situation = await this.api(
-      `/situations/${encodeURIComponent(body.situationId)}`,
+      body.reviewSnapshot
+        ? `/review/snapshot?${new URLSearchParams(body.reviewSnapshot)}`
+        : `/situations/${encodeURIComponent(body.situationId)}`,
       undefined,
       "GET",
     );
@@ -395,6 +400,7 @@ export class DeviceServer {
         return send(200, await deviceImageBundle(), "text/javascript");
       const files = {
         "/__device/report.js": "public/device-report.mjs",
+        "/__device/presentation-plan.js": "presentation-plan.mjs",
         "/__device/html-to-image.js":
           "node_modules/html-to-image/dist/html-to-image.js",
       };
@@ -450,15 +456,12 @@ export class DeviceServer {
               review: review?.id === session.reviewId ? review : null,
               source_situation: session.situationId,
               sourceEvidence: (await this.services.provenance?.()) || null,
-              presentationResolution: {
-                intended: session.intendedPresentation,
-                effective: toPresentation(
-                  body.presentation,
-                  session.config.seat,
-                ),
-                overrides: session.config.overrides || {},
-                warnings: body.restoreWarnings || [],
-              },
+              presentationResolution: presentationEvidence(
+                session.config,
+                session.intendedPresentation,
+                body.presentation,
+                body.restoreWarnings || [],
+              ),
               bots: session.bots,
               slots: [session.config, comparisonSlot],
               frontend_revision:

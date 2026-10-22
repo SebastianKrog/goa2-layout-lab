@@ -1,4 +1,4 @@
-import { toPresentation } from "./presentation-model.mjs";
+import { presentationEvidence } from "./presentation-model.mjs";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { randomUUID, createHash } from "node:crypto";
@@ -228,11 +228,12 @@ export async function captureReport(comparison, indexes, options = {}) {
         ...win.config,
         state,
         presentation,
-        presentationResolution: {
-          intended: win.intendedPresentation || null,
-          effective: toPresentation(presentation, win.config.seat),
-          overrides: win.config.overrides || {},
-        },
+        presentationResolution: presentationEvidence(
+          win.config,
+          win.intendedPresentation,
+          presentation,
+          win.warnings || [],
+        ),
         occurrence,
         parts: individual ? [] : partFiles,
         width: capture.image.width,

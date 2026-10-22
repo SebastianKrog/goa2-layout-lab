@@ -57,10 +57,12 @@ def write(key, session, result, seat):
     again, _ = lab.restore(checkpoint)
     assert lab.canonical_hash(checkpoint['state']) == lab.canonical_hash(lab.checkpoint(again)['state'])
     payload = {'schema': lab.SCHEMA, 'name': f'M2 acceptance - {key}', 'checkpoint': checkpoint,
-        'provenance': {'kind': 'ui-fabrication', 'fixture': {'case': key}, 'seat': seat, 'seed': 20261017,
-            'slots': [{'source': source, 'profile': 'portrait', 'render': '2d',
-                       'layout': 'mobile' if source == 'comparator' else 'desktop', 'seat': seat}
-                      for source in ('base', 'comparator', 'target')]}, 'presentations': {}}
+        'provenance': {'kind': 'ui-fabrication', 'fixture': {'case': key}, 'seed': 20261017},
+        'presentation': lab.compose_presentation({'pane': 'board'}, seat),
+        'suggestedLayout': lab.make_layout([
+            {'source': source, 'profile': 'portrait', 'render': '2d',
+             'uiMode': 'mobile' if source == 'comparator' else 'desktop', 'seat': seat}
+            for source in ('base', 'comparator', 'target')])}
     output = args.output / f'{key}.json'
     output.write_text(json.dumps(lab.portable_situation(payload), indent=2), encoding='utf-8')
     return str(output)

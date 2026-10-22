@@ -39,9 +39,12 @@ def write(key, state, hero):
     again, _ = lab.restore(saved)
     assert lab.canonical_hash(saved['state']) == lab.canonical_hash(lab.checkpoint(again)['state'])
     payload = {'schema': lab.SCHEMA, 'name': 'M3 presentation - ' + key, 'checkpoint': saved,
-        'provenance': {'kind': 'ui-fabrication', 'fixture': {'case': key}, 'seat': str(hero.id), 'seed': 20261019,
-            'slots': [{'source': 'live', 'profile': 'portrait', 'render': '2d', 'layout': 'mobile', 'seat': seat}
-                      for seat in (str(hero.id), 'spectator')]}, 'presentations': {}}
+        'provenance': {'kind': 'ui-fabrication', 'fixture': {'case': key}, 'seed': 20261019},
+        'presentation': lab.compose_presentation({'pane': 'board'}, str(hero.id)),
+        'additionalPresentations': [lab.compose_presentation({'pane': 'board'}, 'spectator')],
+        'suggestedLayout': lab.make_layout([
+            {'source': 'live', 'profile': 'portrait', 'render': '2d', 'uiMode': 'mobile', 'seat': seat}
+            for seat in (str(hero.id), 'spectator')])}
     path = args.output / (key + '.json')
     path.write_text(json.dumps(lab.portable_situation(payload), indent=2), encoding='utf-8')
     outputs.append(str(path))

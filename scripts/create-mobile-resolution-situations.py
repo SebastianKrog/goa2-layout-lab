@@ -37,7 +37,7 @@ def write(key):
     assert lab.canonical_hash(saved["state"]) == lab.canonical_hash(lab.checkpoint(again)["state"])
     assert pending.input_request is not None
     payload = {"schema": lab.SCHEMA, "name": "M3 resolution - " + key, "checkpoint": saved,
-        "provenance": {"kind": "ui-fabrication", "fixture": {"case": key}, "seat": "hero_hanu", "seed": 20261020}, "presentations": {}}
+        "provenance": {"kind": "ui-fabrication", "fixture": {"case": key}, "seed": 20261020}, "presentation": lab.compose_presentation({"pane": "board"}, "hero_hanu")}
     (output / (key + ".json")).write_text(json.dumps(lab.portable_situation(payload), indent=2), encoding="utf-8")
     print(key, pending.input_request.request_type, pending.input_request.options)
 

@@ -1,3 +1,4 @@
+import { mobileRestorationPlan } from "./presentation-plan.mjs";
 import {
   adapterPresentation,
   USER_STATE_KEYS,
@@ -342,63 +343,16 @@ export async function restorePresentation(page, value, config) {
         window.GOA2Mobile2D.__labRotation.set(v);
       }, value.rotation),
     );
-  if (value.spellBrowserMobile && config.uiMode === "mobile")
-    await attempt("Public spell browser", async () => {
-      const browser = value.spellBrowserMobile;
-      await clickControl(
-        page,
-        page
-          .locator(
-            `[data-lab-open-spells=${JSON.stringify(browser.heroId)}]:visible`,
-          )
-          .first(),
-      );
-      await page
-        .locator("[data-lab-mobile-spells]")
-        .waitFor({ state: "visible", timeout: 5000 });
-      if (browser.selectedId)
-        await clickControl(
-          page,
-          page.locator(
-            `[data-lab-preview-spell=${JSON.stringify(browser.selectedId)}]:visible`,
-          ),
-        );
-    });
-  if (value.inspectionMobile && config.uiMode === "mobile")
-    await attempt("Mobile inspection", async () => {
-      if (value.inspectionMobileContext === "decision") {
-        const parent = page.locator(
-          `[data-decision-parent=${JSON.stringify(value.inspectionMobileParent)}]:visible`,
-        );
-        const child = parent
-          .locator(
-            `[data-lab-inspect-card=${JSON.stringify(value.inspectionMobile)}]:visible`,
-          )
-          .first();
-        await child.waitFor({ state: "visible", timeout: 5000 });
-        await clickControl(page, child);
+  for (const step of mobileRestorationPlan(value, config))
+    await attempt(step.label, async () => {
+      const target = page.locator(step.click + ":visible").first();
+      await target.waitFor({ state: "visible", timeout: 5000 });
+      await clickControl(page, target);
+      if (step.wait)
         await page
-          .locator(
-            `[data-lab-mobile-inspection=${JSON.stringify(value.inspectionMobile)}]:not([inert])`,
-          )
+          .locator(step.wait)
+          .first()
           .waitFor({ state: "visible", timeout: 5000 });
-        return;
-      }
-      for (const id of [
-        value.inspectionMobileParent,
-        value.inspectionMobile,
-      ].filter(Boolean)) {
-        const target = page
-          .locator(`[data-lab-inspect-card=${JSON.stringify(id)}]:visible`)
-          .first();
-        await target.waitFor({ state: "visible", timeout: 5000 });
-        await clickControl(page, target);
-        await page
-          .locator(
-            `[data-lab-mobile-inspection=${JSON.stringify(id)}]:not([inert])`,
-          )
-          .waitFor({ state: "visible", timeout: 5000 });
-      }
     });
   await page.evaluate((v) => {
     for (const s of v.scroll || []) {

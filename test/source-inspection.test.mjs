@@ -109,6 +109,12 @@ test("real Chromium exports paired viewport CSS, inheritance, pseudo elements, s
         page,
         clone: { game_id: String(i) },
         config: { source: i ? "target" : "comparator", seat: "hero_arien" },
+        intendedPresentation: {
+          schema: 2,
+          viewpoint: "hero_arien",
+          sessionState: { pane: "board" },
+          userState: {},
+        },
         warnings: [],
         errors: [],
       })),
@@ -125,6 +131,9 @@ test("real Chromium exports paired viewport CSS, inheritance, pseudo elements, s
       },
       api: async () => ({ hash: "same" }),
     };
+    await pages[0].evaluate(() =>
+      localStorage.setItem("goa2:board-brightness", "0.37"),
+    );
     const result = await extractSources(
       comparison,
       { indexes: [0, 1], mode: "full" },
@@ -141,6 +150,12 @@ test("real Chromium exports paired viewport CSS, inheritance, pseudo elements, s
     );
     assert.equal(report.diverged, false);
     assert.equal(report.schema, 3);
+    const evidence = report.views[0].presentationResolution;
+    assert.equal(evidence.intended.viewpoint, "hero_arien");
+    assert.equal(evidence.effective.viewpoint, "hero_arien");
+    assert.equal(evidence.effective.userState["goa2:board-brightness"], "0.37");
+    assert.deepEqual(evidence.intended.userState, {});
+    assert.deepEqual(evidence.overrides, {});
     assert.equal(report.views[0].computedCSS, undefined);
     assert.equal(report.views[0].computedCSSFile, "view-1.computed.css");
     assert.match(

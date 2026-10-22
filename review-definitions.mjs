@@ -60,9 +60,11 @@ export class ReviewDefinitions {
     const payload = JSON.stringify(definition, null, 2);
     const temporary = file + "." + randomBytes(6).toString("hex") + ".tmp";
     await fs.writeFile(temporary, payload, { flag: "wx" });
+    let created = false;
     try {
       try {
         await fs.link(temporary, file);
+        created = true;
       } catch (error) {
         if (error.code !== "EEXIST") throw error;
         if ((await fs.readFile(file, "utf8")) !== payload)
@@ -71,5 +73,13 @@ export class ReviewDefinitions {
     } finally {
       await fs.unlink(temporary);
     }
+    return created;
+  }
+  async discardNew(definition) {
+    const file = this.path(definition.id, definition.revision);
+    if (
+      (await fs.readFile(file, "utf8")) === JSON.stringify(definition, null, 2)
+    )
+      await fs.unlink(file);
   }
 }

@@ -90,10 +90,10 @@ payload = {
         "condition": "Choose an action for Noble Blade; no action submitted",
         "seed": 20261017,
     },
-    "presentations": {},
+    "presentation": lab.compose_presentation({"pane": "board"}, str(hero.id)),
 }
 output.parent.mkdir(parents=True, exist_ok=True)
-output.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+output.write_text(json.dumps(lab.portable_situation(payload), indent=2), encoding="utf-8")
 ~~~
 
 Do not clear a captured live game's stack/context to adapt this example. Construct a fresh state instead. When continuing through earlier prompts, use InputResponse(request_id=result.input_request.id, selection=...) and keep the returned result; do not use test helpers that bypass the live request-ID contract.
@@ -102,7 +102,7 @@ Restoring a waiting step can initialize transient context defaults (this occurre
 
 For planning or a display-only state with no pending step, restore may legitimately return no SessionResult. Validate the phase and visible data instead of demanding an input prompt.
 
-The imported envelope is the lab situation shape. Do not add production save credentials, hand-write opaque IDs, or fake backend_revision. The lab importer supplies the actual situation ID, revision, timestamp and summary.
+The factory exports a composed Situation through `portable_situation()`. Use an explicit canonical `presentation`, optional `additionalPresentations`, and a separate `suggestedLayout` from `make_layout()`; do not assemble legacy `presentations` or `provenance.slots`. Do not add production save credentials, hand-write opaque IDs, or fake backend_revision. The lab importer supplies the actual situation ID, revision, timestamp and summary.
 
 ## Import and load through the public desk
 

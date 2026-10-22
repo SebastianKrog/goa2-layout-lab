@@ -12,7 +12,8 @@ import json
 from pathlib import Path
 import uuid
 
-from state_model import compose_legacy, decision_state, layout, presentation
+from state_model import presentation
+from state_migration_legacy import compose_legacy, layout
 from situations import SituationStore
 
 
@@ -31,6 +32,7 @@ class StateMigration:
 
     def inventory(self):
         outputs, sources, mappings, warnings, errors = {}, {}, [], [], []
+        resolver = SituationStore(self.shared, self.data, create=False)
         def output(path, value):
             payload = encoded(value)
             if path in outputs and outputs[path] != payload:
@@ -60,12 +62,7 @@ class StateMigration:
                     state, variants, suggested, notes = compose_legacy(old)
                     warnings.extend({"path": str(path), "message": note} for note in notes)
                     if state is None:
-                        decision_path = decisions / (old["decisionStateId"] + ".json")
-                        if not decision_path.is_file():
-                            raise ValueError("Missing Decision State: " + str(decision_path))
-                        existing = json.loads(decision_path.read_text(encoding="utf-8"))
-                        if decision_state(existing.get("checkpoint"))["id"] != old["decisionStateId"]:
-                            raise ValueError("Decision State content hash does not match")
+                        resolver._decision({**old, "origin": origin})
                         output(path, variants[0])
                         mappings.append({"origin": origin, "sourceId": old["id"], "situationIds": [old["id"]], "decisionStateId": old["decisionStateId"], "unchanged": True})
                         continue

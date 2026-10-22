@@ -1,3 +1,4 @@
+import { toPresentation } from "../presentation-model.mjs";
 // Explicit acceptance run; refuses to attach to a normal interactive desk.
 import assert from "node:assert/strict";
 import fs from "node:fs/promises";
@@ -49,7 +50,6 @@ await step(
     const result = await action("load", {
       situationId: planning.id,
       slots: PRESETS["Mobile migration"],
-
     });
     assert.equal(result.windows.length, 3);
     assert.deepEqual(result.references, REFERENCES);
@@ -80,14 +80,11 @@ await step(
       index: 1,
       name: "Acceptance phone hand / target deck",
     });
-    assert.deepEqual(saved.presentations, {});
-    // Explicitly construct a legacy bundle to keep import compatibility covered.
-    saved.presentations = Object.fromEntries(
-      (await get("/api/views")).map((v, i) => [i, v.presentation]),
-    );
-    saved.provenance.slots = PRESETS["Mobile migration"];
-    assert.equal(saved.presentations[1].pane, "hand");
-    assert.equal(saved.presentations[2].pane, "deck");
+    assert.equal(saved.presentation.schema, 2);
+    assert.equal(saved.presentations, undefined);
+    const captured = (await get("/api/views")).map((v) => v.presentation);
+    assert.equal(captured[1].pane, "hand");
+    assert.equal(captured[2].pane, "deck");
     assert.ok(!JSON.stringify(saved).includes("spectator_token"));
     const before = await get("/api/status");
     const reset = await action("reset", { index: 1 });
@@ -95,8 +92,8 @@ await step(
     assert.notEqual(reset.windows[1].gameId, before.windows[1].gameId);
     assert.equal(reset.windows[2].gameId, before.windows[2].gameId);
     const fixture = structuredClone(saved);
-    fixture.presentations[1].camera = { mode: "2d", k: 2.5, x: 0.12, y: -0.08 };
-    fixture.presentations[2].rotation = {
+    captured[1].camera = { mode: "2d", k: 2.5, x: 0.12, y: -0.08 };
+    captured[2].rotation = {
       angle: 180,
       centerX: "0px",
       centerY: "0px",
@@ -107,8 +104,10 @@ await step(
     });
     await action("load", {
       situationId: imported.id,
-      slots: PRESETS["Mobile migration"],
-
+      slots: PRESETS["Mobile migration"].map((slot, i) => ({
+        ...slot,
+        overrides: toPresentation(captured[i], slot.seat),
+      })),
     });
     const views = await get("/api/views");
     assert.equal(views[1].presentation.pane, "hand");
@@ -147,7 +146,6 @@ await step(
     const result = await action("load", {
       situationId: planning.id,
       slots,
-
     });
     assert.equal(result.windows.length, 2);
     let views = await get("/api/views");
@@ -157,11 +155,8 @@ await step(
       index: 0,
       name: "Acceptance desktop 3D",
     });
-    fixture.presentations = Object.fromEntries(
-      (await get("/api/views")).map((v, i) => [i, v.presentation]),
-    );
-    fixture.provenance.slots = slots;
-    fixture.presentations[1].camera = {
+    const captured = (await get("/api/views")).map((v) => v.presentation);
+    captured[1].camera = {
       mode: "3d",
       position: [2, 11, 9],
       up: [0, 1, 0],
@@ -169,11 +164,14 @@ await step(
       fov: 47,
       zoom: 1.1,
     };
-    fixture.presentations[1].inspection3d = {
+    captured[1].inspection3d = {
       cardId: null,
       heroId: "hero_hanu",
       altHeld: false,
     };
+    slots.forEach(
+      (slot, i) => (slot.overrides = toPresentation(captured[i], slot.seat)),
+    );
     const imported = await action("import", {
       content: fixture,
       name: "Acceptance 3D camera fixture",
@@ -181,7 +179,6 @@ await step(
     await action("load", {
       situationId: imported.id,
       slots,
-
     });
     views = await get("/api/views");
     views[1].presentation.camera.position.forEach((n, i) =>
@@ -260,7 +257,6 @@ await step("live CSS hot reload without changing the reference", async () => {
   await action("load", {
     situationId: planning.id,
     slots,
-
   });
   const before = await get("/api/views");
   const filename = path.join(ROOT, "src/components/pages/GameView.module.css");

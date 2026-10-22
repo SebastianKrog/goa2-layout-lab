@@ -21,8 +21,6 @@ state.synchronization = {
   error: null,
   skipped: 0,
 };
-catalog.situations ||= catalog.scenarios; // Existing desk can stay open while these UI files are verified.
-state.situationId ||= state.scenarioId;
 for (const s of catalog.situations) {
   s.origin ||= "local";
   s.group ||= "";
@@ -33,7 +31,9 @@ catalog.situations.push({
   origin: "library",
   group: "heroes/snorri",
   summary: { phase: "RESOLUTION", round: 2, decision: "SELECT_OPTION" },
-  presentations: {},
+  schema: 2,
+  kind: "situation",
+  presentation: { schema: 2, sessionState: {}, userState: {} },
 });
 const actions = [];
 const browser = await chromium.launch({ headless: true });
@@ -91,7 +91,8 @@ try {
       } else Object.assign(original, result);
       return route.fulfill({ json: result });
     }
-    if (pathname === "/api/preset") catalog.presets[body.name] = body.slots;
+    if (pathname === "/api/layout/save")
+      catalog.presets[body.name] = body.slots;
     return route.fulfill({ json: state });
   });
   const page = await context.newPage(),

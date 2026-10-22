@@ -236,7 +236,14 @@ export async function startDesk({
           ),
         );
       if (req.method === "GET" && url.pathname === "/api/device/options")
-        return send(await devices.options(url.searchParams.get("situationId")));
+        return send(
+          await devices.options(
+            url.searchParams.get("situationId"),
+            reviews.current?.active
+              ? reviews.current.entries[reviews.current.index].situation
+              : null,
+          ),
+        );
       if (req.method === "GET" && url.pathname === "/api/device/views")
         return send(devices.status());
       if (req.method === "GET" && url.pathname === "/api/status")
@@ -578,14 +585,13 @@ export async function startDesk({
               case "/api/clear":
                 await comparison.clear();
                 return comparison.status();
-              case "/api/layout/save":
-              case "/api/preset": {
+              case "/api/layout/save": {
                 if (
                   !/^[\w -]{1,80}$/.test(body.name) ||
                   ["__proto__", "constructor", "prototype"].includes(body.name)
                 )
                   throw new Error(
-                    "Use a short preset name with letters, numbers, spaces or dashes.",
+                    "Use a short Layout name with letters, numbers, spaces or dashes.",
                   );
                 const saved = await layouts.save(
                   body.name,

@@ -1155,6 +1155,7 @@ async function poll() {
     !state.busy &&
     !running &&
     !draftSetup &&
+    draftIndex === null &&
     !$("editor").open
   ) {
     if (
@@ -1169,7 +1170,8 @@ async function poll() {
     render();
     void refreshPreviews();
   }
-  if (!state.busy && !running) lastWindowKey = key;
+  if (!state.busy && !running && draftIndex === null && !$("editor").open)
+    lastWindowKey = key;
   updateStatus();
   controls();
   renderSettings();

@@ -1,3 +1,4 @@
+import { toPresentation } from "../presentation-model.mjs";
 import { PORTS } from "../config.mjs";
 // Additional adapter checks on an explicitly marked verification desk.
 import assert from "node:assert/strict";
@@ -31,7 +32,8 @@ const saved = await request("/api/save", {
   index: 0,
   name: "Acceptance desktop deck and log",
 });
-assert.deepEqual(saved.presentations, {});
+assert.equal(saved.presentations, undefined);
+assert.equal(saved.presentation.schema, 2);
 const presentations = await Promise.all(
   [0, 1].map((index) =>
     request("/api/presentation/save", {
@@ -40,12 +42,11 @@ const presentations = await Promise.all(
     }),
   ),
 );
-assert.equal(presentations[0].state.pane, "deck");
-assert.equal(presentations[1].state.pane, "log");
+assert.equal(presentations[0].state.sessionState.pane, "deck");
+assert.equal(presentations[1].state.sessionState.pane, "log");
 await request("/api/load", {
   situationId: saved.id,
   slots: PRESETS["Layout regression"],
-
 });
 for (let index = 0; index < 2; index++)
   await request("/api/presentation/apply", {
@@ -74,26 +75,22 @@ const hidden = "layout-lab-unavailable-card";
 const fixture = structuredClone(starter);
 const slots = structuredClone(PRESETS["3D regression"]);
 slots[1].source = "comparator";
-fixture.provenance.slots = slots;
-fixture.presentations = Object.fromEntries(
-  [0, 1].map((i) => [
-    i,
-    {
-      render: "3d",
-      pane: "board",
-      inspection3d: {
-        cardId: i ? hidden : own,
-        heroId: null,
-        altHeld: true,
+slots.forEach(
+  (slot, i) =>
+    (slot.overrides = toPresentation(
+      {
+        render: "3d",
+        pane: "board",
+        inspection3d: { cardId: i ? hidden : own, heroId: null, altHeld: true },
       },
-    },
-  ]),
+      slot.seat,
+    )),
 );
 const imported = await request("/api/import", {
   content: fixture,
   name: "Acceptance scoped card inspection",
 });
-await request("/api/load", { situationId: imported.id });
+await request("/api/load", { situationId: imported.id, slots });
 views = await request("/api/views");
 assert.equal(views[0].presentation.inspection3d.cardId, own);
 assert.equal(views[0].presentation.inspection3d.altHeld, true);

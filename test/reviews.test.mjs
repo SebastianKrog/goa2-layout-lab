@@ -303,3 +303,41 @@ test("interrupted and malformed reviews are listed honestly without restoring ac
   assert.equal(list.warnings.length, 1);
   assert.equal(restarted.current, null);
 });
+
+for (const failure of ["provenance", "definition", "persist"])
+  test(`failed review ${failure} preserves existing views and removes staged Run`, async (t) => {
+    const { r, c, root, events } = await fixture(t);
+    const old = c.windows;
+    const previous = { id: "previous", active: false };
+    r.current = previous;
+    if (failure === "provenance")
+      c.services = {
+        provenance: async () => {
+          throw Error("injected failure");
+        },
+      };
+    if (failure === "definition")
+      r.definitions.commit = async () => {
+        throw Error("injected failure");
+      };
+    if (failure === "persist")
+      r.persist = async () => {
+        throw Error("injected failure");
+      };
+    await assert.rejects(r.start({ ids: ["first"] }), /injected failure/);
+    assert.equal(c.windows, old);
+    assert.equal(r.current, previous);
+    assert.equal(r.loading, false);
+    assert.ok(!events.some((e) => e[0] === "close" && e[1].startsWith("old-")));
+    assert.deepEqual(
+      (await fs.readdir(root)).filter((n) => /^[a-f0-9]{24}$/.test(n)),
+      [],
+    );
+    const definitions = await fs
+      .readdir(path.join(root, "_definitions"), { recursive: true })
+      .catch((e) => (e.code === "ENOENT" ? [] : Promise.reject(e)));
+    assert.ok(
+      !definitions.some((n) => n.endsWith(".json")),
+      "failed persistence leaves no orphan definition",
+    );
+  });

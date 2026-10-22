@@ -1,0 +1,198 @@
+[
+  {
+    "name": "partial viewpoint",
+    "input": {
+      "viewpoint": "hero_hanu"
+    },
+    "expected": {
+      "schema": 2,
+      "sessionState": {},
+      "userState": {},
+      "viewpoint": "hero_hanu"
+    }
+  },
+  {
+    "name": "partial states",
+    "input": {
+      "sessionState": {
+        "pane": "hand"
+      },
+      "userState": {
+        "goa2:board-brightness": null
+      }
+    },
+    "expected": {
+      "schema": 2,
+      "sessionState": {
+        "pane": "hand"
+      },
+      "userState": {
+        "goa2:board-brightness": null
+      }
+    }
+  },
+  {
+    "name": "explicit reset",
+    "input": {
+      "schema": 2,
+      "viewpoint": null
+    },
+    "expected": {
+      "schema": 2,
+      "sessionState": {},
+      "userState": {},
+      "viewpoint": null
+    }
+  },
+  {
+    "name": "raw storage",
+    "input": {
+      "pane": "hand",
+      "storage": {
+        "goa2:board-brightness": "0.4",
+        "goa2-mobile-build:game": "plan",
+        "z-secret": "no",
+        "a-secret": "no"
+      }
+    },
+    "expected": {
+      "schema": 2,
+      "sessionState": {
+        "pane": "hand",
+        "storage": {
+          "goa2-mobile-build:game": "plan"
+        }
+      },
+      "userState": {
+        "goa2:board-brightness": "0.4"
+      },
+      "warnings": [
+        "Unsupported saved storage key: a-secret",
+        "Unsupported saved storage key: z-secret"
+      ]
+    }
+  },
+  {
+    "name": "wrong schema",
+    "input": {
+      "schema": 1
+    },
+    "invalid": true
+  },
+  {
+    "name": "null envelope",
+    "input": {
+      "sessionState": null
+    },
+    "invalid": true
+  },
+  {
+    "name": "null user",
+    "input": {
+      "userState": null
+    },
+    "invalid": true
+  },
+  {
+    "name": "array",
+    "input": [],
+    "invalid": true
+  },
+  {
+    "name": "null",
+    "input": null,
+    "invalid": true
+  },
+  {
+    "name": "bad viewpoint",
+    "input": {
+      "viewpoint": 4
+    },
+    "invalid": true
+  },
+  {
+    "name": "user in session",
+    "input": {
+      "sessionState": {
+        "storage": {
+          "goa2:board-brightness": "0.9"
+        }
+      }
+    },
+    "invalid": true
+  },
+  {
+    "name": "foreign storage",
+    "input": {
+      "sessionState": {
+        "storage": {
+          "token": "secret"
+        }
+      }
+    },
+    "invalid": true
+  },
+  {
+    "name": "invalid user value",
+    "input": {
+      "userState": {
+        "goa2:board-brightness": 4
+      }
+    },
+    "invalid": true
+  },
+  {
+    "name": "invalid session value",
+    "input": {
+      "sessionState": {
+        "storage": {
+          "goa2-mobile-build:game": 4
+        }
+      }
+    },
+    "invalid": true
+  },
+  {
+    "name": "null storage",
+    "input": {
+      "storage": null
+    },
+    "invalid": true
+  },
+  {
+    "name": "mode storage cannot override user state",
+    "input": {
+      "sessionState": {
+        "render": "2d",
+        "modes": {
+          "3d": {
+            "storage": {
+              "goa2:board-brightness": "0.9"
+            }
+          }
+        }
+      }
+    },
+    "invalid": true
+  },
+  {
+    "name": "null canonical storage",
+    "input": {
+      "sessionState": {
+        "storage": null
+      }
+    },
+    "invalid": true
+  },
+  {
+    "name": "bad mode state",
+    "input": {
+      "sessionState": {
+        "modes": {
+          "3d": null
+        }
+      }
+    },
+    "invalid": true
+  }
+]

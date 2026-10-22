@@ -1,3 +1,5 @@
+import { capturePresentation } from "./presentation.mjs";
+import { presentationEvidence } from "./presentation-model.mjs";
 import { reviewAttribution } from "./report.mjs";
 import fs from "node:fs/promises";
 import path from "node:path";
@@ -368,6 +370,12 @@ export async function extractSources(
         index,
         config: win.config,
         stateHash: after.hash,
+        presentationResolution: presentationEvidence(
+          win.config,
+          win.intendedPresentation,
+          await capturePresentation(win.page, win.config.render),
+          win.warnings || [],
+        ),
         warnings: win.warnings,
         errors: win.errors,
         assets: win.assets || [],
@@ -396,7 +404,7 @@ export async function extractSources(
     references: comparison.status().references,
     comparator: comparison.status().comparator,
     script: comparison.status().script,
-    diverged: views[0].stateHash !== views[1].stateHash,
+    diverged: views.some((view) => view.stateHash !== views[0].stateHash),
     views,
   };
   const dir = path.join(reportsRoot, id);

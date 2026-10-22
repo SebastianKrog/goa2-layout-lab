@@ -16,7 +16,7 @@ import uuid
 
 from device_bots import bot_kinds, clone_bot_specs, start_clone_bots, stop_clone_bots, cancel_bot_tasks, update_clone_bots
 
-from state_model import portable_situation
+from state_model import portable_situation, presentation as compose_presentation, make_layout
 
 FROZEN_MS = 1792238400000
 SCHEMA = 2
@@ -423,6 +423,14 @@ def create_app():
         if not isinstance(identifier, str) or not re.fullmatch(r"[a-f0-9]{24}", identifier) or type(index) is not int or not 0 <= index < 200:
             raise HTTPException(422, "Invalid review snapshot")
         return root / "reports" / "reviews" / identifier / "situations" / f"{index:03d}.json"
+
+    @app.get("/__lab/review/snapshot")
+    def read_review_snapshot(reviewId: str, index: int):
+        spec = {"reviewId": reviewId, "index": index}
+        target = review_snapshot_path(spec)
+        if not target.is_file():
+            raise HTTPException(404, "Review snapshot not found")
+        return {**json.loads(target.read_text(encoding="utf-8")), "review_snapshot": spec}
 
     @app.post("/__lab/review/snapshot")
     def snapshot_review(body: dict):

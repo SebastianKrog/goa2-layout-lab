@@ -19,6 +19,7 @@ export class Reviews {
     this.root = root;
     this.guard = guard;
     this.current = null;
+    this.loading = false;
     this.records = new Map();
     this.writes = Promise.resolve();
     this.definitions = new ReviewDefinitions(path.join(root, "_definitions"));
@@ -325,63 +326,81 @@ export class Reviews {
           ],
     );
     const identifier = randomBytes(12).toString("hex");
-    const entries = [];
-    for (const [index, id] of ids.entries())
-      entries.push({
-        entryId: queue?.[index]?.entryId || randomBytes(12).toString("hex"),
-        situation: await this.comparison.api("/review/snapshot", {
-          id,
-          ...(queue?.[index]?.from ? { from: queue[index].from } : {}),
-          reviewId: identifier,
-          index: entries.length,
-        }),
+    let createdDefinition = null;
+    try {
+      const entries = [];
+      for (const [index, id] of ids.entries())
+        entries.push({
+          entryId: queue?.[index]?.entryId || randomBytes(12).toString("hex"),
+          situation: await this.comparison.api("/review/snapshot", {
+            id,
+            ...(queue?.[index]?.from ? { from: queue[index].from } : {}),
+            reviewId: identifier,
+            index: entries.length,
+          }),
+        });
+      const definition = await this.definitions.prepare({
+        previous,
+        name: title,
+        entries,
+        edited,
       });
-    const definition = await this.definitions.prepare({
-      previous,
-      name: title,
-      entries,
-      edited,
-    });
-    entries.forEach(
-      (entry, index) => (entry.entryId = definition.entries[index].id),
-    );
-    const record = {
-      schema: 2,
-      kind: "review-run",
-      reviewId: definition.id,
-      reviewRevision: definition.revision,
-      parentRunId: parentRunId || null,
-      inputs,
-      layout: makeLayout(title.slice(0, 80), configs, "none", identifier),
-      sources: {
-        references: this.comparison.services?.references || null,
-        comparator: this.comparison.services?.comparator || null,
-        runtime: this.comparison.services?.mode || null,
-      },
-      id: identifier,
-      name: title,
-      createdAt: new Date().toISOString(),
-      parentRunId: parentRunId || null,
-      visited: [],
-      active: true,
-      index: 0,
-      entries,
-      reports: [],
-    };
-    await this.load(record, 0);
-    record.layout = makeLayout(
-      title.slice(0, 80),
-      this.comparison.windows.map((win) => win.config),
-      "none",
-      identifier,
-    );
-    record.sources =
-      (await this.comparison.services?.provenance?.()) || record.sources;
-    await this.definitions.commit(definition);
-    this.current = record;
-    this.records.set(record.id, record);
-    await this.persist(record);
-    return this.status();
+      entries.forEach(
+        (entry, index) => (entry.entryId = definition.entries[index].id),
+      );
+      const record = {
+        schema: 2,
+        kind: "review-run",
+        reviewId: definition.id,
+        reviewRevision: definition.revision,
+        parentRunId: parentRunId || null,
+        inputs,
+        layout: makeLayout(title.slice(0, 80), configs, "none", identifier),
+        sources: {
+          references: this.comparison.services?.references || null,
+          comparator: this.comparison.services?.comparator || null,
+          runtime: this.comparison.services?.mode || null,
+        },
+        id: identifier,
+        name: title,
+        createdAt: new Date().toISOString(),
+        visited: [],
+        active: true,
+        index: 0,
+        entries,
+        reports: [],
+      };
+      record.sources =
+        (await this.comparison.services?.provenance?.()) || record.sources;
+      await this.load(record, 0, async (opened) => {
+        record.layout = makeLayout(
+          title.slice(0, 80),
+          opened.map((win) => win.config),
+          "none",
+          identifier,
+        );
+        record.visited = [0];
+        if (await this.definitions.commit(definition))
+          createdDefinition = definition;
+        await this.persist(record);
+      });
+      return this.status();
+    } catch (error) {
+      if (createdDefinition)
+        await this.definitions.discardNew(createdDefinition);
+      // This ID was generated for this attempt; never remove an existing Run.
+      const root = path.resolve(this.root);
+      const failedRun = path.resolve(root, identifier);
+      if (
+        path.dirname(failedRun) !== root ||
+        !/^[a-f0-9]{24}$/.test(identifier)
+      )
+        throw new Error("Refusing to remove an invalid Run directory", {
+          cause: error,
+        });
+      await fs.rm(failedRun, { recursive: true, force: true });
+      throw error;
+    }
   }
   async step({ id, index, direction }) {
     this.guard();
@@ -423,7 +442,7 @@ export class Reviews {
       bots: {},
     };
   }
-  async load(record, index) {
+  async load(record, index, beforeCommit = null) {
     const c = this.comparison,
       s = record.entries[index].situation;
     const configs = c.windows.length
@@ -451,6 +470,7 @@ export class Reviews {
         record.id,
       );
       this.guard();
+      if (beforeCommit) await beforeCommit(opened);
       await c.sync.setMode("none");
       this.guard();
       const old = c.windows;

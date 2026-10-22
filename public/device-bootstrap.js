@@ -15,17 +15,27 @@ try {
   const {
     presentation: saved,
     storageScope,
+    revision,
     userStateKeys = [],
     sessionStoragePrefixes = [],
   } = window.__GOA2_DEVICE__;
   const original = window.localStorage;
-  const scope = `__goa2_lab_${storageScope}:`;
+  const sessionPrefix = `__goa2_lab_${storageScope}:`;
+  const scope = `${sessionPrefix}${revision ?? 0}:`;
+  for (const key of Object.keys(sessionStorage))
+    if (key.startsWith(sessionPrefix) && !key.startsWith(scope))
+      sessionStorage.removeItem(key);
+  const initialized = sessionStorage.getItem(scope + "__seeded") === "1";
   const supports = (key) =>
     userStateKeys.includes(key) ||
     sessionStoragePrefixes.some((prefix) => key.startsWith(prefix));
   const read = (key) => {
     const scoped = sessionStorage.getItem(scope + key);
-    return scoped === null ? original.getItem(key) : JSON.parse(scoped);
+    return scoped === null
+      ? supports(key)
+        ? null
+        : original.getItem(key)
+      : JSON.parse(scoped);
   };
   const write = (key, value) =>
     supports(key)
@@ -72,11 +82,14 @@ try {
     configurable: true,
     value: scoped,
   });
-  for (let [key, value] of Object.entries(saved.storage || {})) {
+  for (let [key, value] of Object.entries(
+    initialized ? {} : saved.storage || {},
+  )) {
     if (!supports(key)) continue;
     if (saved.gamePath) key = key.replaceAll(saved.gamePath, location.pathname);
     write(key, value);
   }
+  sessionStorage.setItem(scope + "__seeded", "1");
 } catch (error) {
   window.__GOA2_DEVICE_STORAGE_WARNING__ = error.message;
 }

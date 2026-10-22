@@ -5,7 +5,8 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from state_model import compose_legacy, decision_state, presentation, portable_situation
+from state_model import decision_state, presentation, portable_situation, make_layout
+from state_migration_legacy import compose_legacy
 from situations import SituationStore
 from migrate_state import StateMigration
 
@@ -56,7 +57,10 @@ class StateModelTests(unittest.TestCase):
         self.assertNotEqual(decision_state({"state": {"ordered": [1, 2, 3]}})["id"], decision_state({"state": {"ordered": [3, 1, 2]}})["id"])
 
     def test_portable_factory_outputs_are_composed_and_keep_all_variants(self):
-        bundle=portable_situation(self.old)
+        bundle=portable_situation({"name": self.old["name"], "checkpoint": self.old["checkpoint"],
+            "presentation": presentation({"pane": "hand"}, "hero_arien"),
+            "provenance": {}, "suggestedLayout": make_layout([]),
+            "additionalPresentations": [presentation({"pane": "heroes"}, "spectator")]})
         self.assertEqual(bundle["schema"],2)
         self.assertNotIn("checkpoint",bundle)
         self.assertNotIn("legacy",bundle)
@@ -66,6 +70,32 @@ class StateModelTests(unittest.TestCase):
         self.assertEqual(bundle["additionalSituations"][0]["decisionStateId"],bundle["decisionStateId"])
         self.assertEqual(bundle["additionalSituations"][0]["presentation"]["viewpoint"],"spectator")
         self.assertEqual(bundle["suggestedLayout"]["kind"],"layout")
+
+    def test_shared_presentation_contract(self):
+        cases = json.loads((Path(__file__).parent / "presentation-contract.json").read_text())
+        for case in cases:
+            with self.subTest(case=case["name"]):
+                if case.get("invalid"):
+                    with self.assertRaises(ValueError):
+                        presentation(case["input"])
+                else:
+                    self.assertEqual(presentation(case["input"]), case["expected"])
+        self.assertIsNone(presentation({}, None)["viewpoint"])
+
+    def test_migration_resolves_shared_decision_for_local_situation_without_mutation(self):
+        state, variants, _, _ = compose_legacy(self.old)
+        self.shared.parent.joinpath("decision-states").mkdir()
+        SituationStore._write(self.shared.parent / "decision-states" / (state["id"] + ".json"), state)
+        store = SituationStore(self.shared, self.data)
+        store.save(variants[0])
+        inventory, outputs = StateMigration(self.shared, self.data).inventory()
+        self.assertEqual(inventory["errors"], [])
+        self.assertEqual(outputs, {})
+        self.assertFalse((self.data / "decision-states").exists())
+
+    def test_factory_rejects_legacy_assembly(self):
+        with self.assertRaises(ValueError):
+            portable_situation(self.old)
 
     def test_game_only_defaults_do_not_invent_viewpoint(self):
         old = {k: v for k, v in self.old.items() if k not in {"presentations", "provenance"}}

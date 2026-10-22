@@ -25,6 +25,7 @@ export class LiveAssets {
     this.maxBytes = maxBytes;
     this.bytes = 0;
     this.cache = new Map();
+    this.pending = new Map();
   }
   async get(pathname) {
     let decoded;
@@ -64,25 +65,37 @@ export class LiveAssets {
       this.cache.set(target, entry);
       return entry.result;
     }
-    if (entry) {
-      this.bytes -= entry.result.body.length;
-      this.cache.delete(target);
-    }
-    const body = await fs.readFile(target);
-    const result = {
-      body,
-      contentType:
-        types[path.extname(target).toLowerCase()] || "application/octet-stream",
-    };
-    if (body.length <= this.maxBytes) {
-      this.cache.set(target, { stamp, result });
-      this.bytes += body.length;
-      while (this.bytes > this.maxBytes) {
-        const first = this.cache.keys().next().value;
-        this.bytes -= this.cache.get(first).result.body.length;
-        this.cache.delete(first);
+    const pendingKey = target + ":" + stamp;
+    if (this.pending.has(pendingKey)) return this.pending.get(pendingKey);
+    const reading = (async () => {
+      const body = await fs.readFile(target);
+      const result = {
+        body,
+        contentType:
+          types[path.extname(target).toLowerCase()] ||
+          "application/octet-stream",
+      };
+      const current = this.cache.get(target);
+      if (current) {
+        this.bytes -= current.result.body.length;
+        this.cache.delete(target);
       }
+      if (body.length <= this.maxBytes) {
+        this.cache.set(target, { stamp, result });
+        this.bytes += body.length;
+        while (this.bytes > this.maxBytes) {
+          const first = this.cache.keys().next().value;
+          this.bytes -= this.cache.get(first).result.body.length;
+          this.cache.delete(first);
+        }
+      }
+      return result;
+    })();
+    this.pending.set(pendingKey, reading);
+    try {
+      return await reading;
+    } finally {
+      this.pending.delete(pendingKey);
     }
-    return result;
   }
 }

@@ -57,14 +57,17 @@ End the review before editing sources/view setups, adding/removing desk views,
 resetting or loading unrelated situations. Ending leaves the current games open.
 It does not restart prior bots or auto switch automatically.
 
-Replacements are prepared before the old views are retired. A failed load leaves
-the old views and current queue index intact. Repeated/stale navigation requests
-are rejected using the review ID and expected index.
+Starting a Run stages views and device clones, collects source evidence, and
+persists its definition and Run before replacing current views. Failed starts
+close staged clones and remove their new Run files and unused definitions. A failed
+load leaves the old views and current queue index intact. Repeated/stale navigation
+requests are rejected using the review ID and expected index.
 
 ## Physical devices
 
-**Open on device** during a review opens the current step. Existing shared devices
-also join when a review starts. Their links/QR codes remain stable across steps.
+**Open on device** during a review uses the current frozen snapshot for its roster
+and Presentation. Missing snapshots fail explicitly rather than rereading the
+mutable Situation library. Existing shared devices also join when a review starts. Their links/QR codes remain stable across steps.
 The injected movable Report bubble adds **Previous** and **Next** arrows with a
 position counter. Hold the Report part to move the entire bubble; vibration remains
 best-effort. Either the desk arrows or a device arrow advances the whole review.
@@ -96,7 +99,9 @@ Capture, element reports, device reports and HTML/CSS exports are saved under:
 Each report records its Review ID/revision, Run ID, stable entry ID, queue index and starting Situation ID in
 addition to its normal screenshot/checkpoint/presentation/viewpoint/revision data.
 Element and device reports retain capture-time attribution while comments are
-written. Reports remain readable after ending or stopping the desk, by opening the
+written. All four report types include `presentationResolution`: intended and
+sampled effective Presentation, explicit View overrides and restoration warnings.
+This records UI changes made after loading a Situation. Reports remain readable after ending or stopping the desk, by opening the
 local index.html. Copy the whole collection folder for offline viewing. Checkpoint
 files may contain hidden/private game information, as with other lab reports.
 Active review sessions do not resume automatically after a desk restart; the saved
@@ -135,5 +140,4 @@ restart discovery and exact snapshot copying without rereading the library.
 
 Review definitions are stored as immutable revisions under
 `.layout-lab/reports/reviews/_definitions/<review-id>/<revision>.json`. Run folders
-retain their own frozen snapshots. The old report/review history was cleared for
-the new-model cutover; there is no historical-format adapter.
+retain their own frozen snapshots. See [storage and migration](state-model.md) for record versions and cutover history.

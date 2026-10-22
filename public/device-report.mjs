@@ -1,3 +1,4 @@
+import { mobileRestorationPlan } from "/__device/presentation-plan.js";
 // ==UserScript==
 // @name GoA2 Layout lab device reporter
 // @description Injected only by the layout lab's device-view server.
@@ -147,16 +148,6 @@ async function restore() {
         presentation.inspectionScript,
       );
     });
-  if (presentation.inspectionMobile)
-    await attempt("Card inspection", async () => {
-      (
-        await until(() =>
-          visible(
-            `[data-lab-inspect-card="${CSS.escape(presentation.inspectionMobile)}"]`,
-          ),
-        )
-      ).click();
-    });
   if (presentation.inspection3d && config.render === "3d")
     await attempt("3D inspection", async () => {
       (await until(() => window.__GOA2_LAB_BRIDGE__?.inspection3d)).set(
@@ -205,22 +196,10 @@ async function restore() {
         )
       ).click();
     });
-  if (presentation.spellBrowserMobile && config.uiMode === "mobile")
-    await attempt("Public spell browser", async () => {
-      const state = presentation.spellBrowserMobile;
-      (
-        await until(() =>
-          visible(`[data-lab-open-spells="${CSS.escape(state.heroId)}"]`),
-        )
-      ).click();
-      if (state.selectedId)
-        (
-          await until(() =>
-            visible(
-              `[data-lab-preview-spell="${CSS.escape(state.selectedId)}"]`,
-            ),
-          )
-        ).click();
+  for (const step of mobileRestorationPlan(presentation, config))
+    await attempt(step.label, async () => {
+      (await until(() => visible(step.click))).click();
+      if (step.wait) await until(() => visible(step.wait));
     });
   for (const state of presentation.scroll || []) {
     const element = state.id

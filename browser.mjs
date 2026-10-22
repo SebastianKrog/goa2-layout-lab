@@ -142,7 +142,9 @@ export class Comparison {
     const win = {
       config: { ...config },
       situation,
-      initialPresentation: presentation,
+      initialPresentation: structuredClone(
+        intendedPresentation || toPresentation(presentation || {}, config.seat),
+      ),
       intendedPresentation,
       clone,
       context,
@@ -434,7 +436,7 @@ export class Comparison {
   }
   async load(situationId, configs, presentations = {}, savedSituation = null) {
     // Resolve the roster before closing an existing comparison. This also
-    // repairs old drafts/presets that still refer to a different game's hero.
+    // resolves saved Viewpoints that are unavailable in this game's roster.
     validateSlots(configs);
     const situation =
       savedSituation ||
@@ -703,9 +705,9 @@ export class Comparison {
       situation = captured.situation;
       situation.id = source.situation?.id || situation.id;
       situation.name = (source.situation?.name || "Game") + " (current state)";
-      presentation = await capturePresentation(
-        source.page,
-        source.config.render,
+      presentation = toPresentation(
+        await capturePresentation(source.page, source.config.render),
+        source.config.seat,
       );
     }
     const [resolved] = slotsForSituation([config], situation);

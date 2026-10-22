@@ -1,7 +1,8 @@
 # Lab terminology and saved state
 
-These terms describe the current state model. The [refactor plan](plans/situation-model-refactor.md)
-records the design and rollout requirements.
+These terms describe the current state model. See [storage and contracts](state-model.md)
+for implementation details and the [completed design record](plans/situation-model-refactor.md)
+for the refactor decisions.
 
 | Term | One responsibility | Examples |
 | --- | --- | --- |
@@ -58,8 +59,9 @@ Presentation restores through semantic adapters without submitting game actions.
 Unsupported controls produce warnings. Reports distinguish intended and effective
 Presentation and record overrides rather than claiming exact restoration after a
 fallback. User State uses the supported keys in `state-contract.json`; credentials
-and unrelated local storage are excluded. Device preference overrides use tab-scoped
-storage so personal device preferences remain unchanged.
+and unrelated local storage are excluded. Device preference overrides are scoped
+to the tab and review revision. Reloading the same step retains edits; changing steps starts with the saved settings and
+application defaults. Personal device preferences remain unchanged.
 
 ## Saving and reuse
 
@@ -82,18 +84,11 @@ including large integers. UI code must not round-trip checkpoints through JS num
 Presentation templates live in `.layout-lab/presentation-templates.json`; Layouts
 in `.layout-lab/layouts.json` and optional shared/local `layouts/` directories.
 
-## Porting old situations
+## Porting older situations
 
-Runtime accepts the new composed Situation schema only. There is no old-format
-restore mode or automatic loading of historical bundled view settings. The offline
-`migrate_state.py` tool ports old situations, preserves original IDs on primary
-variants, creates deterministic IDs for other saved presentations/viewpoints, and
-moves source/device/controller choices into suggested Layouts. Old game-only entries
-use Board defaults and do not invent unsaved UI state. Backups and manifests are
-kept in ignored `.layout-lab/migrations/`. See [migration commands](state-model.md).
-
-Existing report/review history was cleared for this cutover at the user's request.
-New history uses Review definitions/revisions and Review Runs exclusively.
+Runtime accepts composed Situations only. Use the [offline porting tool](state-model.md#porting-older-situations)
+for older bundles; it preserves exact Decision States, maps Presentation variants
+and separates suggested Layouts. It cannot recover UI state that was never saved.
 
 ## API
 

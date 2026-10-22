@@ -424,12 +424,7 @@ try {
       render: "2d",
       profile: "portrait",
     }));
-    await c.load(
-      s.id,
-      slots,
-      { 0: s.presentations?.[1], 1: s.presentations?.[2] },
-      s,
-    );
+    await c.load(s.id, slots, {}, s);
     if (spec.inspection || spec.handSize) {
       for (const w of c.windows) {
         await showPane(w.page, "settings", w.config);

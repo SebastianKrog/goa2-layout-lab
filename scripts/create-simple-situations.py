@@ -168,21 +168,21 @@ for case, name, group in CASES:
             "source": "base",
             "profile": "portrait",
             "render": "2d",
-            "layout": "desktop",
+            "uiMode": "desktop",
             "seat": seat,
         },
         {
             "source": "comparator",
             "profile": "portrait",
             "render": "2d",
-            "layout": "mobile",
+            "uiMode": "mobile",
             "seat": seat,
         },
         {
             "source": "target",
             "profile": "portrait",
             "render": "2d",
-            "layout": "desktop",
+            "uiMode": "desktop",
             "seat": seat,
         },
     ]
@@ -190,15 +190,12 @@ for case, name, group in CASES:
         "schema": lab.SCHEMA,
         "name": name,
         "checkpoint": saved,
-        "provenance": {"kind": "ui-fabrication", "slots": slots},
-        "presentations": {
-            str(i): {
-                "render": "2d",
-                "pane": "hand" if selection else "board",
-                **({"selectedCard": selection} if selection else {}),
-            }
-            for i in range(len(slots))
-        },
+        "provenance": {"kind": "ui-fabrication"},
+        "suggestedLayout": lab.make_layout(slots),
+        "presentation": lab.compose_presentation({
+            "render": "2d", "pane": "hand" if selection else "board",
+            **({"selectedCard": selection} if selection else {}),
+        }, seat),
     }
     destination = args.output / (case + ".json")
     destination.write_text(json.dumps(lab.portable_situation(payload), indent=2) + "\n", encoding="utf-8")

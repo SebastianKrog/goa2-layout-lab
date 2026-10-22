@@ -41,13 +41,12 @@ export function layoutSlots(record) {
   )
     throw Error("Invalid Layout record.");
   return validateSlots(
-    record.views.map(({ uiMode, defaults, ...view }) => ({
+    record.views.map(({ uiMode, ...view }) => ({
       ...view,
       uiMode,
       seat:
         view.overrides?.viewpoint ||
         view.presentationDefaults?.viewpoint ||
-        defaults?.viewpoint ||
         "spectator",
     })),
   );
@@ -62,12 +61,6 @@ export class Layouts {
     this.records = Object.entries(presets).map(([name, views]) =>
       makeLayout(name, views, "none", "builtin-" + name),
     );
-    const file = path.join(this.data, "layouts.json");
-    try {
-      this.records.push(...JSON.parse(await fs.readFile(file, "utf8")));
-    } catch (e) {
-      if (e.code !== "ENOENT") throw e;
-    }
     for (const root of [this.shared, path.join(this.data, "layouts")]) {
       let names;
       try {
@@ -81,6 +74,14 @@ export class Layouts {
           JSON.parse(await fs.readFile(path.join(root, name), "utf8")),
         );
     }
+    this.saved = [];
+    const file = path.join(this.data, "layouts.json");
+    try {
+      this.saved = JSON.parse(await fs.readFile(file, "utf8"));
+    } catch (e) {
+      if (e.code !== "ENOENT") throw e;
+    }
+    this.records.push(...this.saved);
     this.records = this.records.filter(
       (record, i, all) =>
         all.findLastIndex((r) => r.name === record.name) === i,
@@ -99,6 +100,7 @@ export class Layouts {
     return value;
   }
   async save(name, configs, synchronization) {
+    name = name?.trim();
     const value = makeLayout(
       name,
       configs,
@@ -107,19 +109,14 @@ export class Layouts {
         ?.id || undefined,
     );
     const next = [...this.records.filter((r) => r.name !== name), value];
+    const saved = [...this.saved.filter((r) => r.name !== name), value];
     const file = path.join(this.data, "layouts.json");
     await fs.mkdir(this.data, { recursive: true });
     const temp = file + "." + randomBytes(5).toString("hex") + ".tmp";
-    await fs.writeFile(
-      temp,
-      JSON.stringify(
-        next.filter((r) => !r.id.startsWith("builtin-")),
-        null,
-        2,
-      ),
-    );
+    await fs.writeFile(temp, JSON.stringify(saved, null, 2));
     await fs.rename(temp, file);
     this.records = next;
+    this.saved = saved;
     return value;
   }
 }

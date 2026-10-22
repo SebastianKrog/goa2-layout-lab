@@ -57,6 +57,18 @@ class SituationTests(unittest.TestCase):
         cls.client.__enter__()
         cls.headers = {"x-lab-token": "test-lab-secret"}
 
+    def test_read_frozen_review_snapshot_never_recreates_missing_input(self):
+        spec = {"reviewId": "f" * 24, "index": 0}
+        response = self.client.post("/__lab/review/snapshot", headers=self.headers,
+            json={**spec, "id": "e81bc3bd5fff"})
+        self.assertEqual(response.status_code, 200, response.text)
+        frozen = response.json()
+        url = "/__lab/review/snapshot?reviewId=" + spec["reviewId"] + "&index=0"
+        self.assertEqual(self.client.get(url, headers=self.headers).json(), frozen)
+        missing = url.replace("index=0", "index=1")
+        self.assertEqual(self.client.get(missing, headers=self.headers).status_code, 404)
+        self.assertEqual(self.client.get(url.replace(spec["reviewId"], "bad"), headers=self.headers).status_code, 422)
+
     def test_composed_situations_share_exact_decision_state_and_keep_presentations_separate(self):
         original = self.client.get("/__lab/situations/e81bc3bd5fff", headers=self.headers).json()
         one = self.client.post("/__lab/import", headers=self.headers, json={"content": original, "name":"Composed source"}).json()

@@ -4,7 +4,7 @@ Start the layout lab normally with `npm run compare`. In **Compare**, select any
 saved situation and click **Open on device**. The same action is available on
 each card in **Situations**. You do not have to load or replace a comparison first.
 
-Choose a frontend, layout and player, then **Start device website**. Scan the QR
+Choose a frontend, Interface preset and Viewpoint, then **Start device website**. Scan the QR
 code using a phone or tablet on the same Wi-Fi, or open the displayed LAN link.
 The QR image is generated locally; no QR service receives the link.
 
@@ -29,7 +29,7 @@ form; **Discard** clears it for a new capture. Save report stores:
 - `.layout-lab/reports/device/<id>/`: `screenshot.png`, `report.json`, and a copy
   of `situation.json`.
 
-Refresh **Situations** to see the report. Load it with saved viewpoints to compare
+Refresh **Situations** to see the report. Load its captured Presentation to compare
 the reported moment, or use **Open on device** again. Canceling the form creates
 no catalog entry. Unsaved captures expire after one hour or a desk restart.
 Retrying a save keeps the same report ID. Reports stay on your PC and contain the

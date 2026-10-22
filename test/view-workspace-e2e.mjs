@@ -38,6 +38,7 @@ try {
     : await app.comparison.browser.newPage({
         viewport: { width: 1440, height: 1000 },
       });
+  desk.on("pageerror", (e) => console.error("Desk page error:", e.message));
   if (!native) await desk.goto(origin);
   await desk.locator(".slot").waitFor();
   assert.equal(await desk.locator(".slot").count(), 1);
@@ -78,7 +79,25 @@ try {
   );
   const first = (await api("status")).windows[0];
   assert.equal(first.config.source, "live");
+  // The Layout default can differ from the effective Situation Viewpoint.
+  app.comparison.windows[0].config.presentationDefaults = {
+    schema: 2,
+    viewpoint: "spectator",
+    sessionState: {},
+    userState: {},
+  };
+  const sourceSeat = app.comparison.windows[0].config.seat;
+  assert.notEqual(sourceSeat, "spectator");
   const hash = (await api("views"))[0].state.hash;
+  // Keep the async roster request pending across a status poll: the draft must survive.
+  await desk.route(
+    "**/api/device/options?*",
+    async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 1700));
+      await route.continue();
+    },
+    { times: 1 },
+  );
   await desk.locator("#addView").click();
   assert.equal(await desk.locator(".slot").count(), 2);
   await desk.locator("#editor[open]").waitFor();
@@ -100,6 +119,11 @@ try {
   );
   const status = await api("status");
   assert.equal(status.windows.length, 2);
+  assert.equal(status.windows[1].config.seat, sourceSeat);
+  await app.comparison.reset(1);
+  assert.equal(app.comparison.windows[1].config.seat, sourceSeat);
+  // The second clone has been reset; use its new identity for later assertions.
+  status.windows[1] = (await api("status")).windows[1];
   assert.equal(status.windows[0].gameId, first.gameId);
   assert.notEqual(status.windows[1].gameId, first.gameId);
   assert.deepEqual(

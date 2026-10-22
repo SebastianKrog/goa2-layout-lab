@@ -1,8 +1,12 @@
-# State model and migration
+# State storage and contracts
 
-The model uses schema 2 Situations, Presentations, Layouts, Reviews and Review Runs.
-Decision State records have their own schema 1 and content-addressed identity; that
-is a different record type, not support for old Situation versions.
+Use [terminology and desk flow](terminology.md) for the vocabulary and user-facing
+behavior. This document owns persistence, Presentation adapters and offline porting.
+
+## Records and ownership
+
+Situations, Presentations, Layouts, Reviews and Review Runs use schema 2. Decision
+States have their own schema 1; this is a separate record type.
 
 ```text
 situations/<folder>/<situation-id>.json
@@ -15,14 +19,56 @@ layouts/<layout-id>.json
   schema: 2, kind: layout, views: [...], synchronization: none|api|api-clicks
 ```
 
-Local records use `.layout-lab/situations/`, `.layout-lab/decision-states/` and
-`.layout-lab/layouts/`. The name assigned to a game-only save is kept in that
-Decision State store's `labels.json`; it does not change checkpoint identity.
-Promotion copies the Decision State into the shared store and removes machine-only
-metadata. Shared Situations cannot depend on ignored local Decision States.
+Local records use corresponding folders inside ignored `.layout-lab/`. Local
+Situations may reference local or shared Decision States. Shared Situations may
+reference only shared Decision States. Promotion copies the checkpoint into the
+shared store and removes machine-specific provenance. Python owns lossless
+checkpoint serialization, including large integers.
 
-Run `migrate_state.py` with the configured backend's Python environment. The default
-command is read-only:
+Game-only save names live in the Decision State store's `labels.json`; labels do
+not change checkpoint identity. Presentation templates live in
+`.layout-lab/presentation-templates.json`. Shared and local `layouts/` files supply
+Layouts; `.layout-lab/layouts.json` stores local overrides loaded last. Editing a
+file-backed Layout retains its identity and persists only the override.
+
+See [Review storage and evidence](reviews.md#evidence-collection) for immutable
+Review revisions, frozen Run inputs and report attribution.
+
+## Presentation contracts and restoration
+
+`state-contract.json` defines supported User State keys and temporary Session State
+storage prefixes. Python and JavaScript normalize the same fixtures in
+`test/presentation-contract.json`. Canonical envelopes reject obsolete versions,
+invalid state/value types and storage keys outside those boundaries, including
+renderer-specific Session States.
+
+Clone the exact Decision State, resolve the effective Viewpoint, seed supported
+preferences before frontend startup, then restore Session State through semantic
+controls. Desktop and device transports share `presentation-plan.mjs` for ordered
+spell-browser and nested inspection restoration. Unsupported controls produce
+warnings; restoration must not submit game actions.
+
+Device settings are scoped to the session and review revision. Reloading one step
+retains edits; changing steps starts with that Situation's settings and application
+defaults. Personal preferences remain separate. Reports share
+`presentationResolution` evidence with intended/effective Presentation, explicit
+overrides and restoration warnings.
+
+Factory scripts use `portable_situation()` with an explicit canonical
+`presentation`, optional `additionalPresentations`, and a separate `suggestedLayout`
+from `make_layout()`. Portable exports include one inline Decision State and
+optional `additionalSituations` referencing it. The importer persists these in
+separate stores. Factories do not assemble legacy per-view bundles.
+
+For Windows Live views, the lab serves existing checkout assets directly to avoid
+WSL file-transport overhead. The bounded cache observes file changes, coalesces
+concurrent reads and accounts for cached bytes once.
+
+## Porting older situations
+
+The running lab accepts composed Situations only. Older bundles are handled by
+`migrate_state.py` and its offline `state_migration_legacy.py` converter. Run with
+the configured backend's Python environment; for example:
 
 ```powershell
 & ../goa2-backend-bots/.venv/Scripts/python.exe migrate_state.py
@@ -30,50 +76,38 @@ command is read-only:
 & ../goa2-backend-bots/.venv/Scripts/python.exe migrate_state.py --rollback <transaction-id>
 ```
 
-Use `--shared <situations-directory>` and `--data <lab-data-directory>` for an
-isolated copy. Avoid concurrent library edits while applying. The inventory shows
-shared/local mappings, deterministic variant IDs, suggested Layouts, warnings and
-validation errors. Game-only records have no recoverable historical UI selection;
-that limitation is recorded. Supported preferences are extracted into User State;
-unknown storage settings are reported, not activated.
+The default inventory is read-only. Use `--shared <situations-directory>` and
+`--data <lab-data-directory>` for an isolated copy. Close the lab before applying
+or rolling back, and avoid concurrent library edits.
 
-Apply validates first, stages outputs, backs up changed records and journals their
-hashes before publishing Decision States followed by atomic Situation reference
-replacements. Failed applies roll back completed writes. A prepared journal left
-by interruption blocks another apply until explicitly rolled back. Rollback checks
-all output hashes first and refuses to overwrite subsequent edits. Repeated apply
-is idempotent. Old-format input is handled only by this offline tool; the running
-lab requires composed Situations.
+The converter preserves exact checkpoints, original IDs on primary variants,
+folders and provenance. Distinct saved Presentations become deterministic Situation
+variants sharing a Decision State; executable settings become suggested Layouts.
+Game-only entries use documented Board defaults without inventing historical UI
+state. Unsupported settings and ambiguous variants are reported. Current records
+use the runtime Decision State resolver during validation.
 
-The cutover converted the curated library and local drafts and verified that every
-resulting variant retains its exact checkpoint and restores to the original
-canonical engine hash. Evidence and transaction IDs are local in
-`.layout-lab/state-migration-verification.json`, `state-migration-applied.json` and
-`state-model-cutover.json`. These files and backups are not shared fixtures.
-Report/review history was cleared as authorized; it is not migrated.
+Apply validates and stages outputs, backs up changed records, journals hashes,
+and publishes Decision States before atomic Situation replacements. Failed applies
+roll back completed writes. An interrupted prepared journal blocks another apply
+until rolled back. Rollback refuses to overwrite later edits; repeat apply is
+idempotent. Backups and mappings live under `.layout-lab/migrations/`.
 
-Factory outputs use `portable_situation()` to export composed records with inline
-Decision State bundles and optional `additionalSituations`. Variants share the
-checkpoint; executable settings are separate suggested Layouts. The importer copies
-the bundle into the local stores. No factory or import should write old Situation
-schemas into the runtime library.
-
-For Live views on Windows, the lab serves existing public asset bytes and the
-frontend's archived hero-model route directly from the checkout. The bounded cache
-checks file timestamps/sizes so edits are refreshed. This avoids slow WSL file
-transport for large 3D resources; product code and pinned-build assets are unchanged.
+The completed cutover ported the existing curated library and local drafts.
+Report/review history was cleared rather than migrated; no historical report reader
+is maintained. See the [dated validation record](validation/state-model-2026-10-22.md)
+for results and local evidence locations.
 
 ## Verification
 
-- Python: `python -m unittest test.state_model_test test.situations_test test.backend_test`
-- Node/browser regressions: `npm test`
-- Owned desktop workflow: `node test/view-workspace-e2e.mjs`
-- Owned review/device workflow: `node test/reviews-e2e.mjs`
-- Review history/revisions: `node test/review-history-e2e.mjs`
-- Composed model, 3D and phone preferences: `node test/state-model-e2e.mjs`
+- `python -m unittest test.state_model_test test.situations_test test.backend_test`
+- `npm test` — includes storage contracts, shared mobile restoration and report fixtures.
+- `node test/view-workspace-e2e.mjs` — Start/Add/Edit/Cancel, copies and Reset.
+- `node test/reviews-e2e.mjs` — desk/device navigation, drafts and all report types.
+- `node test/review-history-e2e.mjs` — history UI, frozen reruns and edited revisions.
+- `node test/state-model-e2e.mjs` — composed Presentations, 3D and phone preferences.
 
-Set distinct `GOA2_LAB_*_PORT` values for acceptance instances and use Windows
-browsers with the configured WSL services on this installation. These scripts close
-only their owned services. Automated device checks use mobile/touch Chromium against the device-view server
-with existing preferences. Confirm a particular physical phone separately. The
-refactor plan records the observed long-session Vite limitation.
+Acceptance scripts own and close their services. Use distinct `GOA2_LAB_*_PORT`
+values and the configured Windows browser/WSL service workflow on this installation.
+See [the testing guide](testing.md) for other runners and
+[recorded coverage and gaps](validation/state-model-2026-10-22.md#final-results).

@@ -2,7 +2,7 @@
 
 These JSON files are part of the repo. Local and generated drafts stay in ignored `.layout-lab/situations/` until added to this library.
 
-Open **Situations**, choose the folder, then **Open situation**. Keep **Use saved view setup** enabled to restore the intended owner and presentation. The card examples use the three mobile migration sources: Base, Current build and Userscript target. You can change these to two views or desktop/3D comparisons after loading.
+Open **Situations**, choose the folder, then **Open situation**. The Situation restores its Presentation; the current Layout keeps its sources, devices and renderers. Use **Viewpoint: Follow situation** to follow the saved owner, or pin a player/spectator explicitly. Add Views or choose a Layout for comparisons. See [terminology and saved state](../docs/terminology.md).
 
 | Folder | Situation | Saved moment |
 | --- | --- | --- |
@@ -26,13 +26,14 @@ Use the sibling backend's installed Python environment, from its checkout:
 python ../goa2-layout-lab/scripts/create-simple-situations.py
 ```
 
-The script supports `--backend <checkout>` and `--output <folder>`. By default it writes import bundles and a manifest under `.layout-lab/situation-recipes/simple/`. Import a bundle in the desk and reopen it with its saved viewpoints; planning selection is presentation state. Verify the intended UI, then use **Add to library**. The script does not overwrite curated fixtures or commit anything.
+The script supports `--backend <checkout>` and `--output <folder>`. By default it writes import bundles and a manifest under `.layout-lab/situation-recipes/simple/`. Import a bundle in the desk and reopen its captured Presentation; planning selection is presentation state. Verify the intended UI, then use **Add to library**. The script does not overwrite curated fixtures or commit anything.
 
 ## Hero gameplay examples
 
 The `heroes/gydion`, `heroes/snorri` and `heroes/emmitt` folders contain one curated
-checkpoint each, promoted from the M2 gameplay acceptance drafts. Saved slots use
-the owning hero in Base, Comparator (native mobile) and Userscript target. Choose
+checkpoint each, promoted from the M2 gameplay acceptance drafts. Their
+Presentations use the owning hero. For a three-way comparison, choose Base,
+Comparator (native mobile) and Userscript target in your Layout. Choose
 M2 or newer for the native mobile comparator. Open Hand for Emmitt to select his
 second card; the saved checkpoint already has his first card committed. Selection
 and inspection remain separate from submitting a choice.
@@ -66,9 +67,10 @@ backups stay local. The factory does not overwrite the curated library.
 | `heroes/snorri/runes/` | [M3 presentation - snorri-empty-history-runes](heroes/snorri/runes/4372410c2d87.json) | Four named runes above empty turn slots; turn 2 active |
 
 These seven situations were promoted from the Windows Chromium acceptance drafts.
-Saved views use the newest Comparator commit in native mobile 2D, with separate
-owner and spectator seats. M3 or newer is required. Keep **Use saved view setup**
-enabled to restore both seats, or disable it to keep your own comparison sources.
+The original acceptance used native mobile 2D owner and spectator Views. M3 or
+newer is required. Ported owner/spectator variants are separate Situations; select
+the intended variant or use explicit Viewpoint overrides to compare them. Loading
+a Situation retains the current comparison sources.
 There is no pre-opened menu or inspection: open Heroes or the board summary, then
 use Gydion's cast-spell indicator to browse his public spells. Check Rank/Color
 sorting and Large/Image inspection; private prepared spells remain owner-only.
@@ -129,7 +131,7 @@ factory scripts respectively.
 
 These entries extend the parity-review library without duplicating the existing
 first/second-card, tie-choice, spell-choice or rune situations. Each was reopened
-through Restore saved viewpoints in Windows Chromium with Base, Comparator and
+with its saved Presentation in Windows Chromium with Base, Comparator and
 Base + userscript, matching normalized game hashes and no restore warnings.
 
 | Situation | Folder | Default viewpoint |
@@ -181,7 +183,7 @@ The checkpoint was normalized and reopened in Windows Chromium during review.
 is a fabricated full Forgotten Island checkpoint with Arien at level 4, three
 upgrades pending, and Wasp on the opposing team (seed 20261021). No upgrade has
 been selected or committed. The normalized checkpoint was restored during M5
-verification and reopened with its saved viewpoints before promotion was finalized.
+verification and reopened with its captured Presentation before promotion was finalized.
 
 Saved views use Arien in Base, the newest Comparator with native mobile,
 and Userscript target, all portrait 2D. This complements the existing single
@@ -206,5 +208,6 @@ observations yet; batching past them is a different presentation history.
 
 The local draft and promoted library entry were reopened in Windows Chromium
 with native mobile and the userscript Target on Arien’s seat, with equal game
-hashes, the real upgrade prompt and no native render errors. Saved default slots
-also retain Base, newest Comparator/mobile and Target, all portrait 2D.
+hashes, the real upgrade prompt and no native render errors. That verification
+used Base, Comparator/mobile and Target, all portrait 2D; these source/device
+choices belong to the comparison Layout rather than the Situation.

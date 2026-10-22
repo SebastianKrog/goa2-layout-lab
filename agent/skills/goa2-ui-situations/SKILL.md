@@ -67,7 +67,7 @@ Cheats controls stay hidden by default. Setup data can be fabricated without dis
 
 ## Save and check reproducibility
 
-Import the checkpoint through the lab, which validates and normalizes it. In standalone factories, restore/checkpoint once to normalize a waiting step, then restore that normalized checkpoint again and confirm the prompt and canonical hash are stable. Initial restoration can initialize transient context defaults; compare clones and presentation-only changes against the normalized state. Save the situation from the intended game window after setting all presentations, with a useful name such as "Snorri - second rune choice - owner". A saved setup/preset alone contains slots, not a game checkpoint.
+Import the checkpoint through the lab, which validates and normalizes it. In standalone factories, restore/checkpoint once to normalize a waiting step, then restore that normalized checkpoint again and confirm the prompt and canonical hash are stable. Initial restoration can initialize transient context defaults; compare clones and presentation-only changes against the normalized state. Save the situation from the intended game window after setting its Presentation, with a useful name such as "Snorri - second rune choice - owner". A saved Layout contains view configuration; it does not contain a Decision State.
 
 Reopen the saved Situation and verify its composed Presentation; use explicit View overrides for intentionally different player viewpoints. Check only the observable fixture contract:
 

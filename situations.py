@@ -13,10 +13,11 @@ from state_model import (SITUATION_SCHEMA, current_record, decision_state, ident
 
 
 class SituationStore:
-    def __init__(self, shared, data):
+    def __init__(self, shared, data, *, create=True):
         self.shared = Path(shared).resolve()
         self.local = Path(data).resolve() / "situations"
-        self.local.mkdir(parents=True, exist_ok=True)
+        if create:
+            self.local.mkdir(parents=True, exist_ok=True)
         self._lock = threading.RLock()
         self._cache = {}
         self._decision_cache = {}

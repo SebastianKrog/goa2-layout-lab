@@ -190,6 +190,26 @@ test("phone overrides persist across reload in the lab tab while personal localS
       "0.3",
     );
     await page.reload();
+    await page.evaluate(
+      (settings) =>
+        (window.__GOA2_DEVICE__ = {
+          ...settings,
+          revision: 1,
+          presentation: {},
+        }),
+      settings,
+    );
+    await page.addScriptTag({ content: bootstrap });
+    assert.equal(
+      await page.evaluate(() => localStorage.getItem("goa2:board-brightness")),
+      null,
+      "a new review step starts at app defaults",
+    );
+    assert.equal(
+      await page.evaluate(() => localStorage.getItem("personal")),
+      "keep",
+    );
+    await page.reload();
     assert.equal(
       await page.evaluate(() => localStorage.getItem("goa2:board-brightness")),
       "0.9",
@@ -277,4 +297,78 @@ test("Live asset transport serves exact bytes, observes edits and cannot read ou
     await cache.get("/models/heroes/original/../../private.txt"),
     null,
   );
+});
+
+test("Python and JavaScript share the Presentation contract fixtures", async () => {
+  const cases = JSON.parse(
+    await fs.readFile(
+      new URL("./presentation-contract.json", import.meta.url),
+      "utf8",
+    ),
+  );
+  for (const c of cases) {
+    if (c.invalid)
+      assert.throws(() => toPresentation(c.input), undefined, c.name);
+    else assert.deepEqual(toPresentation(c.input), c.expected, c.name);
+  }
+});
+
+test("editing file-backed Layouts persists only overrides and survives restart", async (t) => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "lab-layout-override-"));
+  t.after(() => fs.rm(root, { recursive: true, force: true }));
+  const shared = path.join(root, "shared"),
+    data = path.join(root, "local");
+  await fs.mkdir(shared);
+  const source = makeLayout("Shared test", [config]);
+  await fs.writeFile(path.join(shared, "one.json"), JSON.stringify(source));
+  await fs.writeFile(
+    path.join(shared, "two.json"),
+    JSON.stringify(makeLayout("Untouched", [config])),
+  );
+  const layouts = await new Layouts(data, shared).init({});
+  const saved = await layouts.save(
+    " Shared test ",
+    [{ ...config, profile: "landscape" }],
+    "none",
+  );
+  assert.equal(saved.id, source.id);
+  const reloaded = await new Layouts(data, shared).init({});
+  assert.equal(layoutSlots(reloaded.find(source.id))[0].profile, "landscape");
+  assert.equal(
+    JSON.parse(await fs.readFile(path.join(data, "layouts.json"), "utf8"))
+      .length,
+    1,
+  );
+});
+
+test("concurrent Live asset misses keep byte accounting exact and invalidate edits", async (t) => {
+  const root = await fs.mkdtemp(
+    path.join(os.tmpdir(), "lab-asset-concurrent-"),
+  );
+  t.after(() => fs.rm(root, { recursive: true, force: true }));
+  await fs.mkdir(path.join(root, "public/cards"), { recursive: true });
+  const file = path.join(root, "public/cards/a.png");
+  await fs.writeFile(file, "1234");
+  await fs.writeFile(path.join(root, "public/cards/b.png"), "5678");
+  const assets = new LiveAssets(root, { maxBytes: 8 });
+  const reads = await Promise.all(
+    Array.from({ length: 8 }, () => assets.get("/cards/a.png")),
+  );
+  assert.ok(reads.every((r) => r.body.toString() === "1234"));
+  assert.equal(assets.bytes, 4);
+  assert.equal(assets.cache.size, 1);
+  await Promise.all(
+    Array.from({ length: 8 }, (_, i) =>
+      assets.get(i % 2 ? "/cards/a.png" : "/cards/b.png"),
+    ),
+  );
+  assert.equal(assets.bytes, 8);
+  assert.equal(
+    assets.bytes,
+    [...assets.cache.values()].reduce((n, e) => n + e.result.body.length, 0),
+  );
+  await fs.writeFile(file, "changed");
+  assert.equal((await assets.get("/cards/a.png")).body.toString(), "changed");
+  assert.equal(assets.bytes, 7);
+  assert.equal(assets.pending.size, 0);
 });

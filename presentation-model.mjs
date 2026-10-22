@@ -8,6 +8,8 @@ const object = (value) =>
 
 export function toPresentation(value = {}, viewpoint) {
   if (!object(value)) throw Error("Presentation must be an object.");
+  if (Object.hasOwn(value, "schema") && value.schema !== 2)
+    throw Error("Unsupported Presentation schema.");
   let result;
   if (
     value.schema === 2 ||
@@ -15,15 +17,22 @@ export function toPresentation(value = {}, viewpoint) {
     Object.hasOwn(value, "sessionState") ||
     Object.hasOwn(value, "userState")
   ) {
-    if (!object(value.sessionState ?? {}) || !object(value.userState ?? {}))
+    if (
+      !object(Object.hasOwn(value, "sessionState") ? value.sessionState : {}) ||
+      !object(Object.hasOwn(value, "userState") ? value.userState : {})
+    )
       throw Error("Presentation states must be objects.");
     result = { schema: 2, sessionState: {}, userState: {}, ...clone(value) };
   } else {
     const { storage = {}, ...sessionState } = clone(value);
+    if (!object(storage))
+      throw Error("Presentation storage must be an object.");
     const userState = {},
       scoped = {},
       warnings = [];
-    for (const [key, val] of Object.entries(storage)) {
+    for (const [key, val] of Object.entries(storage).sort(([a], [b]) =>
+      a < b ? -1 : a > b ? 1 : 0,
+    )) {
       if (USER_STATE_KEYS.has(key)) userState[key] = val;
       else if (
         SESSION_STORAGE_PREFIXES.some((prefix) => key.startsWith(prefix))
@@ -42,7 +51,32 @@ export function toPresentation(value = {}, viewpoint) {
   for (const [key, val] of Object.entries(result.userState ?? {}))
     if (!USER_STATE_KEYS.has(key) || !(val === null || typeof val === "string"))
       throw Error(`Unsupported User State setting: ${key}`);
+  const validateSession = (session) => {
+    if (!object(session)) throw Error("Session State must be an object.");
+    if (Object.hasOwn(session, "storage")) {
+      if (!object(session.storage))
+        throw Error("Presentation storage must be an object.");
+      for (const [key, val] of Object.entries(session.storage))
+        if (
+          !SESSION_STORAGE_PREFIXES.some((prefix) => key.startsWith(prefix)) ||
+          !(val === null || typeof val === "string")
+        )
+          throw Error(`Unsupported Session State storage key: ${key}`);
+    }
+    if (Object.hasOwn(session, "modes")) {
+      if (!object(session.modes))
+        throw Error("Session State modes must be an object.");
+      for (const mode of Object.values(session.modes)) validateSession(mode);
+    }
+  };
+  validateSession(result.sessionState);
   if (viewpoint !== undefined) result.viewpoint = viewpoint;
+  if (
+    Object.hasOwn(result, "viewpoint") &&
+    result.viewpoint !== null &&
+    typeof result.viewpoint !== "string"
+  )
+    throw Error("Viewpoint must be a player, spectator, or null.");
   return result;
 }
 const SESSION_DEFAULTS = {
@@ -127,5 +161,14 @@ export function resolveView(config, situation, explicit) {
     config: resolved,
     intended,
     presentation: adapterPresentation(intended, config.render),
+  };
+}
+
+export function presentationEvidence(config, intended, raw, warnings = []) {
+  return {
+    intended: clone(intended ?? null),
+    effective: toPresentation(raw, config.seat),
+    overrides: clone(config.overrides || {}),
+    warnings: clone(warnings),
   };
 }

@@ -1,3 +1,4 @@
+import { presentationEvidence } from "./presentation-model.mjs";
 import { reviewAttribution } from "./report.mjs";
 import { toPresentation } from "./presentation-model.mjs";
 import fs from "node:fs/promises";
@@ -243,16 +244,16 @@ export class ElementReports {
           win.page,
           win.config.render,
         );
-        view.situation.presentations = { 0: presentation };
         view.situation.presentation = toPresentation(
           presentation,
           win.config.seat,
         );
-        view.presentationResolution = {
-          intended: win.intendedPresentation || null,
-          effective: view.situation.presentation,
-          overrides: win.config.overrides || {},
-        };
+        view.presentationResolution = presentationEvidence(
+          win.config,
+          win.intendedPresentation,
+          presentation,
+          win.warnings || [],
+        );
         view.situation.provenance = {
           kind: "element-report",
           review: reviewAttribution(draft.collection),
