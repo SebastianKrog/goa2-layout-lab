@@ -38,7 +38,7 @@ def write(key):
     assert pending.input_request is not None
     payload = {"schema": lab.SCHEMA, "name": "M3 resolution - " + key, "checkpoint": saved,
         "provenance": {"kind": "ui-fabrication", "fixture": {"case": key}, "seat": "hero_hanu", "seed": 20261020}, "presentations": {}}
-    (output / (key + ".json")).write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    (output / (key + ".json")).write_text(json.dumps(lab.portable_situation(payload), indent=2), encoding="utf-8")
     print(key, pending.input_request.request_type, pending.input_request.options)
 
 write("team-tie")

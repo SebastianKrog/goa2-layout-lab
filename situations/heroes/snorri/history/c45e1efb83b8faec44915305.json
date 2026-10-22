@@ -1,0 +1,43 @@
+{
+  "schema": 2,
+  "kind": "situation",
+  "id": "c45e1efb83b8faec44915305",
+  "name": "M3 presentation - snorri-played-history-runes (variant 2)",
+  "decisionStateId": "d67c02a0e755c44d2ed940bfe765aea5694c3643973610ec46829339437c4f78",
+  "presentation": {
+    "schema": 2,
+    "sessionState": {
+      "pane": "board",
+      "selectedCard": null,
+      "inspectedCard": null
+    },
+    "userState": {},
+    "viewpoint": "hero_snorri",
+    "restoration": "defaulted; no historical Session State was saved",
+    "adapter": {
+      "uiMode": "mobile",
+      "render": "2d"
+    }
+  },
+  "summary": {
+    "phase": "PLANNING",
+    "round": 1,
+    "decision": null,
+    "responder": null
+  },
+  "backend_revision": "740ec5bbfa1aaadcf05b0df06d93ab3187e5de9a",
+  "saved_at": 1792477603.1889505,
+  "migration": {
+    "sourceId": "09fa8b1ac243",
+    "sourceSlot": "1"
+  },
+  "provenance": {
+    "kind": "ui-fabrication",
+    "fixture": {
+      "case": "snorri-played-history-runes",
+      "factory": "scripts/create-mobile-presentation-situations.py",
+      "seed": 20261019,
+      "purpose": "UI display comparison; not a game-rule test"
+    }
+  }
+}

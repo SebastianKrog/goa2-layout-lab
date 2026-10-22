@@ -1,3 +1,4 @@
+import { reviewAttribution } from "./report.mjs";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { randomUUID, createHash } from "node:crypto";
@@ -385,15 +386,10 @@ export async function extractSources(
   const id = "source-" + randomUUID();
   const report = {
     schema: 3,
-    review: collection
-      ? {
-          id: collection.id,
-          index: collection.index,
-          situationId: collection.situationId,
-        }
-      : null,
+    review: reviewAttribution(collection),
     id,
     capturedAt: new Date().toISOString(),
+    sourceEvidence: (await comparison.services?.provenance?.()) || null,
     mode: options.mode,
     selector: options.selector,
     situationId: comparison.situationId,

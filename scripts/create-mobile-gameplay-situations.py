@@ -62,7 +62,7 @@ def write(key, session, result, seat):
                        'layout': 'mobile' if source == 'comparator' else 'desktop', 'seat': seat}
                       for source in ('base', 'comparator', 'target')]}, 'presentations': {}}
     output = args.output / f'{key}.json'
-    output.write_text(json.dumps(payload, indent=2), encoding='utf-8')
+    output.write_text(json.dumps(lab.portable_situation(payload), indent=2), encoding='utf-8')
     return str(output)
 
 args.output.mkdir(parents=True, exist_ok=True)

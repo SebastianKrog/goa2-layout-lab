@@ -224,7 +224,11 @@ test("comparison load resolves unavailable preset seats before opening any clone
   comparison.status = () => comparison.windows.map((w) => w.config);
   const result = await comparison.load("runes", PRESETS["Mobile migration"]);
   assert.equal(result.length, 3);
-  assert.equal(cleared, true);
+  assert.equal(
+    cleared,
+    false,
+    "Loading stages replacements instead of clearing current views first",
+  );
   cleared = false;
   await assert.rejects(
     () => comparison.load("absent", PRESETS["Mobile migration"]),

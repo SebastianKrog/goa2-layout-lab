@@ -1,0 +1,43 @@
+{
+  "schema": 2,
+  "kind": "situation",
+  "id": "00f94f0ad7be9d4ffdac71d7",
+  "name": "M3 presentation - brogan-discard-active-history (variant 2)",
+  "decisionStateId": "5d844e10d76c8087562ce0644d89e952324b3c563732ee66667f8521d4974d08",
+  "presentation": {
+    "schema": 2,
+    "sessionState": {
+      "pane": "board",
+      "selectedCard": null,
+      "inspectedCard": null
+    },
+    "userState": {},
+    "viewpoint": "hero_brogan",
+    "restoration": "defaulted; no historical Session State was saved",
+    "adapter": {
+      "uiMode": "mobile",
+      "render": "2d"
+    }
+  },
+  "summary": {
+    "phase": "PLANNING",
+    "round": 1,
+    "decision": null,
+    "responder": null
+  },
+  "backend_revision": "740ec5bbfa1aaadcf05b0df06d93ab3187e5de9a",
+  "saved_at": 1792477604.5217564,
+  "migration": {
+    "sourceId": "7cc3ce17c3e7",
+    "sourceSlot": "1"
+  },
+  "provenance": {
+    "kind": "ui-fabrication",
+    "fixture": {
+      "case": "brogan-discard-active-history",
+      "factory": "scripts/create-mobile-presentation-situations.py",
+      "seed": 20261019,
+      "purpose": "UI display comparison; not a game-rule test"
+    }
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "schema": 2,
+  "kind": "situation",
+  "id": "4362ca9c7b4b59fdc7a99a05",
+  "name": "M3 presentation - gydion-three-indicators-committed (variant 2)",
+  "decisionStateId": "47e3ca88126a57cefb9be505fa5aa43e8072e296a7a2c0b7a2a7b870c058dbdf",
+  "presentation": {
+    "schema": 2,
+    "sessionState": {
+      "pane": "board",
+      "selectedCard": null,
+      "inspectedCard": null
+    },
+    "userState": {},
+    "viewpoint": "hero_gydion",
+    "restoration": "defaulted; no historical Session State was saved",
+    "adapter": {
+      "uiMode": "mobile",
+      "render": "2d"
+    }
+  },
+  "summary": {
+    "phase": "PLANNING",
+    "round": 1,
+    "decision": null,
+    "responder": null
+  },
+  "backend_revision": "740ec5bbfa1aaadcf05b0df06d93ab3187e5de9a",
+  "saved_at": 1792477601.9409654,
+  "migration": {
+    "sourceId": "f2728687d079",
+    "sourceSlot": "1"
+  },
+  "provenance": {
+    "kind": "ui-fabrication",
+    "fixture": {
+      "case": "gydion-three-indicators-committed",
+      "factory": "scripts/create-mobile-presentation-situations.py",
+      "seed": 20261019,
+      "purpose": "UI display comparison; not a game-rule test"
+    }
+  }
+}

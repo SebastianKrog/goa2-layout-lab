@@ -81,6 +81,9 @@ if (action === "install") {
       "0.0.0.0",
       "--port",
       String(PORTS.backend),
+      // Bound shutdown of lab-owned HTTP/WS requests before retiring the service.
+      "--timeout-graceful-shutdown",
+      "5",
     ];
     Object.assign(env, {
       UV_PROJECT_ENVIRONMENT:

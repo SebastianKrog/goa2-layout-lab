@@ -45,7 +45,7 @@ assert.equal(presentations[1].state.pane, "log");
 await request("/api/load", {
   situationId: saved.id,
   slots: PRESETS["Layout regression"],
-  restoreViews: false,
+
 });
 for (let index = 0; index < 2; index++)
   await request("/api/presentation/apply", {
@@ -93,7 +93,7 @@ const imported = await request("/api/import", {
   content: fixture,
   name: "Acceptance scoped card inspection",
 });
-await request("/api/load", { situationId: imported.id, restoreViews: true });
+await request("/api/load", { situationId: imported.id });
 views = await request("/api/views");
 assert.equal(views[0].presentation.inspection3d.cardId, own);
 assert.equal(views[0].presentation.inspection3d.altHeld, true);

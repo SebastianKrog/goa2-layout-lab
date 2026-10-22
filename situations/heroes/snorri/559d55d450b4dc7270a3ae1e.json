@@ -1,0 +1,48 @@
+{
+  "schema": 2,
+  "kind": "situation",
+  "id": "559d55d450b4dc7270a3ae1e",
+  "name": "Snorri - choose the first inscription rune (variant 2)",
+  "decisionStateId": "ef84dd55ed2d4658f43f6025a377a30059b848665286c343f9bc9eb5161339ff",
+  "presentation": {
+    "schema": 2,
+    "sessionState": {
+      "pane": "board",
+      "selectedCard": null,
+      "inspectedCard": null
+    },
+    "userState": {},
+    "viewpoint": "hero_snorri",
+    "restoration": "defaulted; no historical Session State was saved",
+    "adapter": {
+      "uiMode": "mobile",
+      "render": "2d"
+    }
+  },
+  "summary": {
+    "phase": "RESOLUTION",
+    "round": 1,
+    "decision": "SELECT_OPTION",
+    "responder": "hero_snorri"
+  },
+  "backend_revision": "740ec5bbfa1aaadcf05b0df06d93ab3187e5de9a",
+  "saved_at": 1792348469.2315016,
+  "migration": {
+    "sourceId": "0601f17bbdab",
+    "sourceSlot": "1"
+  },
+  "provenance": {
+    "kind": "ui-fabrication",
+    "fixture": {
+      "case": "snorri-inscription",
+      "factory": "scripts/create-mobile-gameplay-situations.py",
+      "seed": 20261017,
+      "condition": {
+        "phase": "RESOLUTION",
+        "round": 1,
+        "decision": "SELECT_OPTION",
+        "responder": "hero_snorri"
+      }
+    }
+  }
+}

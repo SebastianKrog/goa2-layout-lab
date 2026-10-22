@@ -49,7 +49,7 @@ await step(
     const result = await action("load", {
       situationId: planning.id,
       slots: PRESETS["Mobile migration"],
-      restoreViews: false,
+
     });
     assert.equal(result.windows.length, 3);
     assert.deepEqual(result.references, REFERENCES);
@@ -108,7 +108,7 @@ await step(
     await action("load", {
       situationId: imported.id,
       slots: PRESETS["Mobile migration"],
-      restoreViews: true,
+
     });
     const views = await get("/api/views");
     assert.equal(views[1].presentation.pane, "hand");
@@ -147,7 +147,7 @@ await step(
     const result = await action("load", {
       situationId: planning.id,
       slots,
-      restoreViews: false,
+
     });
     assert.equal(result.windows.length, 2);
     let views = await get("/api/views");
@@ -181,7 +181,7 @@ await step(
     await action("load", {
       situationId: imported.id,
       slots,
-      restoreViews: true,
+
     });
     views = await get("/api/views");
     views[1].presentation.camera.position.forEach((n, i) =>
@@ -196,7 +196,7 @@ await step(
     const gameId = views[1].gameId;
     await action("configure", {
       index: 1,
-      update: { render: "2d", layout: "desktop" },
+      update: { render: "2d", uiMode: "desktop" },
     });
     await action("configure", { index: 1, update: { render: "3d" } });
     views = await get("/api/views");
@@ -221,7 +221,7 @@ await step("duplicate sources and frozen running match clocks", async () => {
   const slots = structuredClone(PRESETS["Layout regression"]);
   slots[0].source = "comparator";
   slots[1].seat = "spectator";
-  await action("load", { situationId: timed.id, slots, restoreViews: false });
+  await action("load", { situationId: timed.id, slots });
   const before = await get("/api/views");
   assert.ok(before.every((v) => v.clock?.status === "RUNNING"));
   assert.notEqual(before[0].gameId, before[1].gameId);
@@ -260,7 +260,7 @@ await step("live CSS hot reload without changing the reference", async () => {
   await action("load", {
     situationId: planning.id,
     slots,
-    restoreViews: false,
+
   });
   const before = await get("/api/views");
   const filename = path.join(ROOT, "src/components/pages/GameView.module.css");

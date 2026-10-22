@@ -108,7 +108,7 @@ try {
     (item) => !requested || requested.includes(item.case),
   )) {
     console.log("Loading", item.case);
-    await api("load", { situationId: item.id, restoreViews: true });
+    await api("load", { situationId: item.id });
     const before = await api("views");
     const status = await api("status");
     assert.equal(status.windows.length, 3);

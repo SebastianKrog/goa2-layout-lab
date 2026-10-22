@@ -79,8 +79,8 @@ try {
     await c.load(
       situation.id,
       [
-        { source: "live", layout: "mobile" },
-        { source: "target", layout: "desktop" },
+        { source: "live", uiMode: "mobile" },
+        { source: "target", uiMode: "desktop" },
       ].map((slot) => ({ ...slot, seat, render: "2d", profile: "portrait" })),
       {},
       situation,

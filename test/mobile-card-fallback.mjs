@@ -57,8 +57,8 @@ try {
   await c.load(
     s.id,
     [
-      { source: "live", layout: "mobile" },
-      { source: "target", layout: "desktop" },
+      { source: "live", uiMode: "mobile" },
+      { source: "target", uiMode: "desktop" },
     ].map((w) => ({
       ...w,
       seat: "hero_snorri",

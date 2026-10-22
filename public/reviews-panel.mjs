@@ -42,10 +42,11 @@ export function initReviewsPanel({
       count(r.views, "view"),
     ].join(" · ");
   }
-  async function run(r, entries, name) {
+  async function run(r, entries, name, inputs = "frozen") {
     const result = await task("Starting review run…", async () => {
-      const value = await call("review/rerun", {
+      const value = await call("review-runs/rerun", {
         id: r.id,
+        inputs,
         ...(entries ? { entries } : {}),
         ...(name ? { name } : {}),
       });
@@ -58,15 +59,34 @@ export function initReviewsPanel({
   }
   function render() {
     $("reviewsList").replaceChildren();
-    $("reviewHistoryCount").textContent = String(history.length);
+    $("reviewHistoryCount").textContent = String(
+      new Set(history.map((r) => r.reviewId)).size,
+    );
+    const groups = new Map();
     for (const review of history) {
+      const groupId = review.reviewId;
+      if (!groups.has(groupId)) {
+        const group = node("section", undefined, "review-history-group");
+        group.dataset.reviewDefinitionId = groupId;
+        const runs = history.filter((r) => r.reviewId === groupId);
+        group.append(
+          node(
+            "h2",
+            `${review.name} · ${runs.length} ${runs.length === 1 ? "run" : "runs"}`,
+          ),
+        );
+        const list = node("div", undefined, "review-history-list");
+        group.append(list);
+        $("reviewsList").append(group);
+        groups.set(groupId, list);
+      }
       const card = node("article", undefined, "review-history-card");
       card.dataset.reviewId = review.id;
       card.append(
         node("h2", review.name),
         node(
           "p",
-          `${formatDate(review.createdAt)} · ${review.status === "active" ? "In progress" : review.status === "interrupted" ? "Interrupted" : "Ended"}`,
+          `Revision ${review.reviewRevision || 1} · ${formatDate(review.createdAt)} · ${review.status === "active" ? "In progress" : review.status === "interrupted" ? "Interrupted" : "Ended"}`,
           "muted",
         ),
         node("p", stats(review), "review-history-stats"),
@@ -75,9 +95,9 @@ export function initReviewsPanel({
         .map(([kind, count]) => `${kind}: ${count}`)
         .join(" · ");
       if (kinds) card.append(node("p", kinds, "muted"));
-      if (review.parentReviewId)
+      if (review.parentRunId)
         card.append(
-          node("p", "Rerun of " + review.parentReviewId.slice(0, 8), "muted"),
+          node("p", "Rerun of " + review.parentRunId.slice(0, 8), "muted"),
         );
       const actions = node("div", undefined, "review-history-actions");
       const reports = node("a", "Open reports");
@@ -85,7 +105,21 @@ export function initReviewsPanel({
       reports.target = "_blank";
       reports.rel = "noreferrer";
       actions.append(reports);
-      const rerun = button("Run again", () => void run(review));
+      const inputs = node("select");
+      inputs.setAttribute("aria-label", "Rerun inputs");
+      for (const [value, text] of [
+        ["frozen", "Original saved snapshots"],
+        ["library", "Current library Situations"],
+      ]) {
+        const option = node("option", text);
+        option.value = value;
+        inputs.append(option);
+      }
+      actions.append(inputs);
+      const rerun = button(
+        "Run again",
+        () => void run(review, undefined, undefined, inputs.value),
+      );
       rerun.dataset.reviewRun = "";
       const edit = button("Edit and run", () => void editReview(review.id));
       edit.dataset.reviewRun = "";
@@ -93,7 +127,7 @@ export function initReviewsPanel({
       if (review.status === "active")
         actions.append(button("Continue review", () => navigate("compare")));
       card.append(actions);
-      $("reviewsList").append(card);
+      groups.get(groupId).append(card);
     }
     $("reviewsEmpty").hidden = history.length > 0;
     updateState();
@@ -103,7 +137,7 @@ export function initReviewsPanel({
     refreshing = true;
     try {
       const value = await read("/api/reviews");
-      history = value.reviews;
+      history = value.reviews.flatMap((review) => review.runs);
       $("reviewHistoryWarnings").textContent = (value.warnings || []).join(" ");
       const signature = JSON.stringify(value);
       if (signature !== lastSignature) {
@@ -190,11 +224,12 @@ export function initReviewsPanel({
   }
   async function editReview(id) {
     try {
-      editing = await read("/api/reviews/" + encodeURIComponent(id));
+      editing = await read("/api/review-runs/" + encodeURIComponent(id));
       kept = new Set(editing.entries.map((e) => e.index));
       added = new Set();
       $("reviewEditName").value = (editing.name + " (edited)").slice(0, 100);
       $("reviewEditSearch").value = "";
+      $("reviewEditInputs").value = "frozen";
       renderKept();
       renderAdded();
       dialog.showModal();
@@ -221,7 +256,12 @@ export function initReviewsPanel({
         .filter((s) => added.has(s.id))
         .map((s) => ({ situationId: s.id })),
     ];
-    void run(editing, entries, $("reviewEditName").value);
+    void run(
+      editing,
+      entries,
+      $("reviewEditName").value,
+      $("reviewEditInputs").value,
+    );
   };
   dialog.addEventListener("close", () => {
     editing = null;

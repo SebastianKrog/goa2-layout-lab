@@ -1,3 +1,4 @@
+import { toPresentation } from "./presentation-model.mjs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -102,11 +103,11 @@ export const PROFILES = {
     deviceScaleFactor: 1,
   },
 };
-const slot = (source, profile, render, layout = "desktop") => ({
+const slot = (source, profile, render, uiMode = "desktop") => ({
   source,
   profile,
   render,
-  layout,
+  uiMode,
   seat: "hero_arien",
 });
 export const PRESETS = {
@@ -130,7 +131,22 @@ export function validateSlots(slots) {
   if (!Array.isArray(slots) || ![1, 2, 3].includes(slots.length))
     throw new Error("Choose one, two or three windows.");
   return slots.map((value) => {
-    const s = { ...value };
+    if (Object.hasOwn(value, "layout"))
+      throw Error(
+        "Use uiMode in View settings; port old saved Layouts offline.",
+      );
+    if (
+      ["checkpoint", "decisionStateId", "situation", "presentation"].some(
+        (key) => Object.hasOwn(value, key),
+      )
+    )
+      throw Error(
+        "View settings cannot contain a Situation or Decision State.",
+      );
+    const s = { ...value, uiMode: value.uiMode ?? "desktop" };
+    if (s.overrides !== undefined) s.overrides = toPresentation(s.overrides);
+    if (s.presentationDefaults !== undefined)
+      s.presentationDefaults = toPresentation(s.presentationDefaults);
     if (
       s.label !== undefined &&
       (typeof s.label !== "string" || s.label.length > 80)
@@ -140,13 +156,13 @@ export function validateSlots(slots) {
       throw new Error("Unknown frontend source.");
     if (!PROFILES[s.profile]) throw new Error("Unknown device profile.");
     if (!["2d", "3d"].includes(s.render)) throw new Error("Choose 2D or 3D.");
-    if (!["desktop", "mobile"].includes(s.layout))
+    if (!["desktop", "mobile"].includes(s.uiMode))
       throw new Error("Unknown UI layout.");
-    if (s.source === "target" && (s.render !== "2d" || s.layout !== "desktop"))
+    if (s.source === "target" && (s.render !== "2d" || s.uiMode !== "desktop"))
       throw new Error("Target uses the base 2D UI with the userscript.");
-    if (s.source === "base" && s.layout !== "desktop")
+    if (s.source === "base" && s.uiMode !== "desktop")
       throw new Error("The pinned Base has no native mobile shell.");
-    if (s.layout === "mobile" && s.render !== "2d")
+    if (s.uiMode === "mobile" && s.render !== "2d")
       throw new Error("The native mobile shell uses 2D.");
     if (typeof s.seat !== "string" || !s.seat)
       throw new Error("Choose a player seat or spectator.");
@@ -184,9 +200,8 @@ export function slotsForSituation(configs, situation) {
         "Leave at least one hero manual when playing against bots.",
       );
   const preferred = [
-    situation.provenance?.seat,
+    situation.presentation?.viewpoint,
     situation.summary?.responder,
-    ...(situation.provenance?.slots || []).map((s) => s.seat),
     heroes.find((h) => situation.summary?.responder === "team:" + h.team)?.id,
     heroes[0].id,
   ].find((seat) => seats.has(seat));
@@ -207,7 +222,7 @@ export function gameURL(port, clone, s) {
     "3d": s.render === "3d" ? "1" : "0",
   });
   if (s.source === "comparator" || s.source === "live")
-    query.set("ui", s.layout);
+    query.set("ui", s.uiMode);
   return `http://localhost:${port}/game/${clone.game_id}?${query}`;
 }
 export function linuxPath(value) {

@@ -201,7 +201,7 @@ for case, name, group in CASES:
         },
     }
     destination = args.output / (case + ".json")
-    destination.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    destination.write_text(json.dumps(lab.portable_situation(payload), indent=2) + "\n", encoding="utf-8")
     manifest.append(
         {
             "case": case,

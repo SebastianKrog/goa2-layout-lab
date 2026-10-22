@@ -1,3 +1,5 @@
+import { Layouts, layoutSlots } from "./layouts.mjs";
+import { toPresentation } from "./presentation-model.mjs";
 import { Reviews } from "./reviews.mjs";
 import http from "node:http";
 import { ElementReports } from "./element-reports.mjs";
@@ -167,28 +169,31 @@ export async function startDesk({
   followTimer.unref();
   comparison.sync.busy = () => busy || closing;
   let presets = { ...PRESETS };
-  const presentationFile = path.join(DATA, "presentations.json");
+  const presentationFile = path.join(DATA, "presentation-templates.json");
   const presentations = existsSync(presentationFile)
     ? JSON.parse(await fs.readFile(presentationFile, "utf8"))
     : [];
-  const presetFile = path.join(DATA, "presets.json");
-  if (existsSync(presetFile))
-    presets = {
-      ...presets,
-      ...JSON.parse(await fs.readFile(presetFile, "utf8")),
-    };
+  const layouts = await new Layouts(DATA, path.join(TOOL, "layouts")).init(
+    presets,
+  );
+  presets = layouts.slotsByName();
   if (!presets[STARTUP.preset])
     throw new Error(`Unknown startup preset: ${STARTUP.preset}`);
-  async function close() {
-    if (closing) return;
+  let closePromise;
+  function close() {
+    if (closePromise) return closePromise;
     closing = true;
-    clearInterval(followTimer);
-    console.log("Stopping layout-lab windows and owned services...");
-    await devices.close().catch(console.error);
-    await streams.close().catch(console.error);
-    await comparison.close().catch(console.error);
-    await services.close().catch(console.error);
-    server.close();
+    closePromise = (async () => {
+      clearInterval(followTimer);
+      console.log("Stopping layout-lab windows and owned services...");
+      await devices.close().catch(console.error);
+      await streams.close().catch(console.error);
+      await comparison.close().catch(console.error);
+      await services.close().catch(console.error);
+      if (server.listening)
+        await new Promise((resolve) => server.close(resolve));
+    })();
+    return closePromise;
   }
   process.on("SIGINT", () => void close());
   process.on("SIGTERM", () => void close());
@@ -214,16 +219,22 @@ export async function startDesk({
         return send({ error: "Use the local comparison desk origin." }, 403);
       if (req.method === "GET" && url.pathname === "/api/element-report/status")
         return send(elementReports.status());
-      if (req.method === "GET" && url.pathname === "/api/reviews")
-        return send(await reviews.list());
-      if (req.method === "GET" && url.pathname.startsWith("/api/reviews/"))
+      if (req.method === "GET" && url.pathname === "/api/reviews") {
+        const { reviews: definitions, warnings } = await reviews.list();
+        return send({ reviews: definitions, warnings });
+      }
+      if (req.method === "GET" && url.pathname === "/api/review-runs") {
+        const { runs, warnings } = await reviews.list();
+        return send({ runs, warnings });
+      }
+      if (req.method === "GET" && url.pathname === "/api/review-runs/current")
+        return send(reviews.status());
+      if (req.method === "GET" && url.pathname.startsWith("/api/review-runs/"))
         return send(
           await reviews.detail(
-            decodeURIComponent(url.pathname.slice("/api/reviews/".length)),
+            decodeURIComponent(url.pathname.slice("/api/review-runs/".length)),
           ),
         );
-      if (req.method === "GET" && url.pathname === "/api/review")
-        return send(reviews.status());
       if (req.method === "GET" && url.pathname === "/api/device/options")
         return send(await devices.options(url.searchParams.get("situationId")));
       if (req.method === "GET" && url.pathname === "/api/device/views")
@@ -231,7 +242,7 @@ export async function startDesk({
       if (req.method === "GET" && url.pathname === "/api/status")
         return send({
           ...comparison.status(),
-          review: reviews.status(),
+          reviewRun: reviews.status(),
           busy,
           lastError,
           headless: !!comparison.options.headless,
@@ -299,7 +310,9 @@ export async function startDesk({
           .map((line) => ({ sha: line.slice(0, 40), subject: line.slice(41) }));
         return send({
           situations,
+          decisionStates: await api("/decision-states", undefined, "GET"),
           presets,
+          layouts: layouts.records,
           presentations,
           profiles: PROFILES,
           commits,
@@ -360,13 +373,13 @@ export async function startDesk({
                 return await elementReports.send(body.id, body.comment);
               case "/api/element-report/discard":
                 return await elementReports.discard(body.id);
-              case "/api/review/rerun":
+              case "/api/review-runs/rerun":
                 return await reviews.rerun(body);
-              case "/api/review/start":
+              case "/api/review-runs/start":
                 return await reviews.start(body);
-              case "/api/review/step":
+              case "/api/review-runs/step":
                 return await reviews.step(body);
-              case "/api/review/end":
+              case "/api/review-runs/end":
                 return await reviews.end();
               case "/api/device-open":
                 return await devices.open(reviews.deviceBody(body));
@@ -374,21 +387,21 @@ export async function startDesk({
                 return devices.stop(body.id);
               case "/api/load": {
                 const situation = await api(
-                  `/situations/${encodeURIComponent(body.situationId || body.scenarioId || "")}`,
+                  `/situations/${encodeURIComponent(body.situationId || "")}`,
                   undefined,
                   "GET",
                 );
                 if (!situation) throw new Error("Choose a saved situation.");
-                const slots =
-                  body.restoreViews && situation.provenance?.slots
-                    ? situation.provenance.slots
-                    : body.slots;
-                return await comparison.load(
-                  situation.id,
-                  slots,
-                  body.restoreViews ? situation.presentations : {},
-                  situation,
-                );
+                const chosenLayout = body.layoutId
+                  ? layouts.find(body.layoutId)
+                  : null;
+                const slots = chosenLayout
+                  ? layoutSlots(chosenLayout)
+                  : body.slots;
+                await comparison.load(situation.id, slots, {}, situation);
+                if (chosenLayout)
+                  await comparison.sync.setMode(chosenLayout.synchronization);
+                return comparison.status();
               }
               case "/api/views/add":
                 return await comparison.addView(body);
@@ -442,7 +455,11 @@ export async function startDesk({
                   id: randomBytes(12).toString("hex"),
                   name,
                   render: win.config.render,
-                  state: await capturePresentation(win.page, win.config.render),
+                  schema: 2,
+                  state: toPresentation(
+                    await capturePresentation(win.page, win.config.render),
+                    win.config.seat,
+                  ),
                 };
                 presentations.push(item);
                 await fs.writeFile(
@@ -459,19 +476,19 @@ export async function startDesk({
                   throw new Error(
                     "Choose a presentation with the same renderer.",
                   );
-                const { restorePresentation } = await import(
-                  "./presentation.mjs"
-                );
-                win.warnings = await restorePresentation(
-                  win.page,
+                return await comparison.applyPresentation(
+                  body.index,
                   item.state,
-                  win.config,
                 );
-                win.initialPresentation = item.state;
-                return comparison.status();
               }
               case "/api/save":
-                return await comparison.save(body.index ?? 0, body.name);
+                return await comparison.save(
+                  body.index ?? 0,
+                  body.name,
+                  body.kind,
+                );
+              case "/api/situation/compose":
+                return await api("/situations/compose", body);
               case "/api/starter":
                 return await api("/starter", body);
               case "/api/organize":
@@ -561,6 +578,7 @@ export async function startDesk({
               case "/api/clear":
                 await comparison.clear();
                 return comparison.status();
+              case "/api/layout/save":
               case "/api/preset": {
                 if (
                   !/^[\w -]{1,80}$/.test(body.name) ||
@@ -569,12 +587,13 @@ export async function startDesk({
                   throw new Error(
                     "Use a short preset name with letters, numbers, spaces or dashes.",
                   );
-                presets[body.name] = validateSlots(body.slots);
-                await fs.writeFile(
-                  presetFile,
-                  JSON.stringify(presets, null, 2),
+                const saved = await layouts.save(
+                  body.name,
+                  body.slots,
+                  body.synchronization ?? comparison.sync.mode,
                 );
-                return { presets };
+                presets = layouts.slotsByName();
+                return { layout: saved, layouts: layouts.records, presets };
               }
               default:
                 throw new Error("Unknown comparison action.");

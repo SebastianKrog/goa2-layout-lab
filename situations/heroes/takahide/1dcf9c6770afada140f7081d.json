@@ -1,0 +1,40 @@
+{
+  "schema": 2,
+  "kind": "situation",
+  "id": "1dcf9c6770afada140f7081d",
+  "name": "M2 acceptance - takahide-gold-card-choice (variant 2)",
+  "decisionStateId": "50efc4b657d6863a46b1dfc711793a6a6980a644090bae4f0c405387c568b89e",
+  "presentation": {
+    "schema": 2,
+    "sessionState": {
+      "pane": "board",
+      "selectedCard": null,
+      "inspectedCard": null
+    },
+    "userState": {},
+    "viewpoint": "hero_takahide",
+    "restoration": "defaulted; no historical Session State was saved",
+    "adapter": {
+      "uiMode": "mobile",
+      "render": "2d"
+    }
+  },
+  "summary": {
+    "phase": "RESOLUTION",
+    "round": 1,
+    "decision": "SELECT_CARD",
+    "responder": "hero_takahide"
+  },
+  "backend_revision": "740ec5bbfa1aaadcf05b0df06d93ab3187e5de9a",
+  "saved_at": 1792480600.4041016,
+  "migration": {
+    "sourceId": "555d71a47fd2",
+    "sourceSlot": "1"
+  },
+  "provenance": {
+    "kind": "ui-fabrication",
+    "fixture": {
+      "case": "takahide-gold-card-choice"
+    }
+  }
+}

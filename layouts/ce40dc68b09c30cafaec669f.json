@@ -1,0 +1,36 @@
+{
+  "schema": 2,
+  "kind": "layout",
+  "id": "ce40dc68b09c30cafaec669f",
+  "name": "Hanu - off board after completing turn - suggested layout",
+  "views": [
+    {
+      "source": "base",
+      "profile": "portrait",
+      "render": "2d",
+      "uiMode": "desktop",
+      "overrides": {
+        "viewpoint": "hero_hanu"
+      }
+    },
+    {
+      "source": "comparator",
+      "profile": "portrait",
+      "render": "2d",
+      "uiMode": "mobile",
+      "overrides": {
+        "viewpoint": "hero_hanu"
+      }
+    },
+    {
+      "source": "target",
+      "profile": "portrait",
+      "render": "2d",
+      "uiMode": "desktop",
+      "overrides": {
+        "viewpoint": "hero_hanu"
+      }
+    }
+  ],
+  "synchronization": "none"
+}

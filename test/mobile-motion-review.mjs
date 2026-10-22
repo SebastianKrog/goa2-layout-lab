@@ -21,8 +21,8 @@ try {
   await c.load(
     s.id,
     [
-      { source: "live", layout: "mobile" },
-      { source: "target", layout: "desktop" },
+      { source: "live", uiMode: "mobile" },
+      { source: "target", uiMode: "desktop" },
     ].map((w) => ({
       ...w,
       profile: "portrait",
@@ -181,8 +181,8 @@ try {
     await c.load(
       id,
       [
-        { source: "live", layout: "mobile" },
-        { source: "target", layout: "desktop" },
+        { source: "live", uiMode: "mobile" },
+        { source: "target", uiMode: "desktop" },
       ].map((w) => ({ ...w, profile: "portrait", render: "2d", seat })),
       {},
       fixture,

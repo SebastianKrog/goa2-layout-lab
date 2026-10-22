@@ -130,7 +130,7 @@ try {
   await request("load", {
     situationId: situation.id,
     slots: PRESETS["Mobile migration"],
-    restoreViews: false,
+
   });
   if (desktop) {
     await desktop.app.evaluate(() => lab.root.show());

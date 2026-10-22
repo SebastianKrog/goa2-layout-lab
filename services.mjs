@@ -1,4 +1,5 @@
-﻿import fs from "node:fs/promises";
+import { LiveAssets } from "./live-assets.mjs";
+import fs from "node:fs/promises";
 import { existsSync, createWriteStream } from "node:fs";
 import path from "node:path";
 import { execFileSync, spawn } from "node:child_process";
@@ -24,6 +25,54 @@ export const git = (args, cwd = ROOT) =>
     windowsHide: true,
     maxBuffer: 16 * 1024 * 1024,
   }).trim();
+export async function checkoutEvidence(checkout) {
+  const run = (args) => git(["-c", "core.bare=false", ...args], checkout);
+  const commit = run(["rev-parse", "HEAD"]);
+  const status = run(["status", "--porcelain", "--untracked-files=all"]);
+  const paths = [
+    ...new Set(
+      (
+        run(["diff", "--name-only", "-z", "HEAD"]) +
+        "\0" +
+        run(["ls-files", "--others", "--exclude-standard", "-z"])
+      )
+        .split("\0")
+        .filter(Boolean),
+    ),
+  ].sort();
+  const digest = createHash("sha256").update(commit);
+  const files = [];
+  for (const name of paths) {
+    const target = path.resolve(checkout, name);
+    if (!target.startsWith(path.resolve(checkout) + path.sep))
+      throw Error("Source path escapes checkout.");
+    let bytes;
+    try {
+      const stat = await fs.lstat(target);
+      bytes = stat.isSymbolicLink()
+        ? Buffer.from(await fs.readlink(target))
+        : await fs.readFile(target);
+    } catch (error) {
+      if (error.code !== "ENOENT") throw error;
+      bytes = null;
+    }
+    const checksum =
+      bytes === null ? null : createHash("sha256").update(bytes).digest("hex");
+    files.push({ path: name, sha256: checksum });
+    digest
+      .update(name)
+      .update("\0")
+      .update(checksum || "deleted")
+      .update("\0");
+  }
+  return {
+    commit,
+    dirty: status.length > 0,
+    status,
+    workingTreeHash: digest.digest("hex"),
+    files,
+  };
+}
 export const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 export function resolveComparator(ref = "mobile-migration") {
   // A revision argument is data, never shell code or an option.
@@ -102,6 +151,7 @@ export class Services {
     this.closing = false;
     this.references = { ...REFERENCES };
     this.mode = selectRuntime();
+    this.liveAssets = new LiveAssets(ROOT);
   }
   servicePath(value) {
     if (this.mode === "wsl" && value.startsWith("/")) return value;
@@ -225,6 +275,7 @@ export class Services {
   async backend() {
     if (this.children.has("backend")) return;
     await available(PORTS.backend);
+    this.backendEvidence = await checkoutEvidence(BACKEND);
     await this.start("backend", ["backend"], true, PORTS.backend);
     await waitFor(async () => {
       const process = this.children.get("backend");
@@ -243,6 +294,23 @@ export class Services {
       if (!response.ok) return false;
       return await response.json();
     }, "isolated backend");
+  }
+  async assetFor(source, pathname) {
+    return source === "live" && process.platform === "win32"
+      ? this.liveAssets.get(pathname)
+      : null;
+  }
+  async provenance() {
+    return {
+      backend: this.backendEvidence || null,
+      frontend: {
+        base: { commit: this.references.base, dirty: false },
+        comparator: { commit: this.comparator, dirty: false },
+        live: await checkoutEvidence(ROOT),
+      },
+      userscript: { commit: this.references.script, dirty: false },
+      lab: await checkoutEvidence(TOOL),
+    };
   }
   async frontend(source) {
     const key = source === "target" ? "base" : source;

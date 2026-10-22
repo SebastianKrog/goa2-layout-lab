@@ -9,7 +9,7 @@ Produce a comparison tied to exact frontend revisions and one reproducible situa
 
 ## State boundaries and current desk
 
-Follow [the canonical terminology](../../../docs/terminology.md): Situation = game checkpoint; View = playable panel; Viewpoint = player/spectator seat; Presentation = UI-only state; View setup = source/device/layout/controllers. New Situation saves contain game state only. Save a Presentation separately when a menu or highlighted card must reopen. Older bundled fixtures require explicit `restoreViews:true`; do not silently restore their source/view settings. The empty desk defaults to one Live working tree view. Use its Start overlay and the right-hand Add view rail; new views inherit current progress without resetting existing views.
+Follow [the canonical terminology](../../../docs/terminology.md): Decision State = exact game checkpoint; Presentation = Viewpoint + Session State + supported User State; Situation = Decision State + Presentation; View = playable instance; Layout = configured view arrangement and synchronization. Save Situation captures the complete moment. Save Decision State is game-only; Presentation templates and Layouts are reusable independently. Use `uiMode` for desktop/mobile, distinct from 2D/3D renderer. Viewpoint follows the Situation unless an explicit `overrides.viewpoint` pins it. Runtime accepts only the new model; old fixtures are ported with the offline migration tool, not a restore checkbox. The empty desk defaults to one Live working-tree View. Start/Add/Edit preserve existing progress on cancellation or failed staging.
 
 ## Establish the comparison
 
@@ -25,7 +25,7 @@ For commit/layout parity, keep the checkpoint, seat, device dimensions, renderer
 
 Current tool limits matter: Base slots require the desktop shell; native mobile is available on Comparator/Live only when the selected commit supports it. Target requires 2D and the desktop shell and must actually activate at the chosen viewport. A desktop/3D comparison can use a separate phone/2D target as its third slot, but unequal dimensions cannot be overlaid or pixel-diffed. Do not silently present unsupported layouts as equivalent native mobile views.
 
-Loading with restoreViews:true reinstates saved slots as well as presentations. When changing the number of views, layouts or seats, follow the adaptation recipe in setup-and-viewer.md so an old three-view preset does not replace the requested comparison. Use None sync while arranging independent UI state; API requests can keep game actions aligned, and API + clicks can mirror supported UI controls from any view. Match camera/panels explicitly; click synchronization is not a substitute for that.
+Loading applies the composed Situation without replacing the chosen Layout. Use `uiMode` for desktop/mobile and `overrides.viewpoint` for deliberately pinned players; otherwise Viewpoint follows the Situation. Use None sync while arranging independent UI state; API requests can keep game actions aligned, and API + clicks can mirror supported UI controls. Match camera/panels explicitly; click synchronization is not a substitute for that.
 
 Check actual status/views: correct loaded SHAs, committed sources, expected phase/decision/seat, same normalized game hash, intended panel/selection/camera, scriptActive for Target, and no restore/render/asset errors. Keep Cheats hidden. Frozen wall time does not freeze animation frames. Do not answer a pending game choice to make a screenshot look complete.
 

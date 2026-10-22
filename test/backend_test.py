@@ -48,6 +48,7 @@ class SituationTests(unittest.TestCase):
 
         cls.library = Path(cls.temp.name) / "library"
         shutil.copytree(Path(__file__).parents[1] / "situations", cls.library)
+        shutil.copytree(Path(__file__).parents[1] / "decision-states", Path(cls.temp.name) / "decision-states")
         with patch(
             "situations.SituationStore",
             side_effect=lambda shared, data: SituationStore(cls.library, data),
@@ -55,6 +56,40 @@ class SituationTests(unittest.TestCase):
             cls.client = TestClient(cls.module.create_app())
         cls.client.__enter__()
         cls.headers = {"x-lab-token": "test-lab-secret"}
+
+    def test_composed_situations_share_exact_decision_state_and_keep_presentations_separate(self):
+        original = self.client.get("/__lab/situations/e81bc3bd5fff", headers=self.headers).json()
+        one = self.client.post("/__lab/import", headers=self.headers, json={"content": original, "name":"Composed source"}).json()
+        self.assertEqual(one["schema"], 2)
+        state_id = one["decisionStateId"]
+        moment = {"schema":2,"viewpoint":"spectator","sessionState":{"pane":"heroes","selectedCard":None},"userState":{"goa2:board-brightness":"0.4"}}
+        response = self.client.post("/__lab/situations/compose",headers=self.headers,json={"name":"Same decision, different presentation","decisionStateId":state_id,"presentation":moment})
+        self.assertEqual(response.status_code,200,response.text)
+        two = response.json()
+        self.assertNotEqual(two["id"],one["id"])
+        self.assertEqual(two["decisionStateId"],one["decisionStateId"])
+        self.assertEqual(two["presentation"],moment)
+        clone = self.client.post("/__lab/clone",headers=self.headers,json={"decision_state_id":state_id}).json()
+        checkpoint = self.client.get("/__lab/games/"+clone["game_id"]+"/checkpoint",headers=self.headers).json()
+        self.assertEqual(json.loads(checkpoint["checkpoint_json"]),checkpoint["situation"]["checkpoint"])
+        captured = self.client.post("/__lab/capture",headers=self.headers,json={"game_id":clone["game_id"],"name":"Game only","kind":"decision-state"})
+        self.assertEqual(captured.status_code,200,captured.text)
+        self.assertEqual(captured.json()["kind"],"decision-state")
+        self.assertTrue(any(d["id"]==captured.json()["id"] for d in self.client.get("/__lab/decision-states",headers=self.headers).json()))
+        invalid = self.client.post("/__lab/situations/compose",headers=self.headers,json={"decisionStateId":"../bad"})
+        self.assertEqual(invalid.status_code,422)
+
+    def test_pending_defense_presentations_reuse_the_exact_existing_decision_state(self):
+        original=self.client.get("/__lab/situations/2b928b7b0ab4",headers=self.headers).json()
+        ids=[]
+        for pane in ["hand","heroes"]:
+            response=self.client.post("/__lab/situations/compose",headers=self.headers,json={"name":"Defense "+pane,"decisionStateId":original["decisionStateId"],"presentation":{"schema":2,"viewpoint":"hero_brogan","sessionState":{"pane":pane},"userState":{}}})
+            self.assertEqual(response.status_code,200,response.text)
+            created=response.json()
+            self.assertEqual(created["decisionStateId"],original["decisionStateId"])
+            self.assertEqual(created["checkpoint"],original["checkpoint"])
+            ids.append(created["id"])
+        self.assertNotEqual(*ids)
 
     def test_single_situation_lookup_returns_only_requested_checkpoint(self):
         response = self.client.get("/__lab/situations/e81bc3bd5fff", headers=self.headers)

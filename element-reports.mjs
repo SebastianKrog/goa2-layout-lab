@@ -1,3 +1,5 @@
+import { reviewAttribution } from "./report.mjs";
+import { toPresentation } from "./presentation-model.mjs";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { randomUUID, createHash } from "node:crypto";
@@ -46,7 +48,7 @@ function reportHTML(report) {
   return `<!doctype html><meta charset="utf-8"><title>Layout lab element report</title><style>body{font:15px system-ui;background:#f6f8fa;color:#15251e;margin:24px}header{max-width:1100px}pre{white-space:pre-wrap;overflow-wrap:anywhere}main{display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap}article{background:white;border:1px solid #ccd6d0;border-radius:10px;padding:16px;min-width:240px;flex:1;max-width:900px}img{max-width:100%;height:auto;border:1px solid #ddd}a{color:#065eb8}.warning{color:#9b3e00}</style><header><h1>Element report</h1><pre>${e(report.comment)}</pre><p>Captured ${e(report.capturedAt)}. Source situation: ${e(report.situationId)}. Selected view: ${report.selectedIndex + 1}.</p><p><a href="report.json">Report metadata</a>${report.savedSituation ? ` | Saved situation ${e(report.savedSituation.id)}` : ""}</p>${report.diverged ? '<p class="warning">Views contain different game states. Each view has its own checkpoint.</p>' : ""}</header><main>${report.views
     .map(
       (v) =>
-        `<article><h2>View ${v.index + 1}: ${e(v.config.label || v.config.source)}</h2><p>${e(v.config.seat)} | ${e(v.config.layout)} / ${e(v.config.render)} / ${e(v.config.profile)}</p><pre>${e(JSON.stringify(v.revision, null, 2))}</pre>${v.error ? `<p class="warning">${e(v.error)}</p>` : ""}${(v.warnings || []).map((w) => `<p class="warning">${e(w)}</p>`).join("")}<p>${Object.entries(
+        `<article><h2>View ${v.index + 1}: ${e(v.config.label || v.config.source)}</h2><p>${e(v.config.seat)} | ${e(v.config.uiMode)} / ${e(v.config.render)} / ${e(v.config.profile)}</p><pre>${e(JSON.stringify(v.revision, null, 2))}</pre>${v.error ? `<p class="warning">${e(v.error)}</p>` : ""}${(v.warnings || []).map((w) => `<p class="warning">${e(w)}</p>`).join("")}<p>${Object.entries(
           v.files || {},
         )
           .map(([label, file]) => `<a href="${e(file)}">${e(label)}</a>`)
@@ -176,6 +178,8 @@ export class ElementReports {
         return null;
       }
     };
+    draft.sourceEvidence =
+      (await this.comparison.services?.provenance?.()) || null;
     draft.capturedAt = new Date().toISOString();
     draft.situationId = this.comparison.situationId;
     draft.references = {
@@ -240,15 +244,18 @@ export class ElementReports {
           win.config.render,
         );
         view.situation.presentations = { 0: presentation };
+        view.situation.presentation = toPresentation(
+          presentation,
+          win.config.seat,
+        );
+        view.presentationResolution = {
+          intended: win.intendedPresentation || null,
+          effective: view.situation.presentation,
+          overrides: win.config.overrides || {},
+        };
         view.situation.provenance = {
           kind: "element-report",
-          review: draft.collection
-            ? {
-                id: draft.collection.id,
-                index: draft.collection.index,
-                situationId: draft.collection.situationId,
-              }
-            : null,
+          review: reviewAttribution(draft.collection),
           report: [draft.collection?.prefix, draft.id]
             .filter(Boolean)
             .join("/"),
@@ -260,7 +267,15 @@ export class ElementReports {
         await save(
           "situation",
           ".situation.json",
-          JSON.stringify(view.situation),
+          checkpoint.checkpoint_json
+            ? JSON.stringify({
+                ...view.situation,
+                checkpoint: undefined,
+              }).slice(0, -1) +
+                ',"checkpoint":' +
+                checkpoint.checkpoint_json +
+                "}"
+            : JSON.stringify(view.situation),
         );
         await save(
           "presentation",
@@ -367,13 +382,7 @@ export class ElementReports {
       draft.views.find((v) => v.situation)?.situation;
     const report = {
       schema: 1,
-      review: draft.collection
-        ? {
-            id: draft.collection.id,
-            index: draft.collection.index,
-            situationId: draft.collection.situationId,
-          }
-        : null,
+      review: reviewAttribution(draft.collection),
       id: draft.id,
       comment: draft.comment.trim(),
       selectedAt: draft.selectedAt,
@@ -382,6 +391,7 @@ export class ElementReports {
       selectedIndex: draft.selectedIndex,
       selectedDiv: draft.descriptor,
       references: draft.references,
+      sourceEvidence: draft.sourceEvidence,
       captureError: draft.error,
       diverged:
         new Set(draft.views.filter((v) => v.stateHash).map((v) => v.stateHash))
@@ -393,7 +403,9 @@ export class ElementReports {
       if (!draft.savedSituation)
         draft.savedSituation = await this.comparison.api("/import", {
           name: "Element report: " + report.comment.slice(0, 100),
-          content: primary,
+          content: primary.decisionStateId
+            ? { ...primary, checkpoint: undefined }
+            : primary,
         });
       report.savedSituation = {
         id: draft.savedSituation.id,

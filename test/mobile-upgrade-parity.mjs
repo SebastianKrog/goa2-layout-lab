@@ -37,8 +37,8 @@ try {
     await c.load(
       "3fd1f952c1a6",
       [
-        { source: "live", layout: "mobile" },
-        { source: "target", layout: "desktop" },
+        { source: "live", uiMode: "mobile" },
+        { source: "target", uiMode: "desktop" },
       ].map((w) => ({ ...w, profile, render: "2d", seat: "hero_arien" })),
     );
     let [n, t] = c.windows.map((w) => w.page);
@@ -227,8 +227,8 @@ try {
       await c.load(
         "d296bd2e5d3d",
         [
-          { source: "live", layout: "mobile" },
-          { source: "target", layout: "desktop" },
+          { source: "live", uiMode: "mobile" },
+          { source: "target", uiMode: "desktop" },
         ].map((w) => ({ ...w, profile, render: "2d", seat: "hero_arien" })),
       );
       [n, t] = c.windows.map((w) => w.page);

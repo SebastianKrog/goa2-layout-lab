@@ -54,8 +54,20 @@ try {
     .selectOption("portrait");
   // Use the mobile shell to keep this acceptance session lightweight.
   await desk
-    .locator('#editorFields select[aria-label="Layout"]')
+    .locator('#editorFields select[aria-label="Interface preset"]')
     .selectOption("mobile");
+  assert.equal(
+    await desk
+      .locator('#editorFields select[aria-label="Renderer"]')
+      .inputValue(),
+    "2d",
+  );
+  assert.equal(
+    await desk
+      .locator('#editorFields select[aria-label="UI mode"]')
+      .inputValue(),
+    "mobile",
+  );
   await desk.locator("#editorSubmit").click();
   await desk.locator("#editor").waitFor({ state: "hidden", timeout: 180000 });
   await idle();
@@ -130,7 +142,7 @@ try {
   await api("presentation/apply", { index: 0, id: presentation.id });
   assert.equal(
     (await api("views"))[0].presentation.pane,
-    presentation.state.pane,
+    presentation.state.sessionState.pane,
   );
   assert.equal((await api("views"))[0].state.hash, hash);
   const out = path.join(

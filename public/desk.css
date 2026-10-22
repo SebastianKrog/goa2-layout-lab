@@ -1038,3 +1038,16 @@ dialog::backdrop {
 .review-queue-entry input {
   flex: none;
 }
+
+#reviewsList {
+  display: block;
+}
+.review-history-group {
+  margin-bottom: 24px;
+}
+.review-history-group > h2 {
+  font-size: 18px;
+}
+.review-history-actions select {
+  max-width: 100%;
+}

@@ -2,7 +2,7 @@
 
 This repository owns the GoA2 layout comparison tool and its shared situation library. Start with [README.md](README.md) for repository setup and operation. Follow the checked-out frontend's milestone/acceptance documentation when deciding what a UI change is expected to deliver.
 
-Use [the canonical terminology](docs/terminology.md) for Situation, View, Viewpoint, Presentation and View setup. Keep new game checkpoint saves separate from UI/source settings; legacy bundles remain opt-in.
+Use [the canonical terminology](docs/terminology.md) for Decision State, Situation, Presentation, View, Layout and Review Run. Situations compose Decision State and Presentation; Layouts keep executable/view settings separate. Runtime uses only the new model; offline tooling ports older situations.
 
 ## Use the repository skills
 

@@ -51,7 +51,7 @@ while any view has bots; independently driven clones may diverge.
 
 The desk's `POST /api/load` accepts one to three `slots`, each with an optional
 `bots` mapping using the same hero IDs and policies as device shares. Use
-`restoreViews:false` when supplying a custom setup rather than restoring saved
+explicit `slot.overrides` when intentionally changing the Situation's saved
 slots. `POST /api/configure` with `{index,update:{bots:{...}}}` updates controllers
 on that existing clone; an empty mapping turns them off without rewinding moves.
 A single view supports Capture, Save and Reset; extraction still requires two.
@@ -133,12 +133,11 @@ Example request body for a supported mobile frontend:
 ```json
 {
   "situationId": "<saved-situation-id>",
-  "restoreViews": true,
   "slot": {
     "source": "live",
     "seat": "<human-hero-id>",
     "render": "2d",
-    "layout": "mobile",
+    "uiMode": "mobile",
     "profile": "portrait"
   },
   "bots": {

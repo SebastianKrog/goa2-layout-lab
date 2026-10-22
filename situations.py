@@ -9,6 +9,8 @@ import uuid
 import threading
 from pathlib import Path
 
+from state_model import (SITUATION_SCHEMA, current_record, decision_state, identifier, validate_situation)
+
 
 class SituationStore:
     def __init__(self, shared, data):
@@ -17,16 +19,9 @@ class SituationStore:
         self.local.mkdir(parents=True, exist_ok=True)
         self._lock = threading.RLock()
         self._cache = {}
-        # Preserve old IDs without moving or deleting the original backups.
-        legacy = Path(data).resolve() / "scenarios"
-        existing = {
-            json.loads(p.read_text(encoding="utf-8"))["id"]
-            for p in self.local.rglob("*.json")
-        }
-        for source in sorted(legacy.glob("*.json")):
-            destination = self.local / source.name
-            if source.stem not in existing and not destination.exists():
-                self._write(destination, json.loads(source.read_text(encoding="utf-8")))
+        self._decision_cache = {}
+        self.shared_decisions = self.shared.parent / "decision-states"
+        self.local_decisions = Path(data).resolve() / "decision-states"
 
     @staticmethod
     def group(value):
@@ -55,11 +50,12 @@ class SituationStore:
     @staticmethod
     def _write(path, value):
         path.parent.mkdir(parents=True, exist_ok=True)
-        temp = path.with_suffix(".tmp")
-        temp.write_text(
-            json.dumps(value, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
-        )
-        temp.replace(path)
+        temp = path.with_name(path.name + "." + uuid.uuid4().hex + ".tmp")
+        try:
+            temp.write_text(json.dumps(value, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+            temp.replace(path)
+        finally:
+            temp.unlink(missing_ok=True)
 
     def _scan(self):
         entries = []
@@ -77,6 +73,7 @@ class SituationStore:
                     cached = (stamp, json.loads(path.read_text(encoding="utf-8")))
                     self._cache[path] = cached
                 value = cached[1]
+                validate_situation(value)
                 identifier = value["id"]
                 self._target(origin == "library", "", identifier)
                 if identifier in ids:
@@ -101,8 +98,7 @@ class SituationStore:
     def entries(self, metadata=False):
         with self._lock:
             entries = self._scan()
-            if metadata:
-                entries = [{k: v for k, v in entry.items() if k != "checkpoint"} for entry in entries]
+            entries = [self._hydrate(entry, metadata=metadata) for entry in entries]
             return copy.deepcopy(entries)
 
     def read(self, identifier):
@@ -112,14 +108,85 @@ class SituationStore:
                 if entry["id"] == identifier:
                     # Restore/organize callers may mutate their copy; never leak
                     # the cached checkpoint into a live game or another clone.
-                    return copy.deepcopy(entry)
+                    return self._hydrate(entry)
         raise KeyError("Situation not found")
+
+    def save_decision_state(self, checkpoint, *, shared=False, name=None):
+        record = decision_state(checkpoint)
+        root = self.shared_decisions if shared else self.local_decisions
+        path = root / (record["id"] + ".json")
+        if path.exists():
+            existing = json.loads(path.read_text(encoding="utf-8"))
+            if existing != record:
+                raise ValueError("Decision State content hash collision or corrupt file")
+        else:
+            self._write(path, record)
+        if name:
+            labels_file = root / "labels.json"
+            labels = json.loads(labels_file.read_text(encoding="utf-8")) if labels_file.is_file() else {}
+            labels[record["id"]] = str(name)[:160]
+            self._write(labels_file, labels)
+        return record
+
+    def decision_entries(self):
+        entries = {}
+        for origin, root in [("library",self.shared_decisions),("local",self.local_decisions)]:
+            labels_file = root / "labels.json"
+            labels = json.loads(labels_file.read_text(encoding="utf-8")) if labels_file.is_file() else {}
+            for path in sorted(root.glob("*.json")):
+                if path.name == "labels.json":
+                    continue
+                identity = identifier(path.stem, decision=True)
+                saved = self._decision({"decisionStateId":identity,"origin":origin})
+                state = saved["state"]
+                entries[identity] = {"id":identity,"name":labels.get(identity,"Decision State " + identity[:12]),
+                    "origin":origin,"summary":{"phase":state.get("phase"),"round":state.get("round")}}
+        return sorted(entries.values(),key=lambda e:(e["name"].lower(),e["id"]))
+
+    def _decision(self, entry):
+        identity = identifier(entry["decisionStateId"], decision=True)
+        # Never let a shared fixture depend on an ignored local checkpoint.
+        roots = [self.shared_decisions] if entry.get("origin") == "library" else [self.local_decisions, self.shared_decisions]
+        for root in roots:
+            path = root / (identity + ".json")
+            if not path.is_file():
+                continue
+            if not path.resolve().is_relative_to(root.resolve()):
+                raise ValueError("Decision State symlink escapes its store")
+            stamp = (path.stat().st_mtime_ns, path.stat().st_size)
+            cached = self._decision_cache.get(path)
+            if cached is None or cached[0] != stamp:
+                value = json.loads(path.read_text(encoding="utf-8"))
+                if value.get("kind") != "decision-state" or value.get("schema") != 1 or value.get("id") != identity or decision_state(value.get("checkpoint"))["id"] != identity:
+                    raise ValueError("Corrupt Decision State: " + identity)
+                cached = (stamp, value)
+                self._decision_cache[path] = cached
+            return copy.deepcopy(cached[1]["checkpoint"])
+        raise ValueError("Missing Decision State: " + identity)
+
+    def _hydrate(self, entry, metadata=False):
+        result = current_record(entry, None if metadata else self._decision(entry))
+        if metadata:
+            result.pop("checkpoint", None)
+        return result
+
+    @staticmethod
+    def _persist_value(value):
+        validate_situation(value)
+        return {k: v for k, v in value.items() if k not in {"checkpoint", "origin", "group"}}
 
     def save(self, value, group=""):
         # Ordinary saves always create local drafts, never overwrite shared fixtures.
         path = self._target(False, group, value["id"])
-        self._write(path, value)
-        return {**value, "origin": "local", "group": self.group(group)}
+        validate_situation(value)
+        if "checkpoint" in value:
+            state = self.save_decision_state(value["checkpoint"])
+            if state["id"] != value["decisionStateId"]:
+                raise ValueError("Decision State does not match Situation")
+        else:
+            self._decision({**value, "origin": "local"})
+        self._write(path, self._persist_value(value))
+        return self._hydrate({**self._persist_value(value), "origin": "local", "group": self.group(group)})
 
     def organize(self, identifier, group, shared=False):
         value = self.read(identifier)
@@ -150,10 +217,17 @@ class SituationStore:
                 )
                 if k in provenance
             }
+        if value.get("schema") == SITUATION_SCHEMA and promotion:
+            self.save_decision_state(value["checkpoint"], shared=True)
+            # A shared copy must not leak local runtime metadata.
+            value = {k: v for k, v in value.items() if k in {
+                "schema", "kind", "id", "name", "decisionStateId", "presentation",
+                "summary", "backend_revision", "saved_at", "checkpoint", "provenance"}}
+
         target = self._target(shared, group, value["id"])
         if target != old and target.exists():
             raise ValueError("A situation already exists at that location")
-        self._write(target, value)
+        self._write(target, self._persist_value(value))
         if not promotion and target != old:
             old.unlink()
         return {

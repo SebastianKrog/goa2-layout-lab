@@ -65,10 +65,21 @@ test("replacing a view opens its independent situation first and keeps the old g
   assert.equal(c.windows[0], old);
   assert.ok(!calls.some((call) => call.closed));
 });
-test("saving a situation never gathers presentation or view/source setup", async () => {
+test("saving a Situation composes Presentation while a Decision State save remains game-only", async () => {
   const { c, calls } = fixture();
   c.windows = [
-    { config, situation: situation("first"), clone: { game_id: "a" } },
+    {
+      config,
+      situation: situation("first"),
+      clone: { game_id: "a" },
+      page: {
+        evaluate: async () => ({
+          pane: "hand",
+          selectedCard: "card",
+          storage: { "goa2:board-brightness": "0.8" },
+        }),
+      },
+    },
   ];
   await c.save(0, "Decision");
   assert.deepEqual(calls, [
@@ -78,7 +89,21 @@ test("saving a situation never gathers presentation or view/source setup", async
         game_id: "a",
         name: "Decision",
         provenance: { kind: "capture", source_situation: "first" },
+        kind: "situation",
+        presentation: {
+          schema: 2,
+          viewpoint: config.seat,
+          sessionState: { pane: "hand", selectedCard: "card" },
+          userState: { "goa2:board-brightness": "0.8" },
+        },
       },
     },
   ]);
+  calls.length = 0;
+  c.windows[0].page.evaluate = () => {
+    throw Error("Game-only save must not inspect UI");
+  };
+  await c.save(0, "Checkpoint", "decision-state");
+  assert.equal(calls[0].body.kind, "decision-state");
+  assert.equal(calls[0].body.presentation, undefined);
 });

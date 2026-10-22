@@ -56,7 +56,7 @@ try {
         source: "live",
         profile: "portrait",
         render: "2d",
-        layout: "mobile",
+        uiMode: "mobile",
         seat,
       })),
       {},

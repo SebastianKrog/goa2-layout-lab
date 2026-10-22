@@ -42,7 +42,7 @@ try {
   await request("load", {
     situationId: situation.id,
     slots: PRESETS["Mobile migration"],
-    restoreViews: false,
+
   });
   await page.goto(origin);
   const ready = async (count, width) => {
@@ -172,7 +172,7 @@ try {
   await request("load", {
     situationId: situation.id,
     slots: PRESETS["Layout regression"],
-    restoreViews: false,
+
   });
   await ready(2, 1440);
   let before = await request("views");
@@ -192,7 +192,7 @@ try {
   await request("load", {
     situationId: situation.id,
     slots,
-    restoreViews: false,
+
   });
   await ready(2, 1440);
   before = await request("views");

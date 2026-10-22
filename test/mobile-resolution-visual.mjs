@@ -53,8 +53,8 @@ try {
     await c.load(
       s.id,
       [
-        { source: "live", layout: "mobile" },
-        { source: "target", layout: "desktop" },
+        { source: "live", uiMode: "mobile" },
+        { source: "target", uiMode: "desktop" },
       ].map((w) => ({
         ...w,
         seat: "hero_hanu",
@@ -66,7 +66,7 @@ try {
     );
     for (const w of c.windows) {
       const peek =
-        w.config.layout === "mobile"
+        w.config.uiMode === "mobile"
           ? w.page
               .locator("[data-decision-type]")
               .getByRole("button", { name: "Board", exact: true })

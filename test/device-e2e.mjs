@@ -109,7 +109,7 @@ try {
   const reopened = await request("/api/device-open", {
     situationId: id,
     slot: original.config,
-    restoreViews: true,
+
   });
   const replay = await browser.newPage({
     viewport: { width: 390, height: 844 },

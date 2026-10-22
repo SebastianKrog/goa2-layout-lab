@@ -1,3 +1,8 @@
+import {
+  adapterPresentation,
+  USER_STATE_KEYS,
+  SESSION_STORAGE_PREFIXES,
+} from "./presentation-model.mjs";
 import { delay } from "./services.mjs";
 
 async function clickControl(page, control) {
@@ -9,10 +14,26 @@ async function clickControl(page, control) {
 // These adapters perform presentation actions only. They never replay a
 // generic click trace, which could accidentally commit a card or submit input.
 export async function capturePresentation(page, render) {
-  return page.evaluate(readPresentation, render);
+  return page.evaluate(readPresentation, {
+    render,
+    storageContract: {
+      keys: [...USER_STATE_KEYS],
+      prefixes: SESSION_STORAGE_PREFIXES,
+    },
+  });
 }
 
-export function readPresentation(render) {
+export function readPresentation(input) {
+  const render = typeof input === "string" ? input : input.render;
+  const storageContract =
+    typeof input === "string"
+      ? window.__GOA2_DEVICE__
+        ? {
+            keys: window.__GOA2_DEVICE__.userStateKeys || [],
+            prefixes: window.__GOA2_DEVICE__.sessionStoragePrefixes || [],
+          }
+        : null
+      : input.storageContract;
   const root = document.documentElement;
   const selected = document.querySelector('[data-pane][aria-pressed="true"]');
   const script = !!window.GOA2Mobile2D;
@@ -31,7 +52,10 @@ export function readPresentation(render) {
   const storage = {};
   for (const key of Object.keys(localStorage)) {
     if (
-      /^goa2[.:-]/i.test(key) &&
+      (storageContract
+        ? storageContract.keys.includes(key) ||
+          storageContract.prefixes.some((prefix) => key.startsWith(prefix))
+        : /^goa2[.:-]/i.test(key)) &&
       !/token|auth|credential|spectator/i.test(key)
     )
       storage[key] = localStorage.getItem(key);
@@ -107,7 +131,7 @@ export async function showPane(page, pane, config) {
   const kind =
     config.source === "target"
       ? "script"
-      : config.layout === "mobile"
+      : config.uiMode === "mobile"
         ? "mobile"
         : "desktop";
   if (kind === "mobile") {
@@ -205,7 +229,8 @@ export async function showPane(page, pane, config) {
 
 export async function restorePresentation(page, value, config) {
   if (!value) return [];
-  const warnings = [];
+  const warnings = [...(value.warnings || [])];
+  value = adapterPresentation(value, config.render);
   const attempt = async (name, action) => {
     try {
       await action();
@@ -240,7 +265,7 @@ export async function restorePresentation(page, value, config) {
         );
       }, value.selectedCard);
       if (!safe) throw new Error("Unavailable at this decision");
-      if (config.layout === "mobile") await showPane(page, "hand", config);
+      if (config.uiMode === "mobile") await showPane(page, "hand", config);
       const target = page
         .locator(
           `[data-lab-card=${JSON.stringify(value.selectedCard)}]:visible`,
@@ -250,10 +275,10 @@ export async function restorePresentation(page, value, config) {
         throw new Error("Card is absent from this layout");
       });
       await clickControl(page, target);
-      if (config.layout === "mobile" && value.pane && value.pane !== "hand")
+      if (config.uiMode === "mobile" && value.pane && value.pane !== "hand")
         await showPane(page, value.pane, config);
     });
-  if (value.focusedHeroMobile && config.layout === "mobile")
+  if (value.focusedHeroMobile && config.uiMode === "mobile")
     await attempt("Focused mobile hero", async () => {
       await showPane(page, "board", config);
       const current = await page
@@ -317,7 +342,7 @@ export async function restorePresentation(page, value, config) {
         window.GOA2Mobile2D.__labRotation.set(v);
       }, value.rotation),
     );
-  if (value.spellBrowserMobile && config.layout === "mobile")
+  if (value.spellBrowserMobile && config.uiMode === "mobile")
     await attempt("Public spell browser", async () => {
       const browser = value.spellBrowserMobile;
       await clickControl(
@@ -339,7 +364,7 @@ export async function restorePresentation(page, value, config) {
           ),
         );
     });
-  if (value.inspectionMobile && config.layout === "mobile")
+  if (value.inspectionMobile && config.uiMode === "mobile")
     await attempt("Mobile inspection", async () => {
       if (value.inspectionMobileContext === "decision") {
         const parent = page.locator(

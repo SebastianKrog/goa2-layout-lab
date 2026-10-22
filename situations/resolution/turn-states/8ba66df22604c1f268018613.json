@@ -1,0 +1,96 @@
+{
+  "schema": 2,
+  "kind": "situation",
+  "id": "8ba66df22604c1f268018613",
+  "name": "Brogan - off board, Hanu's turn completed (variant 2)",
+  "decisionStateId": "27cb2faa9dfc763dd24de7e333825fa934cb6f476134e46954f0020fba9e26d2",
+  "presentation": {
+    "schema": 2,
+    "sessionState": {
+      "render": "2d",
+      "pane": "board",
+      "gamePath": "/game/35eeac72940a",
+      "scroll": [],
+      "windowScroll": {
+        "x": 0,
+        "y": 0
+      },
+      "camera": {
+        "mode": "2d",
+        "k": 1,
+        "x": 0,
+        "y": 0
+      },
+      "inspectionMobile": null,
+      "inspectionMobileParent": null,
+      "inspectionMobileContext": null,
+      "spellBrowserMobile": null,
+      "inspectedCard": null,
+      "altHeld": false,
+      "selectedCard": null,
+      "focusedHeroMobile": null,
+      "inspectedHero": null,
+      "deckOpen": false,
+      "modes": {
+        "2d": {
+          "render": "2d",
+          "pane": "board",
+          "storage": {},
+          "gamePath": "/game/35eeac72940a",
+          "scroll": [],
+          "windowScroll": {
+            "x": 0,
+            "y": 0
+          },
+          "camera": {
+            "mode": "2d",
+            "k": 1,
+            "x": 0,
+            "y": 0
+          },
+          "inspectionMobile": null,
+          "inspectionMobileParent": null,
+          "inspectionMobileContext": null,
+          "spellBrowserMobile": null,
+          "inspectedCard": null,
+          "altHeld": false,
+          "selectedCard": null,
+          "focusedHeroMobile": null,
+          "inspectedHero": null,
+          "deckOpen": false
+        }
+      }
+    },
+    "userState": {},
+    "viewpoint": "hero_hanu",
+    "adapter": {
+      "uiMode": "mobile",
+      "render": "2d"
+    }
+  },
+  "summary": {
+    "phase": "RESOLUTION",
+    "round": 1,
+    "decision": "CHOOSE_ACTION",
+    "responder": "hero_tigerclaw"
+  },
+  "backend_revision": "740ec5bbfa1aaadcf05b0df06d93ab3187e5de9a",
+  "saved_at": 1792486073.7104552,
+  "migration": {
+    "sourceId": "4c80e4e5f69b",
+    "sourceSlot": "1"
+  },
+  "provenance": {
+    "kind": "capture",
+    "references": {
+      "base": "a3c5e0a46b35a42cd6e054512ce3dbc6a61a579c",
+      "script": "ad1eed5427b91b8daaebb56c4ceafda01db5f7de"
+    },
+    "script_checksum": "90b2973fe9d63f5e6befa7bf292ddf208d8524f19cc4eec90c1b2525ca89dddc",
+    "source_slot": 1,
+    "fixture": {
+      "case": "offboard-and-completed",
+      "factory": "scripts/create-mobile-resolution-situations.py"
+    }
+  }
+}

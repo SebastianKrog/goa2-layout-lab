@@ -1,3 +1,10 @@
+import {
+  resolveView,
+  adapterPresentation,
+  USER_STATE_KEYS,
+  SESSION_STORAGE_PREFIXES,
+  toPresentation,
+} from "./presentation-model.mjs";
 import { deviceImageBundle } from "./device-screenshot.mjs";
 import http from "node:http";
 import fs from "node:fs/promises";
@@ -97,7 +104,8 @@ export class DeviceServer {
       "GET",
     );
     const [slot] = validateSlots([body.slot, body.slot]);
-    const [config] = slotsForSituation([slot, slot], situation);
+    const resolvedView = resolveView(slot, situation, body.presentation);
+    const [config] = slotsForSituation([resolvedView.config], situation);
     const bots = body.bots ?? {};
     const heroes = Object.values(situation.checkpoint.state.teams).flatMap(
       (t) => t.heroes.map((h) => h.id),
@@ -115,26 +123,7 @@ export class DeviceServer {
       (Object.keys(bots).length && !heroes.includes(config.seat))
     )
       throw Error("Choose Random, Simple or ISMCTS for other heroes only.");
-    const savedSlots = situation.provenance?.slots || [];
-    let sourceIndex = savedSlots.findIndex(
-      (s) =>
-        s.source === config.source &&
-        s.seat === config.seat &&
-        s.render === config.render &&
-        s.layout === config.layout,
-    );
-    if (sourceIndex < 0)
-      sourceIndex = savedSlots.findIndex(
-        (s) =>
-          s.seat === config.seat &&
-          s.render === config.render &&
-          s.layout === config.layout,
-      );
-    const presentation =
-      body.presentation ??
-      (body.restoreViews === false
-        ? {}
-        : situation.presentations?.[sourceIndex] || {});
+    const presentation = resolvedView.presentation;
     const port = await this.services.frontend(config.source);
     const targetScript =
       config.source === "target"
@@ -158,6 +147,7 @@ export class DeviceServer {
       name: situation.name,
       config,
       presentation,
+      intendedPresentation: resolvedView.intended,
       bots,
       roster: Object.values(situation.checkpoint.state.teams).flatMap((t) =>
         t.heroes.map((h) => ({
@@ -229,7 +219,8 @@ export class DeviceServer {
       Object.assign(s, {
         clone: p.clone,
         config: p.config,
-        presentation: p.presentation,
+        presentation: adapterPresentation(p.presentation, p.config.render),
+        intendedPresentation: p.presentation,
         bots: p.bots,
         situationId: p.situation.id,
         name: p.situation.name,
@@ -260,7 +251,8 @@ export class DeviceServer {
     const review = this.review?.status();
     const game = new URL(gameURL(this.port, session.clone, session.config));
     return {
-      review: review?.active && session.reviewId === review.id ? review : null,
+      reviewRun:
+        review?.active && session.reviewId === review.id ? review : null,
       revision: session.revision,
       url: game.pathname + game.search,
     };
@@ -376,6 +368,10 @@ export class DeviceServer {
           config: session.config,
           presentation: session.presentation,
           revision: session.revision,
+          intendedPresentation: session.intendedPresentation,
+          storageScope: session.id,
+          userStateKeys: [...USER_STATE_KEYS],
+          sessionStoragePrefixes: SESSION_STORAGE_PREFIXES,
         }).replaceAll("<", "\\u003c");
         return send(
           200,
@@ -453,6 +449,16 @@ export class DeviceServer {
             provenance: {
               review: review?.id === session.reviewId ? review : null,
               source_situation: session.situationId,
+              sourceEvidence: (await this.services.provenance?.()) || null,
+              presentationResolution: {
+                intended: session.intendedPresentation,
+                effective: toPresentation(
+                  body.presentation,
+                  session.config.seat,
+                ),
+                overrides: session.config.overrides || {},
+                warnings: body.restoreWarnings || [],
+              },
               bots: session.bots,
               slots: [session.config, comparisonSlot],
               frontend_revision:
@@ -491,13 +497,28 @@ export class DeviceServer {
           error: "Capture expired. Close and capture again.",
         });
       }
-      return this.proxy(req, res, session);
+      return await this.proxy(req, res, session);
     } catch (error) {
       if (!res.headersSent) send(422, { error: error.message });
       else res.destroy();
     }
   }
-  proxy(req, res, session) {
+  async proxy(req, res, session) {
+    if (req.method === "GET") {
+      const asset = await this.services.assetFor?.(
+        session.config.source,
+        new URL(req.url, "http://device.local").pathname,
+      );
+      if (asset) {
+        res.writeHead(200, {
+          "content-type": asset.contentType,
+          "content-length": asset.body.length,
+          "cache-control": "no-cache",
+        });
+        res.end(asset.body);
+        return;
+      }
+    }
     const headers = {
       ...req.headers,
       host: `127.0.0.1:${session.port}`,

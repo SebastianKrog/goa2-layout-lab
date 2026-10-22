@@ -1,0 +1,36 @@
+{
+  "schema": 2,
+  "kind": "layout",
+  "id": "22a3ab680c1fd9ea5c877b01",
+  "name": "M3 presentation - brogan-public-active-history - suggested layout",
+  "views": [
+    {
+      "source": "base",
+      "profile": "portrait",
+      "render": "2d",
+      "uiMode": "desktop",
+      "overrides": {
+        "viewpoint": "hero_brogan"
+      }
+    },
+    {
+      "source": "comparator",
+      "profile": "portrait",
+      "render": "2d",
+      "uiMode": "mobile",
+      "overrides": {
+        "viewpoint": "hero_brogan"
+      }
+    },
+    {
+      "source": "target",
+      "profile": "portrait",
+      "render": "2d",
+      "uiMode": "desktop",
+      "overrides": {
+        "viewpoint": "hero_brogan"
+      }
+    }
+  ],
+  "synchronization": "none"
+}

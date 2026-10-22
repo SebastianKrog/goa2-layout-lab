@@ -127,17 +127,17 @@ const saved = await request("import", {
 // Loading replaces the current comparison. Use an owned isolated desk, or
 // preserve the user's current moments first when loading into their desk.
 const slots = [
-  { source: "base", profile: "portrait", render: "2d", layout: "desktop", seat: "hero_arien" },
-  { source: "comparator", profile: "portrait", render: "2d", layout: "mobile", seat: "hero_arien" },
-  { source: "target", profile: "portrait", render: "2d", layout: "desktop", seat: "hero_arien" },
+  { source: "base", profile: "portrait", render: "2d", uiMode: "desktop", seat: "hero_arien" },
+  { source: "comparator", profile: "portrait", render: "2d", uiMode: "mobile", seat: "hero_arien" },
+  { source: "target", profile: "portrait", render: "2d", uiMode: "desktop", seat: "hero_arien" },
 ];
-await request("load", { situationId: saved.id, slots, restoreViews: false });
+await request("load", { situationId: saved.id, slots });
 await request("synchronize", { mode: "none" });
 ~~~
 
 The fixed starter route is POST /api/starter. Replay import uses POST /api/import with kind:"replay", the JSONL content and decision:N; N applies exactly N recorded decisions. Do not invent a POST /api/fabricate or /api/set-state route; neither exists.
 
-A load with restoreViews:true may restore provenance.slots and presentations from the saved situation instead of the supplied slots. Use false for normal loads and when building a different view setup. Save the game checkpoint, Presentation and View setup separately; true is only for explicitly reproducing historical bundles.
+A load applies the composed Situation's Presentation while retaining the selected Layout. Use explicit View overrides for an intentional different Viewpoint or Session State. Runtime accepts only the new model; old fixtures must be ported offline.
 
 ## Presentation and saving
 
@@ -146,8 +146,8 @@ A load with restoreViews:true may restore provenance.slots and presentations fro
 - POST /api/hero: {index,heroId}. The current 3D adapter opens bridge-based hero inspection. The 2D adapter scrolls to the instrumented hero and records focus; it does not itself open the Heroes menu or a hero tooltip. Use /api/pane with pane:"heroes" or the actual UI for that menu.
 - For local selection, wait for the requested panel and visible card control, then use the actual control or restorePresentation(page,{render:"2d",pane:"hand",selectedCard:"noble_blade"},slot). This is a JavaScript module adapter, not a public HTTP endpoint. The current adapter waits for native mobile navigation to mount and the card to become visible; check its returned warnings. Confirm capturePresentation().selectedCard after saving and reopening. In planning, a selected card is not yet committed. For pending choices, clicking a card can immediately submit it: do not use generic clicks to manufacture a highlight before saving.
 - GET /api/views reports config, presentation, canonical state hash, decision summary and userscript activation. It does not expose all choice options; inspect the owning page's actual __GOA2_LAB_STATE__ or the restored factory result when needed.
-- POST /api/save: {index,name} stores only that view's game checkpoint and returns a new Situation. POST /api/presentation/save {index,name} captures UI state independently; POST /api/presentation/apply {index,id} reapplies it. POST /api/preset saves View setup slots only.
-- Reopen that new situation with restoreViews:true. Confirm exact meaningful state and panel/selection, not opaque IDs or byte-for-byte equality of newly generated requests.
+- POST /api/save {index,name} captures Decision State plus Presentation. Add kind:"decision-state" for game-only state. POST /api/presentation/save {index,name} saves a template; POST /api/presentation/apply {index,id} reapplies it without game progress changes. POST /api/layout/save stores Views and synchronization without a checkpoint.
+- Reopen the composed Situation with the intended Layout. Confirm exact meaningful state and panel/selection, not opaque IDs or byte-for-byte equality of newly generated requests.
 - GET /export/<situation-id> exports a credential-free saved situation. Treat unsupported presentation warnings as information to classify, not permission to patch missing UI into old sources.
 
 If card markers are absent in every otherwise-rendered hand, check that the current instrument.mjs is loaded: it normalizes Windows CRLF line endings before matching CardRow anchors. Restart an already-running desk after adapter-module changes so it uses the updated restoration code. A failure of lab instrumentation is not evidence that the frontend lacks a hand.

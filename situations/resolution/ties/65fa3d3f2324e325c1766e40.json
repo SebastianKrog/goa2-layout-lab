@@ -1,0 +1,40 @@
+{
+  "schema": 2,
+  "kind": "situation",
+  "id": "65fa3d3f2324e325c1766e40",
+  "name": "M3 resolution - selected-teammate (variant 2)",
+  "decisionStateId": "c11b092f9d6d56f0f583ff4b4a9319295222f312f2ed578e7fb118cd6f301998",
+  "presentation": {
+    "schema": 2,
+    "sessionState": {
+      "pane": "board",
+      "selectedCard": null,
+      "inspectedCard": null
+    },
+    "userState": {},
+    "viewpoint": "hero_hanu",
+    "restoration": "defaulted; no historical Session State was saved",
+    "adapter": {
+      "uiMode": "mobile",
+      "render": "2d"
+    }
+  },
+  "summary": {
+    "phase": "RESOLUTION",
+    "round": 1,
+    "decision": "CHOOSE_ACTION",
+    "responder": "hero_hanu"
+  },
+  "backend_revision": "740ec5bbfa1aaadcf05b0df06d93ab3187e5de9a",
+  "saved_at": 1792482029.20127,
+  "migration": {
+    "sourceId": "371c8eb12f74",
+    "sourceSlot": "1"
+  },
+  "provenance": {
+    "kind": "ui-fabrication",
+    "fixture": {
+      "case": "selected-teammate"
+    }
+  }
+}

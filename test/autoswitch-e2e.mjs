@@ -22,7 +22,7 @@ async function api(name, body) {
 try {
   await api("load", {
     situationId: "a00000000001",
-    restoreViews: false,
+
     slots: [{ ...PRESETS["Play solo"][0], autoSwitch: true }],
   });
   const win = app.comparison.window(0),
@@ -85,7 +85,7 @@ try {
   const bots = { hero_hanu: "random", hero_brogan: "heuristic" };
   await api("load", {
     situationId: "a00000000002",
-    restoreViews: false,
+
     slots: [{ ...PRESETS["Play solo"][0], bots }],
   });
   const timed = app.comparison.window(0);

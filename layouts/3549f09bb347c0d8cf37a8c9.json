@@ -1,0 +1,36 @@
+{
+  "schema": 2,
+  "kind": "layout",
+  "id": "3549f09bb347c0d8cf37a8c9",
+  "name": "Brogan - choose a defense card - suggested layout",
+  "views": [
+    {
+      "source": "base",
+      "profile": "portrait",
+      "render": "2d",
+      "uiMode": "desktop",
+      "overrides": {
+        "viewpoint": "hero_brogan"
+      }
+    },
+    {
+      "source": "comparator",
+      "profile": "portrait",
+      "render": "2d",
+      "uiMode": "mobile",
+      "overrides": {
+        "viewpoint": "hero_brogan"
+      }
+    },
+    {
+      "source": "target",
+      "profile": "portrait",
+      "render": "2d",
+      "uiMode": "desktop",
+      "overrides": {
+        "viewpoint": "hero_brogan"
+      }
+    }
+  ],
+  "synchronization": "none"
+}

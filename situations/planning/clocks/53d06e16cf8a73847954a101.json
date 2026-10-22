@@ -1,0 +1,43 @@
+{
+  "schema": 2,
+  "kind": "situation",
+  "id": "53d06e16cf8a73847954a101",
+  "name": "M3 presentation - shell-paused (variant 2)",
+  "decisionStateId": "bad658c5766f67fa760991a49621573afe37d98be6d4452ef5346f203923c0d7",
+  "presentation": {
+    "schema": 2,
+    "sessionState": {
+      "pane": "board",
+      "selectedCard": null,
+      "inspectedCard": null
+    },
+    "userState": {},
+    "viewpoint": "hero_arien",
+    "restoration": "defaulted; no historical Session State was saved",
+    "adapter": {
+      "uiMode": "mobile",
+      "render": "2d"
+    }
+  },
+  "summary": {
+    "phase": "PLANNING",
+    "round": 1,
+    "decision": null,
+    "responder": null
+  },
+  "backend_revision": "740ec5bbfa1aaadcf05b0df06d93ab3187e5de9a",
+  "saved_at": 1792477606.9844952,
+  "migration": {
+    "sourceId": "dc818586ba77",
+    "sourceSlot": "1"
+  },
+  "provenance": {
+    "kind": "ui-fabrication",
+    "fixture": {
+      "case": "shell-paused",
+      "factory": "scripts/create-mobile-presentation-situations.py",
+      "seed": 20261019,
+      "purpose": "UI display comparison; not a game-rule test"
+    }
+  }
+}

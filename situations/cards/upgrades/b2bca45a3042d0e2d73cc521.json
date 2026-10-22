@@ -1,0 +1,116 @@
+{
+  "schema": 2,
+  "kind": "situation",
+  "id": "b2bca45a3042d0e2d73cc521",
+  "name": "Arien - choose one tier II upgrade (variant 3)",
+  "decisionStateId": "92f6f93a194794975cf7bd92b56cb96f2ccdcc8c06dde6f2180ce9af997ba752",
+  "presentation": {
+    "schema": 2,
+    "sessionState": {
+      "render": "2d",
+      "pane": "board",
+      "gamePath": "/game/e376691fddc3",
+      "scroll": [],
+      "windowScroll": {
+        "x": 0,
+        "y": 0
+      },
+      "camera": {
+        "mode": "2d",
+        "k": 1,
+        "x": 0,
+        "y": 0
+      },
+      "rotation": {
+        "angle": 0,
+        "centerX": "",
+        "centerY": ""
+      },
+      "inspectionScript": {
+        "selectedHeroCard": null,
+        "focusedHeroId": null
+      },
+      "inspectedCard": null,
+      "altHeld": false,
+      "selectedCard": null,
+      "inspectedHero": null,
+      "deckOpen": false,
+      "modes": {
+        "2d": {
+          "render": "2d",
+          "pane": "board",
+          "storage": {
+            "goa2-mobile-build:[\"/game/e376691fddc3\",\"hero_arien\"]": "{\"planned\":[],\"chosen\":[],\"level\":2}"
+          },
+          "gamePath": "/game/e376691fddc3",
+          "scroll": [],
+          "windowScroll": {
+            "x": 0,
+            "y": 0
+          },
+          "camera": {
+            "mode": "2d",
+            "k": 1,
+            "x": 0,
+            "y": 0
+          },
+          "rotation": {
+            "angle": 0,
+            "centerX": "",
+            "centerY": ""
+          },
+          "inspectionScript": {
+            "selectedHeroCard": null,
+            "focusedHeroId": null
+          },
+          "inspectedCard": null,
+          "altHeld": false,
+          "selectedCard": null,
+          "inspectedHero": null,
+          "deckOpen": false
+        }
+      },
+      "storage": {
+        "goa2-mobile-build:[\"/game/e376691fddc3\",\"hero_arien\"]": "{\"planned\":[],\"chosen\":[],\"level\":2}"
+      }
+    },
+    "userState": {},
+    "viewpoint": "hero_arien",
+    "adapter": {
+      "uiMode": "desktop",
+      "render": "2d"
+    }
+  },
+  "summary": {
+    "phase": "LEVEL_UP",
+    "round": 1,
+    "decision": "UPGRADE_PHASE",
+    "responder": "simultaneous"
+  },
+  "backend_revision": "740ec5bbfa1aaadcf05b0df06d93ab3187e5de9a",
+  "saved_at": 1792335664.1212022,
+  "migration": {
+    "sourceId": "7596eb876af3",
+    "sourceSlot": "2"
+  },
+  "provenance": {
+    "kind": "capture",
+    "references": {
+      "base": "a3c5e0a46b35a42cd6e054512ce3dbc6a61a579c",
+      "script": "ad1eed5427b91b8daaebb56c4ceafda01db5f7de"
+    },
+    "script_checksum": "90b2973fe9d63f5e6befa7bf292ddf208d8524f19cc4eec90c1b2525ca89dddc",
+    "source_slot": 0,
+    "fixture": {
+      "case": "upgrade-tier-2",
+      "recipe": "scripts/create-simple-situations.py",
+      "seed": 20261017,
+      "condition": {
+        "phase": "LEVEL_UP",
+        "decision": "UPGRADE_PHASE",
+        "seat": "hero_arien",
+        "selectedCard": null
+      }
+    }
+  }
+}

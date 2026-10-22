@@ -1,0 +1,36 @@
+{
+  "schema": 2,
+  "kind": "layout",
+  "id": "0fd30f2123ffc4af6c43eb01",
+  "name": "Arien - choose an action for Noble Blade - suggested layout",
+  "views": [
+    {
+      "source": "base",
+      "profile": "portrait",
+      "render": "2d",
+      "uiMode": "desktop",
+      "overrides": {
+        "viewpoint": "hero_arien"
+      }
+    },
+    {
+      "source": "comparator",
+      "profile": "portrait",
+      "render": "2d",
+      "uiMode": "mobile",
+      "overrides": {
+        "viewpoint": "hero_arien"
+      }
+    },
+    {
+      "source": "target",
+      "profile": "portrait",
+      "render": "2d",
+      "uiMode": "desktop",
+      "overrides": {
+        "viewpoint": "hero_arien"
+      }
+    }
+  ],
+  "synchronization": "none"
+}

@@ -1,0 +1,42 @@
+{
+  "schema": 2,
+  "kind": "situation",
+  "id": "121d25b22e30b987482b68f6",
+  "name": "M3 presentation - razzle-piece-markers (variant 2)",
+  "decisionStateId": "77e9d64b6705258e4f8988824b737bf538dfd32fcbb4868ec3fdea95f3d386db",
+  "presentation": {
+    "schema": 2,
+    "sessionState": {
+      "pane": "board",
+      "selectedCard": null,
+      "inspectedCard": null
+    },
+    "userState": {},
+    "viewpoint": "spectator",
+    "restoration": "defaulted; no historical Session State was saved",
+    "adapter": {
+      "uiMode": "mobile",
+      "render": "2d"
+    }
+  },
+  "summary": {
+    "phase": "PLANNING",
+    "round": 1,
+    "decision": null,
+    "responder": null
+  },
+  "backend_revision": "740ec5bbfa1aaadcf05b0df06d93ab3187e5de9a",
+  "saved_at": 1792361783.4155614,
+  "migration": {
+    "sourceId": "3536c730ea73",
+    "sourceSlot": "1"
+  },
+  "provenance": {
+    "kind": "ui-fabrication",
+    "references": {
+      "factory": "scripts/create-mobile-presentation-situations.py",
+      "case": "razzle-piece-markers",
+      "seed": 20261019
+    }
+  }
+}

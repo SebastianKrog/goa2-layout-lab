@@ -1,0 +1,40 @@
+{
+  "schema": 2,
+  "kind": "situation",
+  "id": "da827e7067c7022039195ab9",
+  "name": "M3 resolution - team-tie (variant 2)",
+  "decisionStateId": "2ba107c910d9594ced573bf6892dd8a6bbabd0dcde7cc32b4b0fcfefa2929eb7",
+  "presentation": {
+    "schema": 2,
+    "sessionState": {
+      "pane": "board",
+      "selectedCard": null,
+      "inspectedCard": null
+    },
+    "userState": {},
+    "viewpoint": "hero_hanu",
+    "restoration": "defaulted; no historical Session State was saved",
+    "adapter": {
+      "uiMode": "mobile",
+      "render": "2d"
+    }
+  },
+  "summary": {
+    "phase": "RESOLUTION",
+    "round": 1,
+    "decision": "CHOOSE_ACTOR",
+    "responder": "team:RED"
+  },
+  "backend_revision": "740ec5bbfa1aaadcf05b0df06d93ab3187e5de9a",
+  "saved_at": 1792481970.5729225,
+  "migration": {
+    "sourceId": "50205badf8ea",
+    "sourceSlot": "1"
+  },
+  "provenance": {
+    "kind": "ui-fabrication",
+    "fixture": {
+      "case": "team-tie"
+    }
+  }
+}

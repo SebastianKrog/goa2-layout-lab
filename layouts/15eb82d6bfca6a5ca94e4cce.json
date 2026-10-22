@@ -1,0 +1,36 @@
+{
+  "schema": 2,
+  "kind": "layout",
+  "id": "15eb82d6bfca6a5ca94e4cce",
+  "name": "Arien - three pending upgrades - suggested layout",
+  "views": [
+    {
+      "source": "base",
+      "profile": "portrait",
+      "render": "2d",
+      "uiMode": "desktop",
+      "overrides": {
+        "viewpoint": "hero_arien"
+      }
+    },
+    {
+      "source": "comparator",
+      "profile": "portrait",
+      "render": "2d",
+      "uiMode": "mobile",
+      "overrides": {
+        "viewpoint": "hero_arien"
+      }
+    },
+    {
+      "source": "target",
+      "profile": "portrait",
+      "render": "2d",
+      "uiMode": "desktop",
+      "overrides": {
+        "viewpoint": "hero_arien"
+      }
+    }
+  ],
+  "synchronization": "none"
+}

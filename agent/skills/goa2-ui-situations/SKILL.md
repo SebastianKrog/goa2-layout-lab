@@ -9,7 +9,7 @@ Produce a reusable saved situation that shows the requested UI condition, with t
 
 ## State boundaries and current desk
 
-Follow [the canonical terminology](../../../docs/terminology.md): Situation = game checkpoint; View = playable panel; Viewpoint = player/spectator seat; Presentation = UI-only state; View setup = source/device/layout/controllers. New Situation saves contain game state only. Save a Presentation separately when a menu or highlighted card must reopen. Older bundled fixtures require explicit `restoreViews:true`; do not silently restore their source/view settings. The empty desk defaults to one Live working tree view. Use its Start overlay and the right-hand Add view rail; new views inherit current progress without resetting existing views.
+Follow [the canonical terminology](../../../docs/terminology.md): Decision State = exact game checkpoint; Presentation = Viewpoint + Session State + supported User State; Situation = Decision State + Presentation; View = playable instance; Layout = configured view arrangement and synchronization. Save Situation captures the complete moment. Save Decision State is game-only; Presentation templates and Layouts are reusable independently. Use `uiMode` for desktop/mobile, distinct from 2D/3D renderer. Viewpoint follows the Situation unless an explicit `overrides.viewpoint` pins it. Runtime accepts only the new model; old fixtures are ported with the offline migration tool, not a restore checkbox. The empty desk defaults to one Live working-tree View. Start/Add/Edit preserve existing progress on cancellation or failed staging.
 
 ## Choose the stopping point
 
@@ -59,7 +59,7 @@ Save those slots as provenance.slots, with seats that exist in the checkpoint; a
 
 Configure one, two or three slots deliberately. The userscript target uses the legacy desktop shell with a phone profile and 2D; the migrated comparator/live source may use the native mobile shell. Two desktop 2D or 3D slots are also valid.
 
-Open supported panels using the lab's pane/hero adapters or the actual UI. Local planning-card selection is presentation state, not a backend commit. Wait for the panel and real card control to mount before selecting; a navigation click alone is not proof that the panel has rendered. Save a separate Presentation after opening the correct hand and selecting the card, and verify captured selectedCard. The current adapters handle Windows CRLF checkouts and asynchronous mobile panels; inspect adapter warnings before classifying absent markers as a missing frontend feature. Capture per-view camera, scroll, inspection and panel state through Save... > Presentation.
+Open supported panels using the lab's pane/hero adapters or the actual UI. Local planning-card selection is presentation state, not a backend commit. Wait for the panel and real card control to mount before selecting; a navigation click alone is not proof that the panel has rendered. Save the Situation after opening the correct hand and selecting the card, and verify `presentation.sessionState.selectedCard`. Save a Presentation template too when useful for reuse. The current adapters handle Windows CRLF checkouts and asynchronous mobile panels; inspect adapter warnings before classifying absent markers as a missing frontend feature. Capture per-view camera, scroll, inspection and panel state through Save... > Presentation.
 
 A missing Hand menu does not necessarily mean a missing hand: a desktop layout may show it inline. Record supported, inline-equivalent, unsupported or not-verified for each requested feature/source/shell. Preserve the same game checkpoint even when a layout cannot show the requested panel. Do not add temporary frontend markup or claim a menu opened when the adapter only scrolled to inline content.
 
@@ -69,7 +69,7 @@ Cheats controls stay hidden by default. Setup data can be fabricated without dis
 
 Import the checkpoint through the lab, which validates and normalizes it. In standalone factories, restore/checkpoint once to normalize a waiting step, then restore that normalized checkpoint again and confirm the prompt and canonical hash are stable. Initial restoration can initialize transient context defaults; compare clones and presentation-only changes against the normalized state. Save the situation from the intended game window after setting all presentations, with a useful name such as "Snorri - second rune choice - owner". A saved setup/preset alone contains slots, not a game checkpoint.
 
-Reopen the saved Situation, then apply its separately saved Presentation. For historical bundled fixtures only, explicitly use Restore legacy bundled setup. Check only the observable fixture contract:
+Reopen the saved Situation and verify its composed Presentation; use explicit View overrides for intentionally different player viewpoints. Check only the observable fixture contract:
 
 - Correct phase/prompt, responder, hero and representative options/content.
 - Same canonical game hash across slots intended to share the checkpoint; local menu/selection changes do not advance it.

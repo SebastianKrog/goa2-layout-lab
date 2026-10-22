@@ -1,7 +1,7 @@
 # GoA2 comparison desk
 
 Start with one current working-tree view, then add up to two independent views.
-Saved game situations, UI presentations and view setups have separate responsibilities; see [Lab terminology and saved state](docs/terminology.md).
+Situations combine Decision State and Presentation; reusable Layouts configure Views; see [Lab terminology and saved state](docs/terminology.md).
 Linux and macOS run the desk, Chromium, Vite and the isolated backend natively.
 Windows runs the desk and emulated browsers locally and services in WSL. The regular
 development servers on ports 3000/8000 are separate.
@@ -82,7 +82,7 @@ Views load concurrently and share preparation when they use the same source.
 The lab uses Vite directly with a same-origin HTTP/WebSocket proxy to its isolated
 backend; it does not start Cloudflare worker emulators. Game-state, camera, font
 and asset readiness checks still run before a view is ready. The desk catalog
-contains situation metadata and independent presentations/view setups; full checkpoints are
+contains situation metadata and Presentation templates and Layouts; full checkpoints are
 loaded only for game operations and exports. Production Worker behavior should
 be checked in the frontend project itself.
 
@@ -234,14 +234,14 @@ Use **Settings > Show Cheats controls** to reveal them for debugging. This visib
 
 1. Press **Start** on the default view, choose a Situation and start it. Import local saves or replays from **Saved situations** if needed. Replay index N applies exactly N recorded decisions.
 2. Play to the desired prompt. Change Viewpoint to act for another hero.
-3. Use **Save... > Situation**, enter a name and select the source view. This saves the full engine/rollback checkpoint only.
-4. To reproduce an open menu, selected card or camera, use **Save... > Presentation** separately. Choose that Presentation in the view settings overlay when reopening the Situation.
-5. Save source/device/layout/controller configurations independently with **Save... > View setup**. Add a view using the right-hand rail to inherit current game progress and UI state without resetting existing views.
+3. Use **Save... > Situation**, enter a name and select the source view. This saves the exact engine/rollback checkpoint plus the captured Viewpoint, Session State and supported User State.
+4. Menus, selected cards, camera and preferences are part of the saved Situation. **Save... > Presentation template** also makes these values reusable. **Save... > Decision State** saves game-only state; **Create from Decision State** composes another Situation.
+5. Save view arrangement, source/device/UI mode/controllers and synchronization independently with **Save... > Layout**. Add a view using the right-hand rail to inherit current game progress and UI state without resetting existing views.
 
-Historical combined fixtures can still restore their bundled sources, seats and UI state via **Comparison tools > Restore legacy bundled setup**. Normal loading leaves this unchecked. See [terminology and saved state](docs/terminology.md) for the exact boundaries.
+Old situations have been ported into composed Situations and separate suggested Layouts. Runtime accepts the new model only; see [state storage and porting](docs/state-model.md). See [terminology and saved state](docs/terminology.md) for the exact boundaries.
 
 **Export** in Saved situations downloads a portable JSON bundle. Import it on another run
-to restore the checkpoint (plus legacy presentation/source metadata when present). Source
+to restore the exact Decision State and composed Presentation. Source
 seat credentials are excluded; clones receive new tokens. Situation files contain
 the full developer checkpoint, including hidden game information, while the
 normal game UI continues receiving player-scoped views.
@@ -258,7 +258,7 @@ Choose **Add to library** on a local draft to create a new shared copy in the se
 
 The library includes normal and timed planning under `situations/planning/`, plus five basic card examples under `situations/cards/`: selection, action choice, a tier II upgrade, defense and discard. See [the situation library](situations/README.md) for the saved moments and regeneration command. Each JSON contains a schema-1 checkpoint, summary, name and optional per-view presentations; no running server or runtime game IDs are required to reopen it.
 
-Automation uses `GET /api/catalog` (`situations`, each with `origin` and `group`), `POST /api/load {situationId, slots, restoreViews}`, and `POST /api/organize {id, group, shared}`. Setting `shared:true` promotes a local draft or moves a shared fixture. Setting it to false moves a local draft. Group paths are relative and validated on the service host.
+Automation uses `GET /api/catalog` (`situations`, each with `origin` and `group`), `POST /api/load {situationId, slots}`, and `POST /api/organize {id, group, shared}`. Setting `shared:true` promotes a local draft or moves a shared fixture. Setting it to false moves a local draft. Group paths are relative and validated on the service host.
 
 Use **Edit view** for source/device/renderer/viewpoint changes. **View tools**
 inside the editor contains panel controls, reset, phone rotation and camera copy.
@@ -748,7 +748,7 @@ npm run test:mobile-spells-visual -- --rank4
 ```
 
 Library reopening uses diagnostic ports 5400-5403/10400 and the regular desk
-`restoreViews:true` endpoint. It checks the shared long-status, Takahide gold,
+composed Situation load endpoint. It checks the shared long-status, Takahide gold,
 team-tie and selected-teammate entries with their saved Base/Comparator/Target
 sources, seats, layouts, hashes and actual pending decisions. Three-column
 reports are restore checks, rather than evidence of Live source parity.

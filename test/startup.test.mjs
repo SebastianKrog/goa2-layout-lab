@@ -137,26 +137,12 @@ test("Stop desk is visible and usable on Compare while a load is busy", async ()
     busy = false;
     await page.waitForFunction(() => !document.body.classList.contains("busy"));
     await page.locator(".advanced-setup summary").click();
-    const savedSetup = page.getByRole("checkbox", {
-      name: "Restore legacy bundled setup",
-      exact: true,
-    });
-    await page
-      .getByLabel("Saved situation", { exact: true })
-      .selectOption("gameOnly");
-    assert.equal(await savedSetup.isDisabled(), true);
-    assert.equal(await savedSetup.isChecked(), false);
-    await page
-      .getByLabel("Saved situation", { exact: true })
-      .selectOption("saved");
     assert.equal(
-      await savedSetup.isEnabled(),
-      true,
-      "Saved slots alone are a usable setup",
+      await page.locator("#restore").count(),
+      0,
+      "Legacy restoration is not exposed",
     );
-    assert.equal(await savedSetup.isChecked(), false);
-    await savedSetup.uncheck();
-    assert.equal(await savedSetup.isChecked(), false);
+    assert.equal(await page.getByLabel("Layout", { exact: true }).count(), 1);
     busy = true;
     await page.waitForFunction(() => document.body.classList.contains("busy"));
     assert.equal(await stop.isEnabled(), true);

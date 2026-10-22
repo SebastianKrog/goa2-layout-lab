@@ -9,7 +9,7 @@ Leave playable independent lab clones ready for the human, with the requested he
 
 ## State boundaries and current desk
 
-Follow [the canonical terminology](../../../docs/terminology.md): Situation = game checkpoint; View = playable panel; Viewpoint = player/spectator seat; Presentation = UI-only state; View setup = source/device/layout/controllers. New Situation saves contain game state only. Save a Presentation separately when a menu or highlighted card must reopen. Older bundled fixtures require explicit `restoreViews:true`; do not silently restore their source/view settings. The empty desk defaults to one Live working tree view. Use its Start overlay and the right-hand Add view rail; new views inherit current progress without resetting existing views.
+Follow [the canonical terminology](../../../docs/terminology.md): Decision State = exact game checkpoint; Presentation = Viewpoint + Session State + supported User State; Situation = Decision State + Presentation; View = playable instance; Layout = configured view arrangement and synchronization. Save Situation captures the complete moment. Save Decision State is game-only; Presentation templates and Layouts are reusable independently. Use `uiMode` for desktop/mobile, distinct from 2D/3D renderer. Viewpoint follows the Situation unless an explicit `overrides.viewpoint` pins it. Runtime accepts only the new model; old fixtures are ported with the offline migration tool, not a restore checkbox. The empty desk defaults to one Live working-tree View. Start/Add/Edit preserve existing progress on cancellation or failed staging.
 
 ## Prepare the lab
 
@@ -31,7 +31,7 @@ Reset retains them and saved setups include them. Changing viewpoint leaves bot 
 view has bots because independent bot games can diverge.
 
 The desk API accepts one to three `slots` with optional per-slot `bots` on
-`POST /api/load`; use `restoreViews:false` to retain explicitly supplied slots.
+`POST /api/load`; the supplied slots configure Views while the Situation restores its Presentation. Pin an intentional player with `overrides.viewpoint`.
 Use `POST /api/configure {index,update:{bots:{...}}}` to change an existing clone's
 controllers; `{}` stops automation without undoing earlier moves.
 
@@ -64,7 +64,7 @@ Return the desk URL and prepared view(s), human hero, bot choices and situation/
 
 Timed situations may need the human to press **Ready**. Lab clocks are frozen, so this is interactive UI testing rather than production timing verification. State what was actually verified; browser phone emulation does not establish physical-device acceptance or full-match coverage.
 
-The lab injects the movable **Report** userscript. Holding the button enables dragging, with vibration where supported. Reports save the comment, screenshot without the button/dialog, and resumable situation. Device reports record bot configuration as provenance; opening a device report requires selecting bots again. Regular desk saved view setups retain their per-view controllers. Keep capability links and private checkpoints out of tracked documentation.
+The lab injects the movable **Report** userscript. Holding the button enables dragging, with vibration where supported. Reports save the comment, screenshot without the button/dialog, and resumable situation. Device reports record bot configuration as provenance; opening a device report requires selecting bots again. Saved Layouts retain their per-view controllers. Keep capability links and private checkpoints out of tracked documentation.
 
 Closing/resetting a regular view retires its old clone and workers. **Stop sharing** revokes that device link and cancels that clone's bots while preserving its recovery save. Closing the dialog leaves it running. Stop only sessions owned by the requested task; shutting down the desk invalidates all of its device links.
 

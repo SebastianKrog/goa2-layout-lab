@@ -47,7 +47,7 @@ try {
     );
     for (const win of comparison.windows) {
       const { page, config, clone } = win;
-      const label = `${config.layout} / ${profile}`;
+      const label = `${config.uiMode} / ${profile}`;
       const inspect = () =>
         comparison.api(`/games/${clone.game_id}`, undefined, "GET");
       const before = (await inspect()).hash;
@@ -168,7 +168,7 @@ try {
             path: path.join(
               DATA,
               "runtime",
-              `confirm-${config.layout}-${profile}.png`,
+              `confirm-${config.uiMode}-${profile}.png`,
             ),
           });
           throw error;

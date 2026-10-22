@@ -16,8 +16,10 @@ import uuid
 
 from device_bots import bot_kinds, clone_bot_specs, start_clone_bots, stop_clone_bots, cancel_bot_tasks, update_clone_bots
 
+from state_model import portable_situation
+
 FROZEN_MS = 1792238400000
-SCHEMA = 1
+SCHEMA = 2
 
 
 @asynccontextmanager
@@ -173,7 +175,7 @@ def create_app():
         except ValueError as error:
             raise HTTPException(400, str(error)) from error
 
-    def write(saved, name, *, provenance=None, presentations=None, situation_id=None, group=""):
+    def write(saved, name, *, provenance=None, presentation=None, situation_id=None, group="", decision_only=False):
         session, result = restore(saved)  # Fail before writing incompatible saves.
         ir = result.input_request if result else None
         situation = {
@@ -182,11 +184,9 @@ def create_app():
             "name": str(name or "Saved situation")[:160],
             "backend_revision": revision(),
             "saved_at": real_time(),
-            "checkpoint": checkpoint(
-                session, names=saved.get("hero_names"), replay=saved.get("replay_log")
-            ),
+            # Validate by restoring, but never rewrite an existing exact Decision State.
+            "checkpoint": copy.deepcopy(saved),
             "provenance": provenance or {},
-            "presentations": presentations or {},
             "summary": {
                 "phase": session.state.phase.value,
                 "round": session.state.round,
@@ -194,7 +194,14 @@ def create_app():
                 "responder": ir.player_id if ir else None,
             },
         }
-        return library.save(situation, group=group)
+        from state_model import decision_state, presentation as normalize_presentation
+        if decision_only:
+            return library.save_decision_state(situation["checkpoint"], name=name)
+        state = decision_state(situation["checkpoint"])
+        record = {k: v for k, v in situation.items() if k not in {"schema", "checkpoint"}}
+        record.update(schema=2, kind="situation", decisionStateId=state["id"],
+                      presentation=normalize_presentation(presentation or {"schema":2,"sessionState":{"pane":"board"},"userState":{}}), checkpoint=situation["checkpoint"])
+        return library.save(record, group=group)
 
     from device_reports import install_device_reports
     install_device_reports(app, checkpoint=checkpoint, write=write, root=root, now=real_time)
@@ -209,7 +216,6 @@ def create_app():
             "bot_kinds": bot_kinds(),
         }
 
-    @app.get("/__lab/scenarios", include_in_schema=False)
     @app.get("/__lab/situations")
     def situations(metadata: bool = False):
         return library.entries(metadata=metadata)
@@ -217,6 +223,18 @@ def create_app():
     @app.get("/__lab/situations/{situation_id}")
     def situation(situation_id: str):
         return read(situation_id)
+
+    @app.get("/__lab/decision-states")
+    def decision_states():
+        return library.decision_entries()
+
+    @app.post("/__lab/situations/compose")
+    def compose_situation(body: dict):
+        try:
+            saved = library._decision({"decisionStateId": body.get("decisionStateId"), "origin": "local"})
+            return write(saved, body.get("name"), presentation=body.get("presentation", {"schema":2,"sessionState":{},"userState":{}}))
+        except (ValueError, KeyError, TypeError) as error:
+            raise HTTPException(422, str(error)) from error
 
     @app.post("/__lab/organize")
     def organize(body: dict):
@@ -314,14 +332,33 @@ def create_app():
                     )
             value = body["content"]
             value = json.loads(value) if isinstance(value, str) else value
+            if value.get("kind") == "situation" and value.get("schema") == 2 and "checkpoint" not in value:
+                from state_model import validate_situation, decision_state
+                validate_situation(value)
+                bundled = value.get("decisionState")
+                saved = bundled.get("checkpoint") if isinstance(bundled, dict) else library._decision({**value, "origin": "local"})
+                if decision_state(saved)["id"] != value["decisionStateId"]:
+                    raise ValueError("Bundled Decision State does not match Situation")
+                variants = value.get("additionalSituations", [])
+                if not isinstance(variants, list) or len(variants) > 200:
+                    raise ValueError("Invalid factory Situation variants")
+                for variant in variants:
+                    validate_situation(variant)
+                    if variant["decisionStateId"] != value["decisionStateId"]:
+                        raise ValueError("Factory variants must share the bundled Decision State")
+                result = write(saved, body.get("name") or value["name"], provenance=value.get("provenance"), presentation=value["presentation"])
+                imported = [write(saved, variant["name"], provenance=variant.get("provenance"), presentation=variant["presentation"])["id"] for variant in variants]
+                if imported:
+                    result["importedVariants"] = imported
+                return result
             if "checkpoint" in value:
-                if value.get("schema") != SCHEMA:
+                if value.get("schema") != 2:
                     raise ValueError("Unsupported layout-lab situation schema")
                 return write(
                     value["checkpoint"],
                     body.get("name") or value["name"],
                     provenance=value.get("provenance"),
-                    presentations=value.get("presentations"),
+                    presentation=value.get("presentation"),
                 )
             # A normal backend save includes credentials. Whitelist checkpoint
             # fields instead of preserving any of the outer save envelope.
@@ -375,7 +412,8 @@ def create_app():
                 ),
                 body.get("name"),
                 provenance=body.get("provenance"),
-                presentations=body.get("presentations"),
+                presentation=body.get("presentation"),
+                decision_only=body.get("kind") == "decision-state",
             )
 
     def review_snapshot_path(spec):
@@ -400,17 +438,7 @@ def create_app():
                 if source.is_file():
                     situation = json.loads(source.read_text(encoding="utf-8"))
                 else:
-                    # Compatibility with the first review format's embedded snapshots.
-                    manifest = source.parent.parent / "review.json"
-                    if not manifest.is_file():
-                        raise HTTPException(404, "Saved review snapshot not found")
-                    old = json.loads(manifest.read_text(encoding="utf-8"))
-                    try:
-                        situation = old["entries"][body["from"]["index"]]["situation"]
-                    except (KeyError, IndexError, TypeError) as error:
-                        raise HTTPException(404, "Saved review snapshot not found") from error
-                    if "checkpoint" not in situation:
-                        raise HTTPException(404, "Saved review snapshot not found")
+                    raise HTTPException(404, "Saved review snapshot not found")
                 if situation.get("id") != body.get("id"):
                     raise HTTPException(422, "Saved snapshot does not match the review entry")
             else:
@@ -429,8 +457,10 @@ def create_app():
                 if not target.is_file():
                     raise HTTPException(404, "Review snapshot not found")
                 situation = json.loads(target.read_text(encoding="utf-8"))
+            elif body.get("decision_state_id"):
+                situation = {"checkpoint": library._decision({"decisionStateId": body["decision_state_id"], "origin": "local"})}
             else:
-                situation = body.get("situation") or read(body.get("situation_id") or body.get("scenario_id"))
+                situation = body.get("situation") or read(body.get("situation_id"))
             session, result = restore(situation["checkpoint"])
         except (ValueError, KeyError, TypeError) as error:
             raise HTTPException(
@@ -457,8 +487,11 @@ def create_app():
             "seats": game.hero_to_token,
             "spectator_token": game.spectator_token,
             "hash": canonical_hash(session.state.model_dump(mode="json")),
-            "presentations": situation.get("presentations", {}),
-            "summary": situation["summary"],
+            "summary": situation.get("summary") or {
+                "phase": session.state.phase.value, "round": session.state.round,
+                "decision": result.input_request.request_type.value if result and result.input_request else None,
+                "responder": result.input_request.player_id if result and result.input_request else None,
+            },
         }
 
     @app.post("/__lab/bots")
@@ -481,11 +514,13 @@ def create_app():
             saved = checkpoint(game.session, names=game.hero_names,
                                replay=copy.deepcopy(game.replay_recorder.records) if game.replay_recorder else [])
             ir = game.last_result.input_request if game.last_result else None
+            reference = library.save_decision_state(saved)
             return {"hash": canonical_hash(game.session.state.model_dump(mode="json")),
-                    "situation": {"schema": SCHEMA, "id": uuid.uuid4().hex[:12],
+                    "checkpoint_json": json.dumps(saved),
+                    "situation": {"schema": SCHEMA, "kind":"situation", "presentation":{"schema":2,"sessionState":{},"userState":{}}, "id": uuid.uuid4().hex[:12],
                                   "name": "Element report moment", "backend_revision": revision(),
-                                  "saved_at": real_time(), "checkpoint": saved,
-                                  "provenance": {}, "presentations": {},
+                                  "saved_at": real_time(), "checkpoint": saved, "decisionStateId": reference["id"],
+                                  "provenance": {},
                                   "summary": {"phase": game.session.state.phase.value,
                                               "round": game.session.state.round,
                                               "decision": ir.request_type.value if ir else None,

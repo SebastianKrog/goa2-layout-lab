@@ -9,6 +9,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from situations import SituationStore
+from state_model import decision_state
 
 
 class SituationLibraryTests(unittest.TestCase):
@@ -17,7 +18,10 @@ class SituationLibraryTests(unittest.TestCase):
         self.root = Path(self.temp.name)
         self.store = SituationStore(self.root / "shared", self.root / "data")
         self.draft = {
-            "schema": 1,
+            "schema": 2,
+            "kind": "situation",
+            "decisionStateId": decision_state({"state":{}})["id"],
+            "presentation": {"schema":2,"sessionState":{},"userState":{}},
             "id": "abc123",
             "name": "Choosing defense",
             "checkpoint": {"state": {}},
@@ -50,16 +54,11 @@ class SituationLibraryTests(unittest.TestCase):
         self.assertEqual(reopened.read("abc123")["group"], "cards/defense")
         self.assertEqual(len(reopened.entries()), 2)
 
-    def test_legacy_migration_does_not_reimport_moved_drafts(self):
-        legacy = self.root / "data/scenarios"
-        legacy.mkdir(parents=True)
-        (legacy / "abc123.json").write_text(json.dumps(self.draft), encoding="utf-8")
-        store = SituationStore(self.root / "shared", self.root / "data")
-        store.organize("abc123", "heroes/gydion")
-        reopened = SituationStore(self.root / "shared", self.root / "data")
-        self.assertEqual(len(reopened.entries()), 1)
-        self.assertEqual(reopened.read("abc123")["group"], "heroes/gydion")
-        self.assertTrue((legacy / "abc123.json").exists())
+    def test_old_format_requires_explicit_offline_porting(self):
+        old = {"schema":1,"id":"old123","name":"Old","checkpoint":{"state":{}}}
+        with self.assertRaisesRegex(ValueError,"Unsupported composed"):
+            self.store.save(old)
+        self.assertEqual(self.store.entries(),[])
 
     def test_paths_cannot_escape_either_root(self):
         self.store.save(self.draft)

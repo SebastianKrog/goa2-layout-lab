@@ -1,0 +1,42 @@
+{
+  "schema": 2,
+  "kind": "situation",
+  "id": "81fb8d749cf5d3ce282099b2",
+  "name": "M3 presentation - gydion-public-spells-1 (variant 2)",
+  "decisionStateId": "e4b2bf23e799eccfad53b20936d897eb74afe34ef1537788fd1ac651a8accd34",
+  "presentation": {
+    "schema": 2,
+    "sessionState": {
+      "pane": "board",
+      "selectedCard": null,
+      "inspectedCard": null
+    },
+    "userState": {},
+    "viewpoint": "spectator",
+    "restoration": "defaulted; no historical Session State was saved",
+    "adapter": {
+      "uiMode": "mobile",
+      "render": "2d"
+    }
+  },
+  "summary": {
+    "phase": "PLANNING",
+    "round": 1,
+    "decision": null,
+    "responder": null
+  },
+  "backend_revision": "740ec5bbfa1aaadcf05b0df06d93ab3187e5de9a",
+  "saved_at": 1792361694.4889717,
+  "migration": {
+    "sourceId": "158474129d8a",
+    "sourceSlot": "1"
+  },
+  "provenance": {
+    "kind": "ui-fabrication",
+    "references": {
+      "factory": "scripts/create-mobile-presentation-situations.py",
+      "case": "gydion-public-spells-1",
+      "seed": 20261019
+    }
+  }
+}

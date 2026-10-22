@@ -152,8 +152,8 @@ try {
     await c.load(
       spec.id,
       [
-        { source: "live", layout: "mobile" },
-        { source: "target", layout: "desktop" },
+        { source: "live", uiMode: "mobile" },
+        { source: "target", uiMode: "desktop" },
       ].map((w) => ({
         ...w,
         profile: "portrait",

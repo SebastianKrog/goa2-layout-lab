@@ -131,8 +131,8 @@ async function load(id, seat = "hero_arien") {
   await c.load(
     id,
     [
-      { source: "live", layout: "mobile" },
-      { source: "target", layout: "desktop" },
+      { source: "live", uiMode: "mobile" },
+      { source: "target", uiMode: "desktop" },
     ].map((w) => ({ ...w, seat, profile: "portrait", render: "2d" })),
   );
   for (const w of c.windows)

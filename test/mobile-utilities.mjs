@@ -11,7 +11,7 @@ const desk=await startDesk({flags:new Set(['--headless','--verification','--no-o
 const c=desk.comparison, out=DATA+'/reviews/m8-utilities-'+Date.now(), reports=[];
 await fs.mkdir(out,{recursive:true});
 async function load(id,seat='hero_arien') {
- await c.load(id,[{source:'live',layout:'mobile'},{source:'target',layout:'desktop'}].map(w=>({...w,seat,profile:'portrait',render:'2d'})));
+ await c.load(id,[{source:'live',uiMode:'mobile'},{source:'target',uiMode:'desktop'}].map(w=>({...w,seat,profile:'portrait',render:'2d'})));
  for(const w of c.windows) await w.page.emulateMedia({reducedMotion:'reduce'});
  return c.windows[0].page;
 }

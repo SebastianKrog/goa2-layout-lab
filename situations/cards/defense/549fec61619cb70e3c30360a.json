@@ -1,0 +1,93 @@
+{
+  "schema": 2,
+  "kind": "situation",
+  "id": "549fec61619cb70e3c30360a",
+  "name": "Brogan - choose a defense card (variant 2)",
+  "decisionStateId": "544c2892b50ebbcf79e490d84d31144637506cdba90c941bfe68eae3c6d689a0",
+  "presentation": {
+    "schema": 2,
+    "sessionState": {
+      "render": "2d",
+      "pane": "board",
+      "gamePath": "/game/af038837c229",
+      "scroll": [],
+      "windowScroll": {
+        "x": 0,
+        "y": 0
+      },
+      "camera": {
+        "mode": "2d",
+        "k": 1,
+        "x": 0,
+        "y": 0
+      },
+      "inspectedCard": null,
+      "altHeld": false,
+      "selectedCard": null,
+      "inspectedHero": null,
+      "deckOpen": false,
+      "modes": {
+        "2d": {
+          "render": "2d",
+          "pane": "board",
+          "storage": {},
+          "gamePath": "/game/af038837c229",
+          "scroll": [],
+          "windowScroll": {
+            "x": 0,
+            "y": 0
+          },
+          "camera": {
+            "mode": "2d",
+            "k": 1,
+            "x": 0,
+            "y": 0
+          },
+          "inspectedCard": null,
+          "altHeld": false,
+          "selectedCard": null,
+          "inspectedHero": null,
+          "deckOpen": false
+        }
+      }
+    },
+    "userState": {},
+    "viewpoint": "hero_brogan",
+    "adapter": {
+      "uiMode": "mobile",
+      "render": "2d"
+    }
+  },
+  "summary": {
+    "phase": "RESOLUTION",
+    "round": 1,
+    "decision": "SELECT_CARD_OR_PASS",
+    "responder": "hero_brogan"
+  },
+  "backend_revision": "740ec5bbfa1aaadcf05b0df06d93ab3187e5de9a",
+  "saved_at": 1792335677.2256858,
+  "migration": {
+    "sourceId": "2b928b7b0ab4",
+    "sourceSlot": "1"
+  },
+  "provenance": {
+    "kind": "capture",
+    "references": {
+      "base": "a3c5e0a46b35a42cd6e054512ce3dbc6a61a579c",
+      "script": "ad1eed5427b91b8daaebb56c4ceafda01db5f7de"
+    },
+    "script_checksum": "90b2973fe9d63f5e6befa7bf292ddf208d8524f19cc4eec90c1b2525ca89dddc",
+    "source_slot": 0,
+    "fixture": {
+      "case": "defense-card",
+      "recipe": "scripts/create-simple-situations.py",
+      "seed": 20261017,
+      "condition": {
+        "phase": "RESOLUTION",
+        "decision": "SELECT_CARD_OR_PASS",
+        "seat": "hero_brogan",
+        "selectedCard": null
+      }
+    }
+  }
+}

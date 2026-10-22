@@ -37,13 +37,13 @@ try {
     const response = await fetch(`http://localhost:${PORTS.desk}/api/load`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ situationId: id, restoreViews: true }),
+      body: JSON.stringify({ situationId: id }),
     });
     const result = await response.json();
     assert.ok(response.ok, JSON.stringify(result));
     assert.equal(c.windows.length, 3);
     assert.deepEqual(
-      c.windows.map((w) => [w.config.source, w.config.layout, w.config.seat]),
+      c.windows.map((w) => [w.config.source, w.config.uiMode, w.config.seat]),
       [
         ["base", "desktop", seat],
         ["comparator", "mobile", seat],

@@ -1,0 +1,37 @@
+{
+  "schema": 2,
+  "kind": "situation",
+  "id": "e84c9aa0c924e8360a6ea245",
+  "name": "Arien - three pending upgrades (variant 2)",
+  "decisionStateId": "e157c8f59d1e96fe7017b58b0ee5ce0c0b51edeb1fbc887238ac7e52c1198005",
+  "presentation": {
+    "schema": 2,
+    "sessionState": {
+      "pane": "board",
+      "selectedCard": null,
+      "inspectedCard": null
+    },
+    "userState": {},
+    "viewpoint": "hero_arien",
+    "restoration": "defaulted; no historical Session State was saved",
+    "adapter": {
+      "uiMode": "mobile",
+      "render": "2d"
+    }
+  },
+  "summary": {
+    "phase": "LEVEL_UP",
+    "round": 1,
+    "decision": "UPGRADE_PHASE",
+    "responder": "simultaneous"
+  },
+  "backend_revision": "dbc9b38911ca34be5f7e2eedff3cebc86fd2453d",
+  "saved_at": 1792561059.6479754,
+  "migration": {
+    "sourceId": "3fd1f952c1a6",
+    "sourceSlot": "1"
+  },
+  "provenance": {
+    "kind": "ui-fabrication"
+  }
+}

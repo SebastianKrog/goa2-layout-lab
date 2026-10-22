@@ -8,6 +8,7 @@ from pathlib import Path
 from html import escape
 
 from fastapi import HTTPException
+from state_model import presentation as compose_presentation
 
 
 def install_device_reports(app, *, checkpoint, write, root, now):
@@ -76,7 +77,7 @@ def install_device_reports(app, *, checkpoint, write, root, now):
                       "viewport": capture["viewport"], "report": f"{prefix}/{identifier}"}
         situation = write(capture["checkpoint"], comment.strip()[:160],
                           situation_id=identifier, provenance=provenance,
-                          presentations={"0": capture["presentation"], "1": capture["presentation"]},
+                          presentation=compose_presentation(capture["presentation"], (capture["provenance"].get("slots") or [{}])[0].get("seat")),
                           group="device-reports")
         # Keep all integer-valued engine data in Python throughout capture/save.
         (folder / "situation.json").write_text(json.dumps(situation, indent=2), encoding="utf-8")

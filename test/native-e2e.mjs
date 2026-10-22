@@ -105,7 +105,7 @@ try {
     await request("load", {
       situationId: situation.id,
       slots: PRESETS["Mobile migration"],
-      restoreViews: false,
+
     });
     await ready(3);
     let views = await request("views");
@@ -231,7 +231,7 @@ try {
     await request("load", {
       situationId: situation.id,
       slots: PRESETS["Layout regression"],
-      restoreViews: false,
+
     });
     await ready(2);
     before = await request("views");
@@ -255,7 +255,7 @@ try {
   await request("load", {
     situationId: situation.id,
     slots,
-    restoreViews: false,
+
   });
   await ready(2);
   before = await request("views");

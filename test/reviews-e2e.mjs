@@ -28,6 +28,7 @@ async function until(fn, label = "Review condition") {
   }
   throw Error(label);
 }
+let diagnosticPage;
 try {
   const catalog = await c.api("/situations", undefined, "GET");
   const entries = [];
@@ -37,19 +38,14 @@ try {
     ["09fa8b1ac243", "hero_snorri", "hand"],
   ]) {
     const s = structuredClone(catalog.find((s) => s.id === source));
-    s.provenance = {
-      kind: "review-qa",
-      slots: [
-        {
-          source: "live",
-          profile: "portrait",
-          layout: "mobile",
-          render: "2d",
-          seat,
-        },
-      ],
+    delete s.checkpoint; // Clone the exact Python-owned Decision State by reference.
+    s.provenance = { kind: "review-qa" };
+    s.presentation = {
+      schema: 2,
+      viewpoint: seat,
+      sessionState: { render: "2d", pane },
+      userState: {},
     };
-    s.presentations = { 0: { render: "2d", pane } };
     const saved = await api("import", {
       content: s,
       name: `QA review ${entries.length + 1} ${pane} ${Date.now()}`,
@@ -61,17 +57,22 @@ try {
     source: "live",
     profile: "portrait",
     render: "2d",
-    layout: "mobile",
+    uiMode: "mobile",
     seat: "hero_arien",
   }));
   await api("load", { situationId: entries[0].id, slots });
   const desk = await c.browser.newPage({
     viewport: { width: 1440, height: 1000 },
   });
+  diagnosticPage = desk;
   const errors = [];
   desk.on("pageerror", (e) => errors.push(e.message));
   await desk.goto(origin);
   await desk.locator('[data-page="situations"]').click();
+  await until(
+    () => desk.locator(`#libraryGroup option[value="${group}"]`).count(),
+    "Library folder catalog did not initialize",
+  );
   await desk.locator("#libraryGroup").selectOption(group);
   assert.equal(await desk.locator("#library input[type=checkbox]").count(), 2);
   await desk.locator("#library input[type=checkbox]").first().check();
@@ -104,9 +105,9 @@ try {
   await desk.locator("#reviewStart").click();
   await until(async () => {
     const s = await api("status");
-    return !s.busy && s.review?.active;
+    return !s.busy && s.reviewRun?.active;
   });
-  let review = (await api("status")).review;
+  let review = (await api("status")).reviewRun;
   assert.equal(review.total, 2);
   assert.equal(review.index, 0);
   await desk.locator("#reviewBar").waitFor();
@@ -152,8 +153,13 @@ try {
   );
   await c.reporter.select(source, descriptor);
   assert.match(
-    (await api("review/step", { id: review.id, index: 0, direction: 1 }, false))
-      .error,
+    (
+      await api(
+        "review-runs/step",
+        { id: review.id, index: 0, direction: 1 },
+        false,
+      )
+    ).error,
     /report/,
   );
   await desk.locator("#elementReportDialog[open]").waitFor();
@@ -191,8 +197,13 @@ try {
   );
   await bubble.getByRole("button", { name: "Close", exact: true }).click();
   assert.match(
-    (await api("review/step", { id: review.id, index: 0, direction: 1 }, false))
-      .error,
+    (
+      await api(
+        "review-runs/step",
+        { id: review.id, index: 0, direction: 1 },
+        false,
+      )
+    ).error,
     /device/,
   );
   await bubble
@@ -212,7 +223,7 @@ try {
     .click();
   await until(async () => {
     const s = await api("status");
-    return !s.busy && s.review?.index === 1;
+    return !s.busy && s.reviewRun?.index === 1;
   });
   await phone.waitForURL((url) => url.pathname !== firstPhoneGame, {
     timeout: 120000,
@@ -247,7 +258,7 @@ try {
   await desk.locator("#reviewPrevious").click();
   await until(async () => {
     const s = await api("status");
-    return !s.busy && s.review.index === 0;
+    return !s.busy && s.reviewRun.index === 0;
   });
   const revision = [...app.devices.sessions.values()][0].revision;
   await phone.waitForFunction(
@@ -263,7 +274,7 @@ try {
   assert.ok(c.windows.every((w) => w.config.seat === "hero_arien"));
   await until(() => desk.locator("#reviewEnd").isEnabled());
   await desk.locator("#reviewEnd").click();
-  await until(async () => !(await api("status")).review.active);
+  await until(async () => !(await api("status")).reviewRun.active);
   const folder = path.join(DATA, "reports", "reviews", review.id);
   const manifest = JSON.parse(
     await fs.readFile(path.join(folder, "review.json"), "utf8"),
@@ -303,6 +314,15 @@ try {
     ),
   );
   console.log("Review workflow acceptance passed:", folder);
+} catch (error) {
+  if (diagnosticPage) {
+    await fs.writeFile(
+      path.join(out, "failure.txt"),
+      await diagnosticPage.locator("body").innerText(),
+    );
+    await diagnosticPage.screenshot({ path: path.join(out, "failure.png") });
+  }
+  throw error;
 } finally {
   await app.close();
 }

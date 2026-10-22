@@ -37,7 +37,7 @@ test("saved mobile selection ignores hidden panes, waits for Hand, and restores 
         selectedCard: "noble_blade",
         inspectionMobile: "noble_blade",
       },
-      { layout: "mobile", source: "comparator", render: "2d" },
+      { uiMode: "mobile", source: "comparator", render: "2d" },
     );
     assert.deepEqual(warnings, []);
     assert.equal(
@@ -72,7 +72,7 @@ test("focused mobile hero capture and restore uses the visible safe focus contro
       }),
     );
     await page.goto("http://fixture.test/");
-    const config = { layout: "mobile", source: "live", render: "2d" };
+    const config = { uiMode: "mobile", source: "live", render: "2d" };
     assert.deepEqual(
       await restorePresentation(
         page,
@@ -122,7 +122,7 @@ test("decision spell inspection restores through its parent without selecting a 
     };
     assert.deepEqual(
       await restorePresentation(page, saved, {
-        layout: "mobile",
+        uiMode: "mobile",
         source: "live",
         render: "2d",
       }),

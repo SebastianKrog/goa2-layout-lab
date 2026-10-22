@@ -16,20 +16,18 @@ moment again; it does not retain gameplay performed on an earlier visit.
 
 ## Past reviews and reruns
 
-The **Reviews** tab lists saved collections, newest first. Each card shows the
+The **Reviews** tab groups Runs under their Review, newest first. Each card shows the
 creation date, status, situation count, distinct situations visited, last position,
-report count, situations with reports, view count and report types. Older
-collections without visit tracking show that statistic as unavailable. An
+report count, situations with reports, view count and report types. An
 **Interrupted** status means the desk stopped while the saved review was active;
 review sessions do not resume automatically.
 
-**Run again** creates a fresh review using the original queue and exact saved
-snapshots, even if those Situations were changed or removed from the library.
+**Run again** creates a new Run of the same Review revision. **Original saved snapshots** is the default input, even if the library changed. **Current library Situations** explicitly rereads the queue IDs from the library.
 Current views define the frontend sources and layouts; when no views are running,
 the previous review's saved view configurations are used. Earlier reports and
-snapshots stay untouched, and the new collection records its parent review ID.
+snapshots stay untouched, and the new collection records its parent Run ID.
 
-**Edit and run** opens a queue editor. Keep or remove original entries, search the
+**Edit and run** opens a queue editor and creates a new immutable Review revision plus a Run. Keep or remove original entries, search the
 current library for additions, and give the new run a name. Retained entries use
 their original snapshots; additions are snapshotted from the library when started.
 Retained entries keep their original order, followed by additions in library order.
@@ -39,20 +37,18 @@ before starting another; its card offers **Continue review** to return to Compar
 
 ## What a step restores
 
-A **Review** is a queue plus an evidence collection, separate from its Situations.
-The review snapshots each selected Situation at start in the lab Python adapter
-(so large engine integers never pass through JavaScript for replay), including any legacy
-presentation/viewpoint metadata. It never rewrites library entries.
+A **Review** is a reusable ordered queue with immutable revisions. Each execution
+creates a **Review Run** with frozen composed Situations, progress and reports.
+Situations include explicit Presentation (Viewpoint, Session State and User State).
+The Python adapter copies their exact Decision States at Run start so large engine
+integers do not pass through JavaScript for replay. Library entries are not rewritten.
 
-Current frontend sources/revisions, view count, device profiles, renderers and
-layouts are retained. For a legacy bundled entry, match its saved slot by source,
-layout and renderer, then by layout/renderer, then by index/first slot. Restore
-that slot's viewpoint and compatible Presentation. If the selected hero is absent,
-the existing roster fallback chooses an available viewpoint. Plain Situations
-with no Presentation open on Board with default UI state; an absent saved
-viewpoint uses the configured viewpoint when available. Incompatible or unavailable
-presentation controls retain the existing restore warnings in the affected view.
-Independent Presentation records are not automatically associated with Situations.
+Current frontend sources/revisions, view count, device profiles, renderers and UI
+modes are retained. Restore each Situation's Presentation, with Layout defaults
+below it and explicit View overrides above it. Choose **Follow situation** to let
+the queue change Viewpoint. Unsupported controls or unavailable heroes produce
+warnings and effective-state evidence. Presentation templates are copied into
+Situations when selected; they are not associated by name or applied implicitly.
 
 Review views use manual controllers and disable auto switch, so bots or automatic
 viewpoint changes cannot move away from the saved moment during inspection. API
@@ -86,9 +82,9 @@ A device capture requested while a step is loading is rejected with a retry mess
 Capture, element reports, device reports and HTML/CSS exports are saved under:
 
 ```text
-.layout-lab/reports/reviews/<review-id>/
+.layout-lab/reports/reviews/<run-id>/
   index.html             # offline collection, grouped by queue entry
-  review.json            # queue metadata, snapshot references and report index
+  review.json            # Review Run, revision/entry IDs, snapshot references and report index
   situations/000.json    # exact checkpoint snapshots, saved by the Python adapter
   reports/
     <capture-id>/
@@ -97,7 +93,7 @@ Capture, element reports, device reports and HTML/CSS exports are saved under:
     source-<uuid>/
 ```
 
-Each report records its review ID, queue index and starting Situation ID in
+Each report records its Review ID/revision, Run ID, stable entry ID, queue index and starting Situation ID in
 addition to its normal screenshot/checkpoint/presentation/viewpoint/revision data.
 Element and device reports retain capture-time attribution while comments are
 written. Reports remain readable after ending or stopping the desk, by opening the
@@ -108,16 +104,16 @@ collection and queue remain available in **Reviews** and as files.
 
 ## API and checks
 
-- `GET /api/review` or `/api/status.review` reads progress and the collection URL.
-- `POST /api/review/start {ids,name?,slots?}` snapshots and starts a queue. Existing
+- `GET /api/review-runs/current` reads progress and the collection URL; `GET /api/status` includes the same progress in `reviewRun`.
+- `POST /api/review-runs/start {ids,name?,slots?}` snapshots and starts a queue. Existing
   views define sources; `slots` applies when the desk has no running views.
-- `GET /api/reviews` lists saved collection statistics; `GET /api/reviews/<id>`
+- `GET /api/reviews` lists Review definitions with their Runs; `GET /api/review-runs` lists Run statistics. `GET /api/review-runs/<id>`
   returns its queue metadata without checkpoints.
-- `POST /api/review/rerun {id,name?,entries?,slots?}` creates a fresh run. Omit
+- `POST /api/review-runs/rerun {id,name?,entries?,slots?,inputs?:"frozen"|"library"}` creates a fresh run. Omit
   `entries` to retain the entire queue, or supply ordered `{fromIndex}` items for
   saved entries and `{situationId}` items for library additions.
-- `POST /api/review/step {id,index,direction:-1|1}` moves all views.
-- `POST /api/review/end {}` finishes without removing evidence or current games.
+- `POST /api/review-runs/step {id,index,direction:-1|1}` moves all views.
+- `POST /api/review-runs/end {}` finishes without removing evidence or current games.
 - Device-only authenticated routes expose review status/navigation within that
   device's existing capability cookie. The device cannot choose arbitrary queues,
   source settings or filesystem paths.
@@ -136,3 +132,8 @@ stays in `.layout-lab/reviews/review-workflow/`.
 canceling an edit, editing the queue and restoring both views. It writes evidence
 to `.layout-lab/reviews/review-history/`. The unit and Python suites also check
 restart discovery and exact snapshot copying without rereading the library.
+
+Review definitions are stored as immutable revisions under
+`.layout-lab/reports/reviews/_definitions/<review-id>/<revision>.json`. Run folders
+retain their own frozen snapshots. The old report/review history was cleared for
+the new-model cutover; there is no historical-format adapter.

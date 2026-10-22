@@ -68,8 +68,8 @@ try {
       await c.load(
         id,
         [
-          { source: "live", layout: "mobile" },
-          { source: "target", layout: "desktop" },
+          { source: "live", uiMode: "mobile" },
+          { source: "target", uiMode: "desktop" },
         ].map((w) => ({ ...w, profile, render: "2d", seat })),
         {},
         s,
@@ -273,14 +273,14 @@ try {
   await c.load("0601f17bbdab", [
     {
       source: "live",
-      layout: "mobile",
+      uiMode: "mobile",
       profile: "portrait",
       render: "2d",
       seat: "hero_snorri",
     },
     {
       source: "target",
-      layout: "desktop",
+      uiMode: "desktop",
       profile: "portrait",
       render: "2d",
       seat: "hero_snorri",

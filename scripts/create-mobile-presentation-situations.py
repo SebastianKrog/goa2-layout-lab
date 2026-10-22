@@ -43,7 +43,7 @@ def write(key, state, hero):
             'slots': [{'source': 'live', 'profile': 'portrait', 'render': '2d', 'layout': 'mobile', 'seat': seat}
                       for seat in (str(hero.id), 'spectator')]}, 'presentations': {}}
     path = args.output / (key + '.json')
-    path.write_text(json.dumps(payload, indent=2), encoding='utf-8')
+    path.write_text(json.dumps(lab.portable_situation(payload), indent=2), encoding='utf-8')
     outputs.append(str(path))
 
 for count in [0, 1, 3, 9, 10]:

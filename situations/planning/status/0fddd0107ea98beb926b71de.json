@@ -1,0 +1,40 @@
+{
+  "schema": 2,
+  "kind": "situation",
+  "id": "0fddd0107ea98beb926b71de",
+  "name": "M3 presentation - shell-long-waiting-status (variant 2)",
+  "decisionStateId": "e3cfc48c2aec04f548f2a5ae020929e4254d5fb0894c107884dadc760ff6cee0",
+  "presentation": {
+    "schema": 2,
+    "sessionState": {
+      "pane": "board",
+      "selectedCard": null,
+      "inspectedCard": null
+    },
+    "userState": {},
+    "viewpoint": "hero_arien",
+    "restoration": "defaulted; no historical Session State was saved",
+    "adapter": {
+      "uiMode": "mobile",
+      "render": "2d"
+    }
+  },
+  "summary": {
+    "phase": "PLANNING",
+    "round": 1,
+    "decision": null,
+    "responder": null
+  },
+  "backend_revision": "740ec5bbfa1aaadcf05b0df06d93ab3187e5de9a",
+  "saved_at": 1792478417.9190946,
+  "migration": {
+    "sourceId": "ee0dd0fe03ce",
+    "sourceSlot": "1"
+  },
+  "provenance": {
+    "kind": "ui-fabrication",
+    "fixture": {
+      "case": "shell-long-waiting-status"
+    }
+  }
+}

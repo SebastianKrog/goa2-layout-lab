@@ -1,4 +1,5 @@
-﻿import fs from "node:fs/promises";
+import { toPresentation } from "./presentation-model.mjs";
+import fs from "node:fs/promises";
 import path from "node:path";
 import { randomUUID, createHash } from "node:crypto";
 import { PNG } from "pngjs";
@@ -7,6 +8,23 @@ import { DATA } from "./config.mjs";
 import { capturePresentation } from "./presentation.mjs";
 import { delay, git } from "./services.mjs";
 import { normalizeCrop, resolveCrop, cropImage } from "./element-crop.mjs";
+
+export const reviewAttribution = (context) =>
+  context
+    ? Object.fromEntries(
+        [
+          "id",
+          "runId",
+          "reviewId",
+          "reviewRevision",
+          "entryId",
+          "index",
+          "situationId",
+        ]
+          .filter((key) => context[key] !== undefined)
+          .map((key) => [key, context[key]]),
+      )
+    : null;
 
 export const escapeHTML = (value) =>
   String(value ?? "").replace(
@@ -151,14 +169,9 @@ export async function captureReport(comparison, indexes, options = {}) {
   await fs.mkdir(dir, { recursive: true });
   const metadata = {
     id,
-    review: collection
-      ? {
-          id: collection.id,
-          index: collection.index,
-          situationId: collection.situationId,
-        }
-      : null,
+    review: reviewAttribution(collection),
     capturedAt: new Date().toISOString(),
+    sourceEvidence: (await comparison.services?.provenance?.()) || null,
     ...comparison.status(),
     captures: [],
     pairs: [],
@@ -215,6 +228,11 @@ export async function captureReport(comparison, indexes, options = {}) {
         ...win.config,
         state,
         presentation,
+        presentationResolution: {
+          intended: win.intendedPresentation || null,
+          effective: toPresentation(presentation, win.config.seat),
+          overrides: win.config.overrides || {},
+        },
         occurrence,
         parts: individual ? [] : partFiles,
         width: capture.image.width,

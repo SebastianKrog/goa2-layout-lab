@@ -63,52 +63,36 @@ const situation = catalog.situations.find(s => s.id === requestedSituationId);
 if (!situation) throw Error("Requested situation is not in this desk's library");
 const seat = "hero_arien"; // use the actual chooser, e.g. hero_brogan for defense/discard
 const slots = [
-  {label:"Commit A",source:"base",profile:"desktop",render:"2d",layout:"desktop",seat},
-  {label:"Commit B",source:"comparator",profile:"desktop",render:"2d",layout:"desktop",seat},
+  {label:"Commit A",source:"base",profile:"desktop",render:"2d",uiMode:"desktop",seat},
+  {label:"Commit B",source:"comparator",profile:"desktop",render:"2d",uiMode:"desktop",seat},
 ];
-await request("load", {situationId:situation.id,slots,restoreViews:false});
+await request("load", {situationId:situation.id,slots});
 await request("synchronize", {mode:"none"});
 await request("cheats", {show:false});
 const status = await request("status"), views = await request("views");
 ~~~
 
-This deliberate restoreViews:false example ignores saved presentation and saved slots. Arrange the panels/selection/camera afterward; it is unsuitable by itself when the fixture's selected card or exact saved camera is essential.
+Loading retains the supplied View settings and applies the Situation's composed Presentation. Use `overrides` to pin an intentional Viewpoint, panel or camera, and record such overrides when judging parity.
 
-A two-phone comparison can use portrait/2d with desktop Base and a supported mobile Comparator. A third script view is {label:"A + userscript",source:"target",profile:"portrait",render:"2d",layout:"desktop",seat}. For three comparable phone columns set the other profiles to portrait too. Use render:"3d" and desktop layout/profile on both A and B for two desktop 3D views. The current slot validator accepts one, two or three entries, Base desktop shell, and Target desktop/2d. Two different commits with both native mobile shells are not currently expressible via Base/Comparator; report that limit if requested rather than passing both through the one Comparator source.
+A two-phone comparison can use portrait/2d with desktop Base and a supported mobile Comparator. A third script view is {label:"A + userscript",source:"target",profile:"portrait",render:"2d",uiMode:"desktop",seat}. For three comparable phone columns set the other profiles to portrait too. Use render:"3d" and desktop layout/profile on both A and B for two desktop 3D views. The current slot validator accepts one, two or three entries, Base desktop shell, and Target desktop/2d. Two different commits with both native mobile shells are not currently expressible via Base/Comparator; report that limit if requested rather than passing both through the one Comparator source.
 
 ## Preserve saved presentation when changing the slot set
 
-restoreViews:true uses situation.provenance.slots when present, even if the request supplies a different slots array. It also restores situation.presentations by slot index. This can silently restore a saved three-view mobile setup when the user asked for two desktop views.
+A Situation contains one explicit Presentation. Distinct saved player/UI variants are separate Situations sharing a Decision State. To adapt a comparison, keep that Decision State, choose Views with the required sources/devices/interfaces, and set explicit Presentation overrides when needed. For example:
 
-To preserve compatible UI state with a new slot set, import a local derivative whose slots/presentation indexes are explicit:
+```js
+const slots = [
+  {source:"base",profile:"desktop",render:"3d",uiMode:"desktop",seat,
+   overrides:{viewpoint:seat,sessionState:{render:"3d",pane:"board",camera:null}}},
+  {source:"comparator",profile:"desktop",render:"3d",uiMode:"desktop",seat,
+   overrides:{viewpoint:seat,sessionState:{render:"3d",pane:"board",camera:null}}},
+];
+await request("load",{situationId:situation.id,slots});
+```
 
-~~~javascript
-const derivative = structuredClone(situation);
-const oldSlots = situation.provenance?.slots || [];
-derivative.provenance = {...derivative.provenance,slots};
-derivative.presentations = {};
-for (let i = 0; i < slots.length; i++) {
-  const slot = slots[i];
-  const oldIndex = oldSlots.findIndex(s => ["source","seat","profile","render","layout"].every(k => s[k] === slot[k]));
-  if (oldIndex >= 0 && situation.presentations?.[oldIndex]) {
-    derivative.presentations[i] = structuredClone(situation.presentations[oldIndex]);
-  }
-}
-const draft = await request("import", {content:derivative,name:situation.name + " - comparison setup"});
-await request("load", {situationId:draft.id,restoreViews:true});
-~~~
+Use Save Situation to capture a new moment; Save Layout stores View settings independently. Presentation templates can be applied without changing the game. There is no bundled legacy restore mode.
 
-Only same-slot presentation is copied by this conservative example. Reapply intent through real controls/adapters for unmatched seats/layouts/renderers/devices and verify it; a saved 2D camera cannot be sent to a 3D view. If the comparison must preserve a selected planning card, use the available goa2-ui-situations instructions and restorePresentation adapter, or an explicit valid selectedCard presentation on the derivative. Do not click cards in a pending defense/discard/upgrade prompt merely to add a highlight. Keep the library's curated original unchanged; save captures/presets as local drafts unless asked to promote them.
-
-## Align and inspect
-
-POST /api/pane {index,pane:"hand"|"deck"|"heroes"|"board"|"log"|"settings"} uses the layout's real panel or inline equivalent. POST /api/camera {from:0,indexes:[1]} copies camera only between matching renderer modes; use [1,2] for three matching views. POST /api/hero {index,heroId} opens 3D inspection or scrolls/records 2D hero focus; it does not open a 2D hero tooltip. Fit/100%/Expand change desk display scale, not emulated viewport dimensions.
-
-GET /api/views includes each view's config, canonical game hash/decision summary, presentation and scriptActive. GET /api/status includes loaded refs, comparator SHA, script revision/checksum, warnings, errors, assets, sync and runtime. Check both. Matching hashes do not mean matching private seats or panels. Native mobile Hand can mount asynchronously; current adapters wait for the panel/card. The instrumenter handles CRLF checkouts. Use reported warnings to find a stale/unsupported adapter instead of faking presentation state.
-
-For fixed evidence, disable Live updates. POST /api/live {enabled:false} switches live slots back to committed comparator; then confirm status. POST /api/refresh {ref:exactSha} selects B. Do not enable live while claiming to compare two commits.
-
-## Synchronize and hand off
+## Synchronization
 
 POST /api/synchronize {mode:"none"|"api"|"api-clicks"}. Any interacted view can drive the others. API mode mirrors game actions using the actor's seat while UI stays independent. API + clicks also mirrors matching semantic UI controls without submitting the game action twice. Unmatched controls are skipped. Neither mode guarantees camera/drag/keyboard parity. Reset/load the same checkpoint before enabling sync if games diverged. Use None while arranging different UI states, API when matching game progression, and API + clicks when the human wants matching supported controls.
 
@@ -123,7 +107,7 @@ saved situation. It returns a LAN link and locally generated QR code, without
 replacing comparison windows. The injected report userscript saves a screenshot,
 comment and resumable situation into the lab. See [device testing](../../../../docs/device-testing.md)
 for setup and limits. The private desk API exposes GET /api/device/options?situationId=ID,
-GET /api/device/views, POST /api/device-open {situationId,slot,restoreViews,bots?}, and
+GET /api/device/views, POST /api/device-open {situationId,slot,bots?}, and
 POST /api/device-stop {id}. Keep returned capability links private. A stopped desk
 revokes all links. No frontend or production-backend edits are required.
 

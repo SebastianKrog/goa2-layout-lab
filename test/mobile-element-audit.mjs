@@ -416,8 +416,8 @@ try {
     console.log("AUDIT LOAD", spec.key);
     const s = await c.api("/situations/" + spec.id, undefined, "GET");
     const slots = [
-      { source: "comparator", layout: "mobile" },
-      { source: "target", layout: "desktop" },
+      { source: "comparator", uiMode: "mobile" },
+      { source: "target", uiMode: "desktop" },
     ].map((w) => ({
       ...w,
       seat: spec.seat,

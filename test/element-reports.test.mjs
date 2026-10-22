@@ -132,7 +132,7 @@ test("picker reports all views, captures CSS/HTML/checkpoints without overlays, 
         config: {
           source: i === 0 ? "base" : "comparator",
           render: "2d",
-          layout: "desktop",
+          uiMode: "desktop",
           profile: "desktop",
           seat: "hero",
         },

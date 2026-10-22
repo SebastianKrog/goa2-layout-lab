@@ -63,22 +63,46 @@ const human = (value) =>
         .replace(/^hero_/, "")
         .replaceAll("_", " ")
         .replace(/\b\w/g, (c) => c.toUpperCase());
+const stableValue = (value) =>
+  Array.isArray(value)
+    ? value.map(stableValue)
+    : value && typeof value === "object"
+      ? Object.fromEntries(
+          Object.keys(value)
+            .sort()
+            .map((key) => [key, stableValue(value[key])]),
+        )
+      : value;
+const presentationKey = (value) => ({
+  ...(Object.hasOwn(value || {}, "viewpoint")
+    ? { viewpoint: value.viewpoint }
+    : {}),
+  sessionState: value?.sessionState || {},
+  userState: value?.userState || {},
+});
 const configKey = (c) =>
-  JSON.stringify([
-    c.source,
-    c.profile,
-    c.render,
-    c.layout,
-    c.seat,
-    !!c.autoSwitch,
-    Object.entries(c.bots || {}).sort(([a], [b]) => a.localeCompare(b)),
-  ]);
+  JSON.stringify(
+    stableValue({
+      source: c.source,
+      profile: c.profile,
+      render: c.render,
+      uiMode: c.uiMode,
+      label: c.label || "",
+      autoSwitch: !!c.autoSwitch,
+      bots: c.bots || {},
+      defaults: presentationKey(
+        c.presentationDefaults || { viewpoint: c.seat },
+      ),
+      overrides: presentationKey(c.overrides),
+    }),
+  );
 const viewKey = (w) =>
   w
     ? (w.nativeId ? "native" : w.index) +
       ":" +
       w.gameId +
       configKey(w.config) +
+      w.config.seat +
       !!w.closed +
       (w.nativeId || "")
     : "";
@@ -142,13 +166,6 @@ async function call(name, body = {}) {
   if (!r.ok) throw new Error(v.error || "The action could not be completed.");
   return v;
 }
-function hasSavedViewSetup() {
-  const situation = selectedSituation();
-  return !!(
-    situation?.provenance?.slots?.length ||
-    Object.keys(situation?.presentations || {}).length
-  );
-}
 function controls() {
   const busy = running || state.busy || disconnected;
   document.body.classList.toggle("busy", running || !!state.busy);
@@ -188,10 +205,6 @@ function controls() {
     });
   $("addView").disabled = !!busy || configs.length >= 3;
   $("addView").title = configs.length >= 3 ? "Up to three views" : "Add a view";
-  $("restore").disabled = !!busy || !hasSavedViewSetup();
-  $("savedViewHelp").textContent = hasSavedViewSetup()
-    ? "Restores saved views, players, screens, cameras and panels. Off keeps your setup. The game moment always loads."
-    : "No saved view setup. Your current setup will be used; the saved game moment still loads.";
   updateReviewControls();
   reviewHistory?.updateState();
 }
@@ -303,7 +316,6 @@ function setPreset() {
   if (!catalog.presets[$("preset").value]) return;
   configs = structuredClone(catalog.presets[$("preset").value]);
   $("count").value = configs.length;
-  $("restore").checked = false;
   draftSetup = true;
   render();
   updateStatus();
@@ -485,16 +497,38 @@ function field(host, labelText, key, values) {
   const label = el("label", "", labelText),
     input = values ? el("select") : el("input");
   input.setAttribute("aria-label", labelText);
-  if (values) fill(input, values, editDraft[key]);
+  if (values)
+    fill(
+      input,
+      values,
+      key === "viewpointOverride"
+        ? (editDraft.overrides?.viewpoint ?? "__follow")
+        : key === "interfacePreset"
+          ? editDraft.uiMode === "mobile"
+            ? "mobile"
+            : editDraft.render
+          : editDraft[key],
+    );
   else {
     input.value = editDraft[key] || "";
     input.maxLength = 80;
     input.placeholder = "Optional, e.g. Arien / close camera";
   }
   input.onchange = () => {
-    editDraft[key] = input.value;
+    if (key === "viewpointOverride") {
+      editDraft.overrides = { ...editDraft.overrides };
+      if (input.value === "__follow") delete editDraft.overrides.viewpoint;
+      else {
+        editDraft.overrides.viewpoint = input.value;
+        editDraft.seat = input.value;
+      }
+      editorBots();
+    } else if (key === "interfacePreset") {
+      editDraft.render = input.value === "3d" ? "3d" : "2d";
+      editDraft.uiMode = input.value === "mobile" ? "mobile" : "desktop";
+    } else editDraft[key] = input.value;
     if (key === "seat") editorBots();
-    if (["source", "render", "layout"].includes(key)) {
+    if (["source", "render", "uiMode", "interfacePreset"].includes(key)) {
       normalizeDraft();
       editorFields();
       fill(
@@ -516,12 +550,13 @@ function field(host, labelText, key, values) {
   host.append(label);
 }
 function normalizeDraft() {
-  if (editDraft.source === "base") editDraft.layout = "desktop";
+  editDraft.uiMode ??= "desktop";
+  if (editDraft.source === "base") editDraft.uiMode = "desktop";
   if (editDraft.source === "target") {
     editDraft.render = "2d";
-    editDraft.layout = "desktop";
+    editDraft.uiMode = "desktop";
   }
-  if (editDraft.render === "3d") editDraft.layout = "desktop";
+  if (editDraft.render === "3d") editDraft.uiMode = "desktop";
 }
 function editorFields() {
   const host = $("editorFields");
@@ -529,6 +564,13 @@ function editorFields() {
   field(host, "View name", "label");
   field(host, "Source", "source", Object.entries(sourceNames));
   field(host, "Device", "profile", Object.entries(devices));
+  field(host, "Interface preset", "interfacePreset", [
+    ["2d", "Desktop · 2D"],
+    ...(!["base", "target"].includes(editDraft.source)
+      ? [["mobile", "Mobile · 2D"]]
+      : []),
+    ...(editDraft.source !== "target" ? [["3d", "Desktop · 3D"]] : []),
+  ]);
   field(
     host,
     "Renderer",
@@ -542,8 +584,8 @@ function editorFields() {
   );
   field(
     host,
-    "Layout",
-    "layout",
+    "UI mode",
+    "uiMode",
     ["base", "target"].includes(editDraft.source) || editDraft.render === "3d"
       ? [["desktop", "Desktop shell"]]
       : [
@@ -551,7 +593,8 @@ function editorFields() {
           ["mobile", "Native mobile shell"],
         ],
   );
-  field(host, "Viewpoint", "seat", [
+  field(host, "Viewpoint", "viewpointOverride", [
+    ["__follow", "Follow situation"],
     ...editorSeats.map((id) => [id, human(id)]),
     ["spectator", "Spectator"],
   ]);
@@ -669,7 +712,9 @@ async function openEditor(i) {
     call("configure", { update: { profile: editDraft.profile } }),
   );
   action("Use viewpoint for all", "Updating viewpoints…", () =>
-    call("configure", { update: { seat: editDraft.seat } }),
+    call("configure", {
+      update: { seat: editDraft.seat, overrides: editDraft.overrides },
+    }),
   );
   action("Copy camera to matching views", "Copying camera…", () =>
     call("camera", {
@@ -919,7 +964,6 @@ function renderLibrary() {
     card.append(
       button("Open situation", () => {
         $("situation").value = s.id;
-        $("restore").checked = false;
         navigate("compare");
         void loadComparison();
       }),
@@ -935,7 +979,7 @@ function renderLibrary() {
 
 function updateReviewControls() {
   const busy = running || state.busy || disconnected,
-    review = state.review;
+    review = state.reviewRun;
   const chosen = filteredSituations.filter((s) =>
     reviewSelection.has(s.id),
   ).length;
@@ -974,7 +1018,6 @@ function updateReviewControls() {
       "preset",
       "count",
       "liveUpdates",
-      "restore",
       "revision",
       "refresh",
     ])
@@ -995,7 +1038,7 @@ $("reviewStart").onclick = () =>
     const ids = catalog.situations
       .filter((s) => reviewSelection.has(s.id))
       .map((s) => s.id);
-    const result = await call("review/start", {
+    const result = await call("review-runs/start", {
       ids,
       name: $("reviewName").value,
       slots: configs,
@@ -1009,14 +1052,14 @@ for (const [id, direction] of [
 ])
   $(id).onclick = () =>
     void task("Loading review situation…", () =>
-      call("review/step", {
-        id: state.review.id,
-        index: state.review.index,
+      call("review-runs/step", {
+        id: state.reviewRun.id,
+        index: state.reviewRun.index,
         direction,
       }),
     );
 $("reviewEnd").onclick = () =>
-  void task("Ending review…", () => call("review/end"));
+  void task("Ending review…", () => call("review-runs/end"));
 
 function definitionList(host, entries) {
   host.replaceChildren();
@@ -1171,7 +1214,13 @@ async function loadComparison() {
     state = await call("load", {
       situationId: $("situation").value,
       slots: configs,
-      restoreViews: $("restore").checked,
+      ...($("preset").value !== "__custom"
+        ? {
+            layoutId: (catalog.layouts || []).find(
+              (l) => l.name === $("preset").value,
+            )?.id,
+          }
+        : {}),
     });
     syncViews();
     notify("Comparison loaded.");
@@ -1180,14 +1229,12 @@ async function loadComparison() {
 $("preset").onchange = setPreset;
 $("count").onchange = () => {
   draftSetup = true;
-  $("restore").checked = false;
   render();
   updateStatus();
 };
 $("situation").onchange = () => {
   draftSetup = $("situation").value !== state.situationId;
   updateStatus();
-  $("restore").checked = false;
   controls();
 };
 $("load").onclick = loadComparison;
@@ -1204,6 +1251,35 @@ $("clear").onclick = () =>
     { sync: false },
   );
 
+$("composeSituation").onclick = () => {
+  fill(
+    $("composeDecisionState"),
+    (catalog.decisionStates || []).map((d) => [d.id, d.name]),
+  );
+  fill($("composePresentation"), [
+    ["", "Default Board / Follow view"],
+    ...(catalog.presentations || []).map((p) => [p.id, p.name]),
+  ]);
+  $("composeSituationName").value = "";
+  $("composeSituationDialog").showModal();
+};
+$("composeSituationForm").onsubmit = (event) => {
+  event.preventDefault();
+  void task("Creating Situation…", async () => {
+    const template = (catalog.presentations || []).find(
+      (p) => p.id === $("composePresentation").value,
+    );
+    const s = await call("situation/compose", {
+      name: $("composeSituationName").value,
+      decisionStateId: $("composeDecisionState").value,
+      ...(template ? { presentation: template.state } : {}),
+    });
+    $("composeSituationDialog").close();
+    await reloadCatalog();
+    $("situation").value = s.id;
+    notify("Situation created.");
+  });
+};
 $("save").onclick = () => {
   $("name").value = "";
   $("saveDialog").showModal();
@@ -1221,14 +1297,20 @@ $("saveForm").onsubmit = (event) => {
       return;
     }
     if ($("saveKind").value === "setup") {
-      await call("preset", { name, slots: configs });
-      notify("View setup saved in comparison tools.");
+      await call("layout/save", { name, slots: configs });
+      notify("Layout saved in comparison tools.");
       return;
     }
-    const s = await call("save", { name, index });
+    const s = await call("save", { name, index, kind: $("saveKind").value });
+    if ($("saveKind").value === "decision-state") {
+      await reloadCatalog();
+      notify(
+        "Decision State saved. It can be reused when creating a Situation.",
+      );
+      return;
+    }
     await reloadCatalog();
     $("situation").value = s.id;
-    $("restore").checked = false;
     notify("Situation saved.");
   });
 };
@@ -1242,7 +1324,7 @@ $("savePreset").onclick = () => {
   void task(
     "Saving view setup…",
     async () => {
-      await call("preset", { name, slots: configs });
+      await call("layout/save", { name, slots: configs });
       notify("View setup saved in the Comparison menu.");
     },
     { sync: false },
@@ -1442,7 +1524,7 @@ reviewHistory = initReviewsPanel({
   navigate,
   getCatalog: () => catalog,
   canRun: () =>
-    !running && !state.busy && !state.review?.active && !disconnected,
+    !running && !state.busy && !state.reviewRun?.active && !disconnected,
   showError,
 });
 void reviewHistory.refresh();

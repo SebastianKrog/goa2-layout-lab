@@ -127,12 +127,12 @@ export function initDevicePanel({
         const view = await call("device-open", {
           bots,
           situationId,
-          restoreViews: $("deviceRestore").checked,
           slot: {
             source: $("deviceSource").value,
             seat: $("deviceSeat").value,
+            overrides: { viewpoint: $("deviceSeat").value },
             render: mode === "3d" ? "3d" : "2d",
-            layout: mode === "mobile" ? "mobile" : "desktop",
+            uiMode: mode === "mobile" ? "mobile" : "desktop",
             profile: mode === "3d" ? "desktop" : "portrait",
           },
         });

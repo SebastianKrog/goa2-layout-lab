@@ -44,12 +44,12 @@ try {
     source: "live",
     seat: "hero_arien",
     profile: "portrait",
-    layout: "mobile",
+    uiMode: "mobile",
     render: "2d",
   };
   await api("load", {
     situationId: "a00000000001",
-    restoreViews: false,
+
     slots: [slot, { ...slot, label: "Second view" }],
   });
   const desk = native

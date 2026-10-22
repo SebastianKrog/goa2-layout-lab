@@ -1,3 +1,6 @@
+import { makeLayout, layoutSlots } from "./layouts.mjs";
+import { ReviewDefinitions } from "./review-definitions.mjs";
+import { resolveView } from "./presentation-model.mjs";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { randomBytes } from "node:crypto";
@@ -18,12 +21,17 @@ export class Reviews {
     this.current = null;
     this.records = new Map();
     this.writes = Promise.resolve();
+    this.definitions = new ReviewDefinitions(path.join(root, "_definitions"));
   }
   status() {
     const r = this.current;
     return r
       ? {
           id: r.id,
+          runId: r.id,
+          reviewId: r.reviewId,
+          reviewRevision: r.reviewRevision,
+          entryId: r.entries[r.index]?.entryId || `${r.id}:${r.index}`,
           name: r.name,
           active: r.active,
           index: r.index,
@@ -52,6 +60,10 @@ export class Reviews {
             await fs.readFile(path.join(this.root, id, "review.json"), "utf8"),
           );
     if (
+      r.schema !== 2 ||
+      r.kind !== "review-run" ||
+      !r.reviewId ||
+      !Number.isSafeInteger(r.reviewRevision) ||
       r.id !== id ||
       !Array.isArray(r.entries) ||
       !r.entries.length ||
@@ -74,6 +86,9 @@ export class Reviews {
         (kinds[report.kind || "report"] || 0) + 1;
     return {
       id: r.id,
+      runId: r.id,
+      reviewId: r.reviewId,
+      reviewRevision: r.reviewRevision,
       name: r.name,
       createdAt: r.createdAt,
       endedAt: r.endedAt || null,
@@ -84,8 +99,8 @@ export class Reviews {
       reports: r.reports.length,
       reportedSituations: new Set(r.reports.map((p) => p.index)).size,
       reportKinds: kinds,
-      views: r.configs?.length || 0,
-      parentReviewId: r.parentReviewId || null,
+      views: r.layout.views.length,
+      parentRunId: r.parentRunId || null,
       url: `/reports/reviews/${r.id}/index.html`,
     };
   }
@@ -95,7 +110,8 @@ export class Reviews {
     try {
       dirs = await fs.readdir(this.root, { withFileTypes: true });
     } catch (error) {
-      if (error.code === "ENOENT") return { reviews: [], warnings: [] };
+      if (error.code === "ENOENT")
+        return { runs: [], reviews: [], warnings: [] };
       throw error;
     }
     const reviews = [],
@@ -115,24 +131,36 @@ export class Reviews {
         (b.createdAt || "").localeCompare(a.createdAt || "") ||
         b.id.localeCompare(a.id),
     );
-    return { reviews, warnings };
+    const groups = [];
+    for (const review of reviews) {
+      let group = groups.find((g) => g.id === review.reviewId);
+      if (!group) {
+        group = { id: review.reviewId, name: review.name, runs: [] };
+        groups.push(group);
+      }
+      group.runs.push(review);
+    }
+    return { runs: reviews, reviews: groups, warnings };
   }
   async detail(id) {
     const r = await this.saved(id);
     return {
       ...this.summary(r),
-      entries: r.entries.map(({ situation }, index) => ({
+      entries: r.entries.map(({ situation, entryId }, index) => ({
         index,
+        entryId,
         situationId: situation.id,
         name: situation.name,
         summary: situation.summary || {},
       })),
     };
   }
-  async rerun({ id, entries, name, slots }) {
+  async rerun({ id, entries, name, slots, inputs = "frozen" }) {
     this.guard();
     if (this.current?.active)
       throw Error("End the current review before starting another.");
+    if (!["frozen", "library"].includes(inputs))
+      throw Error("Choose frozen snapshots or current library Situations.");
     const previous = await this.saved(id);
     const selected =
       entries ?? previous.entries.map((_, index) => ({ fromIndex: index }));
@@ -161,16 +189,23 @@ export class Reviews {
     }
     return this.start({
       name: name ?? previous.name,
-      slots: slots || previous.configs,
+      slots: slots || layoutSlots(previous.layout),
       queue: selected.map((entry) =>
         Object.hasOwn(entry, "fromIndex")
           ? {
-              from: { reviewId: id, index: entry.fromIndex },
+              ...(inputs === "frozen"
+                ? { from: { reviewId: id, index: entry.fromIndex } }
+                : {}),
               id: previous.entries[entry.fromIndex].situation.id,
+              entryId: previous.entries[entry.fromIndex].entryId || undefined,
             }
           : { id: entry.situationId },
       ),
-      parentReviewId: id,
+      parentRunId: id,
+      previous,
+      edited:
+        entries !== undefined || (name !== undefined && name !== previous.name),
+      inputs,
     });
   }
   context() {
@@ -178,6 +213,10 @@ export class Reviews {
     if (!r?.active) return null;
     return {
       id: r.id,
+      runId: r.id,
+      reviewId: r.reviewId,
+      reviewRevision: r.reviewRevision,
+      entryId: r.entries[r.index].entryId || `${r.id}:${r.index}`,
       name: r.name,
       index: r.index,
       situationId: r.entries[r.index].situation.id,
@@ -202,7 +241,8 @@ export class Reviews {
         const snapshot = JSON.stringify(
           {
             ...r,
-            entries: r.entries.map(({ situation }) => ({
+            entries: r.entries.map(({ situation, entryId }) => ({
+              entryId,
               situation: { ...situation, checkpoint: undefined },
             })),
           },
@@ -234,31 +274,24 @@ export class Reviews {
       });
     return this.writes;
   }
-  plan(situation, config, index = 0) {
-    const saved = situation.provenance?.slots || [];
-    let source = saved.findIndex(
-      (s) =>
-        s.source === config.source &&
-        s.layout === config.layout &&
-        s.render === config.render,
+  plan(situation, config) {
+    const resolved = resolveView(
+      { ...config, bots: {}, autoSwitch: false },
+      situation,
     );
-    if (source < 0)
-      source = saved.findIndex(
-        (s) => s.layout === config.layout && s.render === config.render,
-      );
-    if (source < 0) source = saved[index] ? index : 0;
-    const slot = { ...config, seat: saved[source]?.seat || config.seat };
-    const [resolved] = slotsForSituation([slot], situation);
-    const presentation = situation.presentations?.[source] || {};
-    return {
-      config: { ...resolved, bots: {}, autoSwitch: false },
-      presentation:
-        presentation.render && presentation.render !== resolved.render
-          ? presentation.modes?.[resolved.render] || {}
-          : presentation,
-    };
+    const [slot] = slotsForSituation([resolved.config], situation);
+    return { config: slot, presentation: resolved.intended };
   }
-  async start({ ids, name, slots, queue, parentReviewId }) {
+  async start({
+    ids,
+    name,
+    slots,
+    queue,
+    parentRunId,
+    previous,
+    edited = false,
+    inputs = "frozen",
+  }) {
     this.guard();
     if (this.current?.active)
       throw Error("End the current review before starting another.");
@@ -286,7 +319,7 @@ export class Reviews {
               source: "live",
               profile: "desktop",
               render: "2d",
-              layout: "desktop",
+              uiMode: "desktop",
               seat: "spectator",
             },
           ],
@@ -295,6 +328,7 @@ export class Reviews {
     const entries = [];
     for (const [index, id] of ids.entries())
       entries.push({
+        entryId: queue?.[index]?.entryId || randomBytes(12).toString("hex"),
         situation: await this.comparison.api("/review/snapshot", {
           id,
           ...(queue?.[index]?.from ? { from: queue[index].from } : {}),
@@ -302,20 +336,48 @@ export class Reviews {
           index: entries.length,
         }),
       });
+    const definition = await this.definitions.prepare({
+      previous,
+      name: title,
+      entries,
+      edited,
+    });
+    entries.forEach(
+      (entry, index) => (entry.entryId = definition.entries[index].id),
+    );
     const record = {
-      schema: 1,
+      schema: 2,
+      kind: "review-run",
+      reviewId: definition.id,
+      reviewRevision: definition.revision,
+      parentRunId: parentRunId || null,
+      inputs,
+      layout: makeLayout(title.slice(0, 80), configs, "none", identifier),
+      sources: {
+        references: this.comparison.services?.references || null,
+        comparator: this.comparison.services?.comparator || null,
+        runtime: this.comparison.services?.mode || null,
+      },
       id: identifier,
       name: title,
       createdAt: new Date().toISOString(),
-      parentReviewId: parentReviewId || null,
+      parentRunId: parentRunId || null,
       visited: [],
       active: true,
       index: 0,
-      configs,
       entries,
       reports: [],
     };
     await this.load(record, 0);
+    record.layout = makeLayout(
+      title.slice(0, 80),
+      this.comparison.windows.map((win) => win.config),
+      "none",
+      identifier,
+    );
+    record.sources =
+      (await this.comparison.services?.provenance?.()) || record.sources;
+    await this.definitions.commit(definition);
     this.current = record;
     this.records.set(record.id, record);
     await this.persist(record);
@@ -366,7 +428,7 @@ export class Reviews {
       s = record.entries[index].situation;
     const configs = c.windows.length
       ? c.windows.map((w) => w.config)
-      : record.configs;
+      : layoutSlots(record.layout);
     let opened = [],
       devicePlans = [],
       committed = false;
@@ -433,6 +495,10 @@ export class Reviews {
         ...report,
         index: context.index,
         situationId: context.situationId,
+        entryId:
+          context.entryId ||
+          r.entries[context.index]?.entryId ||
+          `${r.id}:${context.index}`,
         createdAt: new Date().toISOString(),
       });
     await this.persist(r);

@@ -1,0 +1,42 @@
+{
+  "schema": 2,
+  "kind": "situation",
+  "id": "c83ba283b0a8a5e54ab71b49",
+  "name": "M3 presentation - snorri-empty-history-runes (variant 2)",
+  "decisionStateId": "5b0798ab3106bc957dfc7f159ad9d431be4dfb62bce22f50c2f6003fcd19258b",
+  "presentation": {
+    "schema": 2,
+    "sessionState": {
+      "pane": "board",
+      "selectedCard": null,
+      "inspectedCard": null
+    },
+    "userState": {},
+    "viewpoint": "spectator",
+    "restoration": "defaulted; no historical Session State was saved",
+    "adapter": {
+      "uiMode": "mobile",
+      "render": "2d"
+    }
+  },
+  "summary": {
+    "phase": "PLANNING",
+    "round": 1,
+    "decision": null,
+    "responder": null
+  },
+  "backend_revision": "740ec5bbfa1aaadcf05b0df06d93ab3187e5de9a",
+  "saved_at": 1792361775.1384232,
+  "migration": {
+    "sourceId": "4372410c2d87",
+    "sourceSlot": "1"
+  },
+  "provenance": {
+    "kind": "ui-fabrication",
+    "references": {
+      "factory": "scripts/create-mobile-presentation-situations.py",
+      "case": "snorri-empty-history-runes",
+      "seed": 20261019
+    }
+  }
+}

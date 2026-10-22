@@ -1,0 +1,48 @@
+{
+  "schema": 2,
+  "kind": "situation",
+  "id": "6795bf126a70c75770aa256c",
+  "name": "Gydion - choose a spell for Cantrip (variant 2)",
+  "decisionStateId": "9e5bb028f1e6709990f8d085ffdb3631e32202afccf866d21decf3d9b50ecc45",
+  "presentation": {
+    "schema": 2,
+    "sessionState": {
+      "pane": "board",
+      "selectedCard": null,
+      "inspectedCard": null
+    },
+    "userState": {},
+    "viewpoint": "hero_gydion",
+    "restoration": "defaulted; no historical Session State was saved",
+    "adapter": {
+      "uiMode": "mobile",
+      "render": "2d"
+    }
+  },
+  "summary": {
+    "phase": "RESOLUTION",
+    "round": 1,
+    "decision": "SELECT_CARD",
+    "responder": "hero_gydion"
+  },
+  "backend_revision": "740ec5bbfa1aaadcf05b0df06d93ab3187e5de9a",
+  "saved_at": 1792348819.7776542,
+  "migration": {
+    "sourceId": "dbd50506df47",
+    "sourceSlot": "1"
+  },
+  "provenance": {
+    "kind": "ui-fabrication",
+    "fixture": {
+      "case": "gydion-spell-choice",
+      "factory": "scripts/create-mobile-gameplay-situations.py",
+      "seed": 20261017,
+      "condition": {
+        "phase": "RESOLUTION",
+        "round": 1,
+        "decision": "SELECT_CARD",
+        "responder": "hero_gydion"
+      }
+    }
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "userStateKeys": [
+    "goa2-mobile-deck",
+    "goa2-mobile-display",
+    "goa2-mobile-presentation-v1",
+    "goa2-mobile-presentation-v2",
+    "goa2-mobile-presentation-v3",
+    "goa2-mobile-spells",
+    "goa2.locale",
+    "goa2.sound.muted",
+    "goa2.sound.volume",
+    "goa2:board-brightness",
+    "goa2:board-view",
+    "goa2:committed-cards",
+    "goa2:hero-dashboard",
+    "goa2:hero-model-style",
+    "goa2:player-board-layout:v2",
+    "goa2:remote-pointers-visible",
+    "goa2:resolution-queue"
+  ],
+  "sessionStoragePrefixes": [
+    "goa2-mobile-deck-plan-v1:",
+    "goa2-mobile-build:"
+  ]
+}

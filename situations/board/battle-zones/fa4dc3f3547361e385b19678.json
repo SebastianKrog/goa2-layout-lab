@@ -1,0 +1,37 @@
+{
+  "schema": 2,
+  "kind": "situation",
+  "id": "fa4dc3f3547361e385b19678",
+  "name": "Across the River - physical minions in two battle zones (variant 2)",
+  "decisionStateId": "a56905b7397aa87747bf03b3f56aabe0c66a873df4bea83621263a0b0478ee56",
+  "presentation": {
+    "schema": 2,
+    "sessionState": {
+      "pane": "board",
+      "selectedCard": null,
+      "inspectedCard": null
+    },
+    "userState": {},
+    "viewpoint": "hero_arien",
+    "restoration": "defaulted; no historical Session State was saved",
+    "adapter": {
+      "uiMode": "mobile",
+      "render": "2d"
+    }
+  },
+  "summary": {
+    "phase": "PLANNING",
+    "round": 1,
+    "decision": null,
+    "responder": null
+  },
+  "backend_revision": "6bb2885bd5162ccc463023f4daf7ed95453ee01b",
+  "saved_at": 1792508080.3668127,
+  "migration": {
+    "sourceId": "e82f5d9a1c14",
+    "sourceSlot": "1"
+  },
+  "provenance": {
+    "kind": "ui-fabrication"
+  }
+}

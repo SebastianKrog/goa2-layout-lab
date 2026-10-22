@@ -38,7 +38,7 @@
         <h1 class="sr-only">Compare</h1>
         <section class="setup-panel" aria-label="Comparison setup">
           <details class="advanced-setup">
-            <summary>Comparison tools &amp; legacy saved setups</summary>
+            <summary>Comparison tools</summary>
             <div class="setup-fields">
               <label class="situation-field"
                 >Situation<select
@@ -47,7 +47,7 @@
                 ></select
               ></label>
               <label
-                >View setup<select id="preset" aria-label="View setup"></select
+                >Layout<select id="preset" aria-label="Layout"></select
               ></label>
               <label class="count-field"
                 >Views<select id="count" aria-label="Views">
@@ -65,15 +65,6 @@
               >
             </div>
             <button class="primary" id="load">Load all views</button>
-            <div class="saved-view-setup">
-              <label class="check"
-                ><input
-                  id="restore"
-                  type="checkbox"
-                  aria-describedby="savedViewHelp"
-                />Restore legacy bundled setup</label
-              ><small id="savedViewHelp" class="muted"></small>
-            </div>
           </details>
           <div class="setup-bottom">
             <div class="setup-actions">
@@ -219,6 +210,9 @@
             </select></label
           >
         </div>
+        <button type="button" id="composeSituation">
+          Create from Decision State
+        </button>
         <div class="review-selection" aria-label="Review selection">
           <label class="check-button"
             ><input
@@ -359,10 +353,6 @@
           Bots are unavailable with this backend. See the device-testing guide
           to enable the bots checkout.
         </p>
-        <label class="check"
-          ><input id="deviceRestore" type="checkbox" checked />Restore saved
-          presentation where supported</label
-        >
         <div class="dialog-footer">
           <button type="submit" class="primary">Start device website</button>
         </div>
@@ -473,14 +463,18 @@
         </button>
       </div>
       <p>
-        A situation saves only the game checkpoint. Save view setups separately.
+        A Situation saves the game moment and its Presentation. A Layout saves
+        view settings.
       </p>
       <form id="saveForm">
         <label
           >Save as<select id="saveKind">
-            <option value="situation">Situation (game checkpoint)</option>
-            <option value="presentation">Presentation (UI state)</option>
-            <option value="setup">View setup (settings)</option>
+            <option value="situation">
+              Situation (Decision State + Presentation)
+            </option>
+            <option value="decision-state">Decision State (game only)</option>
+            <option value="presentation">Presentation template</option>
+            <option value="setup">Layout (views and settings)</option>
           </select></label
         >
         <label
@@ -494,6 +488,31 @@
         <div class="dialog-footer">
           <button type="button" id="savePreset" hidden>Save setup only</button
           ><button type="submit" class="primary">Save</button>
+        </div>
+      </form>
+    </dialog>
+    <dialog id="composeSituationDialog" aria-labelledby="composeSituationTitle">
+      <form id="composeSituationForm">
+        <h2 id="composeSituationTitle">Create a Situation</h2>
+        <label
+          >Name<input id="composeSituationName" required maxlength="80"
+        /></label>
+        <label
+          >Decision State<select id="composeDecisionState" required></select
+        ></label>
+        <label
+          >Presentation template<select id="composePresentation">
+            <option value="">Default Board / Follow view</option>
+          </select></label
+        >
+        <p>
+          Templates are copied into the Situation; editing a template later will
+          not change this moment.
+        </p>
+        <div class="dialog-footer">
+          <button type="button" data-close="composeSituationDialog">
+            Cancel</button
+          ><button type="submit" class="primary">Create Situation</button>
         </div>
       </form>
     </dialog>
@@ -526,6 +545,12 @@
           <div id="reviewEditAvailable" class="review-queue-list"></div>
           <p id="reviewEditNoMatches" hidden>No matching situations.</p>
         </section>
+        <label
+          >Retained entries use<select id="reviewEditInputs">
+            <option value="frozen">Original saved snapshots</option>
+            <option value="library">Current library Situations</option>
+          </select></label
+        >
         <p id="reviewEditCount" aria-live="polite"></p>
         <footer>
           <button type="button" data-close="reviewEditDialog">Cancel</button

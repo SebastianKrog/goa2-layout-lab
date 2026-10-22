@@ -1,0 +1,122 @@
+{
+  "schema": 2,
+  "kind": "situation",
+  "id": "eaf5b1a4582d0bc813fc24aa",
+  "name": "Gydion - public rank IV Wish (spectator) (variant 3)",
+  "decisionStateId": "42d37e386c76eb43c69e2a0e651ba9df4444bcac6d176570bb2c907033aaa4c6",
+  "presentation": {
+    "schema": 2,
+    "sessionState": {
+      "render": "2d",
+      "pane": "heroes",
+      "gamePath": "/game/ee2fd983e99e",
+      "scroll": [],
+      "windowScroll": {
+        "x": 0,
+        "y": 0
+      },
+      "camera": {
+        "mode": "2d",
+        "k": 1,
+        "x": 0,
+        "y": 0
+      },
+      "rotation": {
+        "angle": 0,
+        "centerX": "",
+        "centerY": ""
+      },
+      "inspectionScript": {
+        "selectedHeroCard": {
+          "heroId": "hero_gydion",
+          "spells": true,
+          "cardId": "wish"
+        },
+        "focusedHeroId": null
+      },
+      "inspectionMobile": null,
+      "inspectionMobileParent": null,
+      "inspectionMobileContext": null,
+      "spellBrowserMobile": null,
+      "inspectedCard": null,
+      "altHeld": false,
+      "selectedCard": null,
+      "focusedHeroMobile": null,
+      "inspectedHero": null,
+      "deckOpen": false,
+      "modes": {
+        "2d": {
+          "render": "2d",
+          "pane": "heroes",
+          "storage": {},
+          "gamePath": "/game/ee2fd983e99e",
+          "scroll": [],
+          "windowScroll": {
+            "x": 0,
+            "y": 0
+          },
+          "camera": {
+            "mode": "2d",
+            "k": 1,
+            "x": 0,
+            "y": 0
+          },
+          "rotation": {
+            "angle": 0,
+            "centerX": "",
+            "centerY": ""
+          },
+          "inspectionScript": {
+            "selectedHeroCard": {
+              "heroId": "hero_gydion",
+              "spells": true,
+              "cardId": "wish"
+            },
+            "focusedHeroId": null
+          },
+          "inspectionMobile": null,
+          "inspectionMobileParent": null,
+          "inspectionMobileContext": null,
+          "spellBrowserMobile": null,
+          "inspectedCard": null,
+          "altHeld": false,
+          "selectedCard": null,
+          "focusedHeroMobile": null,
+          "inspectedHero": null,
+          "deckOpen": false
+        }
+      }
+    },
+    "userState": {},
+    "viewpoint": "spectator",
+    "adapter": {
+      "uiMode": "desktop",
+      "render": "2d"
+    }
+  },
+  "summary": {
+    "phase": "PLANNING",
+    "round": 1,
+    "decision": null,
+    "responder": null
+  },
+  "backend_revision": "740ec5bbfa1aaadcf05b0df06d93ab3187e5de9a",
+  "saved_at": 1792486174.6231778,
+  "migration": {
+    "sourceId": "cd4b7845c42a",
+    "sourceSlot": "2"
+  },
+  "provenance": {
+    "kind": "capture",
+    "references": {
+      "base": "a3c5e0a46b35a42cd6e054512ce3dbc6a61a579c",
+      "script": "ad1eed5427b91b8daaebb56c4ceafda01db5f7de"
+    },
+    "script_checksum": "90b2973fe9d63f5e6befa7bf292ddf208d8524f19cc4eec90c1b2525ca89dddc",
+    "source_slot": 1,
+    "fixture": {
+      "case": "gydion-public-rank-4",
+      "factory": "scripts/create-mobile-presentation-situations.py"
+    }
+  }
+}

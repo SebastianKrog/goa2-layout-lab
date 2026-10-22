@@ -1,3 +1,9 @@
+import { LIVE_ASSET_PATTERN } from "./live-assets.mjs";
+import {
+  resolveView,
+  toPresentation,
+  adapterPresentation,
+} from "./presentation-model.mjs";
 import { Synchronizer } from "./synchronize.mjs";
 import fs from "node:fs/promises";
 import path from "node:path";
@@ -76,6 +82,18 @@ export class Comparison {
     slotIndex,
     situation = null,
   ) {
+    [config] = validateSlots([config]);
+    let intendedPresentation;
+    if (
+      situation?.presentation ||
+      config.overrides ||
+      presentation?.schema === 2
+    ) {
+      const resolved = resolveView(config, situation, presentation);
+      intendedPresentation = resolved.intended;
+      [config] = slotsForSituation([resolved.config], situation);
+      presentation = resolved.presentation;
+    }
     if (presentation?.render && presentation.render !== config.render)
       presentation = presentation.modes?.[config.render];
     const port = await this.services.frontend(config.source);
@@ -85,9 +103,11 @@ export class Comparison {
         situation_id: situation?.id || this.situationId,
         ...(situation?.review_snapshot
           ? { review_snapshot: situation.review_snapshot }
-          : situation
-            ? { situation }
-            : {}),
+          : situation?.decisionStateId
+            ? { decision_state_id: situation.decisionStateId }
+            : situation
+              ? { situation }
+              : {}),
         human_seat: this.manualSeat(config, situation),
         bots: config.bots || {},
       }));
@@ -99,17 +119,39 @@ export class Comparison {
       timezoneId: "Europe/Copenhagen",
       colorScheme: "dark",
     });
+    if (config.source === "live" && context.route && this.services.assetFor) {
+      await context.route(LIVE_ASSET_PATTERN, async (route) => {
+        const url = new URL(route.request().url());
+        if (
+          ![`http://localhost:${port}`, `http://127.0.0.1:${port}`].includes(
+            url.origin,
+          )
+        )
+          return route.continue();
+        const asset = await this.services.assetFor(config.source, url.pathname);
+        if (!asset) return route.continue();
+        return route.fulfill({
+          status: 200,
+          body: asset.body,
+          contentType: asset.contentType,
+          headers: { "cache-control": "no-cache" },
+        });
+      });
+    }
     const page = await context.newPage();
     const win = {
       config: { ...config },
       situation,
       initialPresentation: presentation,
+      intendedPresentation,
       clone,
       context,
       page,
       warnings: [],
       errors: [],
       assets: [],
+      pendingRequests: new Set(),
+      consoleMessages: [],
       views: {},
       broken: false,
     };
@@ -119,8 +161,8 @@ export class Comparison {
         ({ storage, oldPath, newPath }) => {
           for (let [key, value] of Object.entries(storage || {})) {
             if (oldPath) key = key.replaceAll(oldPath, newPath);
-            if (localStorage.getItem(key) === null)
-              localStorage.setItem(key, value);
+            if (value === null) localStorage.removeItem(key);
+            else localStorage.setItem(key, value);
           }
           const Original = window.WebSocket;
           window.addEventListener("keydown", (e) => {
@@ -159,12 +201,26 @@ export class Comparison {
       await this.sync.attach(win);
       await this.reporter?.attach(win);
       page.on("pageerror", (error) => win.errors.push(error.message));
+      page.on("console", (message) => {
+        if (
+          ["error", "warning"].includes(message.type()) &&
+          win.consoleMessages.length < 50
+        )
+          win.consoleMessages.push(message.text());
+      });
       page.on("framenavigated", (frame) => {
         if (frame === page.mainFrame()) {
           win.errors = [];
           win.assets = [];
         }
       });
+      page.on("request", (request) => win.pendingRequests.add(request));
+      page.on("requestfinished", (request) =>
+        win.pendingRequests.delete(request),
+      );
+      page.on("requestfailed", (request) =>
+        win.pendingRequests.delete(request),
+      );
       page.on("response", (response) => {
         const resource = response.request().resourceType();
         if (response.ok())
@@ -210,7 +266,21 @@ export class Comparison {
         timeout: 120_000,
       });
       await this.ready(win);
-      win.warnings = await restorePresentation(page, presentation, config);
+      win.warnings = [
+        ...(intendedPresentation?.warnings || []),
+        ...(await restorePresentation(page, presentation, config)),
+      ];
+      if (
+        intendedPresentation?.viewpoint &&
+        intendedPresentation.viewpoint !== config.seat
+      )
+        win.warnings.push(
+          `Viewpoint ${intendedPresentation.viewpoint} is unavailable; displaying ${config.seat}.`,
+        );
+      win.effectivePresentation = toPresentation(
+        await capturePresentation(page, config.render),
+        config.seat,
+      );
       await page.evaluate(
         (title) => {
           document.title = title;
@@ -256,6 +326,20 @@ export class Comparison {
           phase: window.__GOA2_LAB_STATE__?.view?.phase,
           bridges: Object.keys(window.__GOA2_LAB_BRIDGE__ || {}),
           text: document.body?.innerText.slice(0, 1800),
+          canvases: [...document.querySelectorAll("canvas")].map((canvas) => ({
+            width: canvas.width,
+            height: canvas.height,
+            rect: canvas.getBoundingClientRect().toJSON(),
+            lost: canvas.getContext("webgl2")?.isContextLost(),
+          })),
+          visibility: document.visibilityState,
+          resources: performance
+            .getEntriesByType("resource")
+            .slice(-12)
+            .map((entry) => ({
+              path: new URL(entry.name, location.href).pathname,
+              duration: entry.duration,
+            })),
         }))
         .catch(() => ({}));
       await fs.writeFile(
@@ -264,6 +348,11 @@ export class Comparison {
           {
             error: error.message,
             diagnostics,
+            consoleMessages: win.consoleMessages,
+            pendingRequests: [...win.pendingRequests].map((request) => {
+              const u = new URL(request.url());
+              return u.origin + u.pathname;
+            }),
             errors: win.errors,
             assets: win.assets,
           },
@@ -296,7 +385,7 @@ export class Comparison {
         );
       });
     if (
-      config.layout === "mobile" &&
+      config.uiMode === "mobile" &&
       !(await page.locator("[data-pane]").count())
     )
       throw new Error(
@@ -375,7 +464,9 @@ export class Comparison {
         slots.some((s) => Object.keys(s.bots || {}).length))
     )
       await this.sync.setMode("none");
-    await this.clear();
+    const previousWindows = this.windows;
+    const previousSituationId = this.situationId;
+    const previousHeroIds = this.heroIds;
     this.situationId = situationId;
     this.heroIds = Object.values(situation.checkpoint.state.teams).flatMap(
       (t) => t.heroes.map((h) => h.id),
@@ -387,16 +478,24 @@ export class Comparison {
         this.open(slot, presentations[i], null, i, situation),
       ),
     );
-    this.windows = opened
+    const replacements = opened
       .filter((r) => r.status === "fulfilled")
       .map((r) => r.value);
     const failed = opened.findIndex((r) => r.status === "rejected");
     if (failed >= 0) {
-      await this.clear();
+      await Promise.allSettled(
+        replacements.map((win) => this.closeWindow(win)),
+      );
+      this.situationId = previousSituationId;
+      this.heroIds = previousHeroIds;
       throw new Error(`View ${failed + 1}: ${opened[failed].reason.message}`, {
         cause: opened[failed].reason,
       });
     }
+    this.windows = replacements;
+    await Promise.allSettled(
+      previousWindows.map((win) => this.closeWindow(win)),
+    );
     const required = new Set(
       slots.map((s) => (s.source === "target" ? "base" : s.source)),
     );
@@ -417,17 +516,43 @@ export class Comparison {
   async reset(index) {
     const indexes =
       index === undefined ? this.windows.map((_, i) => i) : [index];
-    for (const i of indexes) {
-      const old = this.window(i);
-      await this.closeWindow(old);
-      this.windows[i] = await this.open(
-        old.config,
-        old.initialPresentation,
-        null,
-        i,
-        old.situation,
-      );
+    const prepared = [];
+    try {
+      for (const i of indexes) {
+        const old = this.window(i);
+        prepared.push({
+          index: i,
+          old,
+          win: await this.open(
+            old.config,
+            old.initialPresentation,
+            null,
+            i,
+            old.situation,
+          ),
+        });
+      }
+    } catch (error) {
+      await Promise.allSettled(prepared.map((p) => this.closeWindow(p.win)));
+      throw error;
     }
+    for (const p of prepared) this.windows[p.index] = p.win;
+    await Promise.allSettled(prepared.map((p) => this.closeWindow(p.old)));
+    return this.status();
+  }
+  async applyPresentation(index, presentation) {
+    const old = this.window(index);
+    const win = await this.open(
+      old.config,
+      presentation,
+      old.clone,
+      index,
+      old.situation,
+    );
+    await old.context.close().catch(() => {});
+    win.initialPresentation = structuredClone(presentation);
+    win.views = { ...old.views, [win.config.render]: presentation };
+    this.windows[index] = win;
     return this.status();
   }
   window(index) {
@@ -441,8 +566,13 @@ export class Comparison {
       ? old.views[old.config.render]
       : await capturePresentation(old.page, old.config.render);
     old.views[old.config.render] = current;
-    const config = { ...old.config, ...update };
-    validateSlots([config]);
+    const explicitSeat =
+      Object.hasOwn(update, "seat") && !Object.hasOwn(update, "overrides")
+        ? { overrides: { ...old.config.overrides, viewpoint: update.seat } }
+        : {};
+    const [config] = validateSlots([
+      { ...old.config, ...update, ...explicitSeat },
+    ]);
     const botsChanged =
       JSON.stringify(config.bots || {}) !==
       JSON.stringify(old.config.bots || {});
@@ -466,7 +596,6 @@ export class Comparison {
       old.config = config;
       return this.status();
     }
-    await old.context.close().catch(() => {});
     const presentation = restoreSaved ? old.views[config.render] : null;
     const win = await this.open(
       config,
@@ -475,6 +604,7 @@ export class Comparison {
       index,
       old.situation,
     );
+    await old.context.close().catch(() => {});
     win.views = { ...old.views, [config.render]: presentation };
     win.initialPresentation = old.initialPresentation;
     this.windows[index] = win;
@@ -535,12 +665,21 @@ export class Comparison {
       }
     }
   }
-  async save(index, name) {
+  async save(index, name, kind = "situation") {
     const source = this.window(index);
+    const presentation =
+      kind === "decision-state"
+        ? undefined
+        : toPresentation(
+            await capturePresentation(source.page, source.config.render),
+            source.config.seat,
+          );
     return this.api("/capture", {
       game_id: source.clone.game_id,
       name,
       provenance: { kind: "capture", source_situation: source.situation?.id },
+      kind,
+      ...(presentation ? { presentation } : {}),
     });
   }
   async addView({ config, situationId, fromIndex = 0, index }) {

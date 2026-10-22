@@ -1,0 +1,93 @@
+{
+  "schema": 2,
+  "kind": "situation",
+  "id": "da0fea40865d6670c9362df6",
+  "name": "Arien - select a card before committing (variant 2)",
+  "decisionStateId": "f2f09cfbab05b48431290892ba2b3ab382aadaae90e97322f16bccb1d1d33907",
+  "presentation": {
+    "schema": 2,
+    "sessionState": {
+      "render": "2d",
+      "pane": "hand",
+      "gamePath": "/game/ee14235b2cfe",
+      "scroll": [],
+      "windowScroll": {
+        "x": 0,
+        "y": 0
+      },
+      "camera": {
+        "mode": "2d",
+        "k": 1,
+        "x": 0,
+        "y": 0
+      },
+      "inspectedCard": "noble_blade",
+      "altHeld": false,
+      "selectedCard": "noble_blade",
+      "inspectedHero": null,
+      "deckOpen": false,
+      "modes": {
+        "2d": {
+          "render": "2d",
+          "pane": "hand",
+          "storage": {},
+          "gamePath": "/game/ee14235b2cfe",
+          "scroll": [],
+          "windowScroll": {
+            "x": 0,
+            "y": 0
+          },
+          "camera": {
+            "mode": "2d",
+            "k": 1,
+            "x": 0,
+            "y": 0
+          },
+          "inspectedCard": "noble_blade",
+          "altHeld": false,
+          "selectedCard": "noble_blade",
+          "inspectedHero": null,
+          "deckOpen": false
+        }
+      }
+    },
+    "userState": {},
+    "viewpoint": "hero_arien",
+    "adapter": {
+      "uiMode": "mobile",
+      "render": "2d"
+    }
+  },
+  "summary": {
+    "phase": "PLANNING",
+    "round": 1,
+    "decision": null,
+    "responder": null
+  },
+  "backend_revision": "740ec5bbfa1aaadcf05b0df06d93ab3187e5de9a",
+  "saved_at": 1792335636.177359,
+  "migration": {
+    "sourceId": "e81bc3bd5fff",
+    "sourceSlot": "1"
+  },
+  "provenance": {
+    "kind": "capture",
+    "references": {
+      "base": "a3c5e0a46b35a42cd6e054512ce3dbc6a61a579c",
+      "script": "ad1eed5427b91b8daaebb56c4ceafda01db5f7de"
+    },
+    "script_checksum": "90b2973fe9d63f5e6befa7bf292ddf208d8524f19cc4eec90c1b2525ca89dddc",
+    "source_slot": 0,
+    "fixture": {
+      "case": "select-card",
+      "recipe": "scripts/create-simple-situations.py",
+      "seed": 20261017,
+      "condition": {
+        "phase": "PLANNING",
+        "decision": null,
+        "seat": "hero_arien",
+        "selectedCard": "noble_blade"
+      }
+    }
+  }
+}

@@ -1,0 +1,116 @@
+{
+  "schema": 2,
+  "kind": "situation",
+  "id": "9fcbfa7ec9eed64ce8198c7a",
+  "name": "Brogan - choose a card to discard (variant 3)",
+  "decisionStateId": "9c31a468d6a3c880cf25005fba8492255070c52cba0a6e66cfe378646108aeee",
+  "presentation": {
+    "schema": 2,
+    "sessionState": {
+      "render": "2d",
+      "pane": "board",
+      "gamePath": "/game/5b199a6a006f",
+      "scroll": [],
+      "windowScroll": {
+        "x": 0,
+        "y": 0
+      },
+      "camera": {
+        "mode": "2d",
+        "k": 1,
+        "x": 0,
+        "y": 0
+      },
+      "rotation": {
+        "angle": 0,
+        "centerX": "",
+        "centerY": ""
+      },
+      "inspectionScript": {
+        "selectedHeroCard": null,
+        "focusedHeroId": null
+      },
+      "inspectedCard": null,
+      "altHeld": false,
+      "selectedCard": null,
+      "inspectedHero": null,
+      "deckOpen": false,
+      "modes": {
+        "2d": {
+          "render": "2d",
+          "pane": "board",
+          "storage": {
+            "goa2-mobile-build:[\"/game/5b199a6a006f\",\"hero_brogan\"]": "{\"planned\":[],\"chosen\":[],\"level\":1}"
+          },
+          "gamePath": "/game/5b199a6a006f",
+          "scroll": [],
+          "windowScroll": {
+            "x": 0,
+            "y": 0
+          },
+          "camera": {
+            "mode": "2d",
+            "k": 1,
+            "x": 0,
+            "y": 0
+          },
+          "rotation": {
+            "angle": 0,
+            "centerX": "",
+            "centerY": ""
+          },
+          "inspectionScript": {
+            "selectedHeroCard": null,
+            "focusedHeroId": null
+          },
+          "inspectedCard": null,
+          "altHeld": false,
+          "selectedCard": null,
+          "inspectedHero": null,
+          "deckOpen": false
+        }
+      },
+      "storage": {
+        "goa2-mobile-build:[\"/game/5b199a6a006f\",\"hero_brogan\"]": "{\"planned\":[],\"chosen\":[],\"level\":1}"
+      }
+    },
+    "userState": {},
+    "viewpoint": "hero_brogan",
+    "adapter": {
+      "uiMode": "desktop",
+      "render": "2d"
+    }
+  },
+  "summary": {
+    "phase": "RESOLUTION",
+    "round": 1,
+    "decision": "SELECT_CARD",
+    "responder": "hero_brogan"
+  },
+  "backend_revision": "740ec5bbfa1aaadcf05b0df06d93ab3187e5de9a",
+  "saved_at": 1792335690.6161823,
+  "migration": {
+    "sourceId": "30735050fbde",
+    "sourceSlot": "2"
+  },
+  "provenance": {
+    "kind": "capture",
+    "references": {
+      "base": "a3c5e0a46b35a42cd6e054512ce3dbc6a61a579c",
+      "script": "ad1eed5427b91b8daaebb56c4ceafda01db5f7de"
+    },
+    "script_checksum": "90b2973fe9d63f5e6befa7bf292ddf208d8524f19cc4eec90c1b2525ca89dddc",
+    "source_slot": 0,
+    "fixture": {
+      "case": "discard-card",
+      "recipe": "scripts/create-simple-situations.py",
+      "seed": 20261017,
+      "condition": {
+        "phase": "RESOLUTION",
+        "decision": "SELECT_CARD",
+        "seat": "hero_brogan",
+        "selectedCard": null
+      }
+    }
+  }
+}

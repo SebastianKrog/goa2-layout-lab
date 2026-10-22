@@ -12,7 +12,7 @@ const slot = {
   source: "live",
   seat: "hero_arien",
   profile: "portrait",
-  layout: "mobile",
+  uiMode: "mobile",
   render: "2d",
 };
 

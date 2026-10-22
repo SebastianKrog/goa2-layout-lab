@@ -1,0 +1,27 @@
+{
+  "schema": 2,
+  "kind": "layout",
+  "id": "fda6e9cbdd0da70194ae21cc",
+  "name": "M3 presentation - gydion-public-spells-10 - suggested layout",
+  "views": [
+    {
+      "source": "comparator",
+      "profile": "portrait",
+      "render": "2d",
+      "uiMode": "mobile",
+      "overrides": {
+        "viewpoint": "hero_gydion"
+      }
+    },
+    {
+      "source": "comparator",
+      "profile": "portrait",
+      "render": "2d",
+      "uiMode": "mobile",
+      "overrides": {
+        "viewpoint": "spectator"
+      }
+    }
+  ],
+  "synchronization": "none"
+}

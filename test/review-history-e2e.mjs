@@ -37,18 +37,14 @@ try {
     ["a00000000001", "hero_arien", "heroes"],
   ]) {
     const s = structuredClone(moments.find((s) => s.id === id));
-    s.provenance = {
-      slots: [
-        {
-          source: "live",
-          profile: "portrait",
-          render: "2d",
-          layout: "mobile",
-          seat,
-        },
-      ],
+    delete s.checkpoint; // Clone the exact Python-owned Decision State by reference.
+    s.provenance = { kind: "review-qa" };
+    s.presentation = {
+      schema: 2,
+      viewpoint: seat,
+      sessionState: { render: "2d", pane },
+      userState: {},
     };
-    s.presentations = { 0: { render: "2d", pane } };
     entries.push(
       await api("import", {
         content: s,
@@ -60,16 +56,16 @@ try {
     source: "live",
     profile: "portrait",
     render: "2d",
-    layout: "mobile",
+    uiMode: "mobile",
     seat: "hero_arien",
   }));
-  const original = await api("review/start", {
+  const original = await api("review-runs/start", {
     ids: entries.slice(0, 2).map((s) => s.id),
     name: "QA saved history " + Date.now(),
     slots,
   });
   await api("capture", { indexes: [0, 1] });
-  await api("review/end", {});
+  await api("review-runs/end", {});
   const originalFile = path.join(
     DATA,
     "reports",
@@ -95,22 +91,22 @@ try {
   await card.getByRole("button", { name: "Run again", exact: true }).click();
   await until(async () => {
     const s = await api("status");
-    return !s.busy && s.review?.active && s.review.id !== original.id;
+    return !s.busy && s.reviewRun?.active && s.reviewRun.id !== original.id;
   });
   const rerun = app.reviews.current;
-  assert.equal(rerun.parentReviewId, original.id);
+  assert.equal(rerun.parentRunId, original.id);
   assert.equal(rerun.reports.length, 0);
   assert.deepEqual(
     rerun.entries.map((e) => e.situation.id),
     entries.slice(0, 2).map((e) => e.id),
   );
   assert.equal(await fs.readFile(originalFile, "utf8"), originalBytes);
-  await api("review/end", {});
+  await api("review-runs/end", {});
   await desk.locator("[data-page=reviews]").click();
   await until(() =>
     card.getByRole("button", { name: "Edit and run", exact: true }).isEnabled(),
   );
-  const count = (await api("reviews")).reviews.length;
+  const count = (await api("review-runs")).runs.length;
   await card.getByRole("button", { name: "Edit and run", exact: true }).click();
   await desk.locator("#reviewEditDialog[open]").waitFor();
   await desk.locator('#reviewEditKept input[data-review-entry="0"]').uncheck();
@@ -121,7 +117,7 @@ try {
     )
     .check();
   await desk.locator("[data-close=reviewEditDialog]").click();
-  assert.equal((await api("reviews")).reviews.length, count);
+  assert.equal((await api("review-runs")).runs.length, count);
   await card.getByRole("button", { name: "Edit and run", exact: true }).click();
   await desk.locator("#reviewEditDialog[open]").waitFor();
   assert.equal(await desk.locator("#reviewEditKept input:checked").count(), 2);
@@ -143,10 +139,12 @@ try {
   await desk.locator("#reviewEditSubmit").click();
   await until(async () => {
     const s = await api("status");
-    return !s.busy && s.review?.active && s.review.name === "QA edited history";
+    return (
+      !s.busy && s.reviewRun?.active && s.reviewRun.name === "QA edited history"
+    );
   });
   const edited = app.reviews.current;
-  assert.equal(edited.parentReviewId, original.id);
+  assert.equal(edited.parentRunId, original.id);
   assert.deepEqual(
     edited.entries.map((e) => e.situation.id),
     [entries[1].id, entries[2].id],
@@ -157,11 +155,11 @@ try {
       await w.page.locator("[data-pane=hand][aria-pressed=true]").count(),
       1,
     );
-  await api("review/step", { id: edited.id, index: 0, direction: 1 });
+  await api("review-runs/step", { id: edited.id, index: 0, direction: 1 });
   assert.ok(c.windows.every((w) => w.config.seat === "hero_arien"));
-  await api("review/end", {});
+  await api("review-runs/end", {});
   assert.equal(await fs.readFile(originalFile, "utf8"), originalBytes);
-  const history = (await api("reviews")).reviews;
+  const history = (await api("review-runs")).runs;
   assert.ok(history.some((r) => r.id === edited.id && r.visited === 2));
   assert.deepEqual(errors, []);
   await fs.writeFile(

@@ -41,7 +41,12 @@ test("device links scope HTTP/WS to a clone, inject reporting, generate QR and r
       },
     },
     provenance: {},
-    presentations: {},
+    presentation: {
+      schema: 2,
+      viewpoint: "hero_missing",
+      sessionState: { pane: "board", render: "3d" },
+      userState: {},
+    },
   };
   const api = async (route, body) => {
     if (route.startsWith("/situations/")) return situation;
@@ -78,7 +83,7 @@ test("device links scope HTTP/WS to a clone, inject reporting, generate QR and r
         source: "live",
         seat: "hero_arien",
         render: "2d",
-        layout: "mobile",
+        uiMode: "mobile",
         profile: "portrait",
       },
     });
@@ -317,6 +322,16 @@ test("device links scope HTTP/WS to a clone, inject reporting, generate QR and r
       .filter({ hasText: "Saved in layout lab" })
       .waitFor();
     assert.equal(reports[0].game_id, "clone");
+    assert.ok(
+      reports[0].provenance.presentationResolution.warnings.some(
+        (w) => w.includes("hero_missing") && w.includes("hero_arien"),
+      ),
+    );
+    assert.ok(
+      reports[0].provenance.presentationResolution.warnings.some((w) =>
+        w.includes("no 2d adapter"),
+      ),
+    );
     assert.equal(reports[1].comment, "Make this clearer");
     assert.ok(!JSON.stringify(reports).includes("seat-secret"));
     const closed = once(socket, "close");

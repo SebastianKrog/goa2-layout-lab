@@ -23,8 +23,8 @@ try {
   await c.load(
     situation.id,
     [
-      { source: "live", layout: "mobile" },
-      { source: "target", layout: "desktop" },
+      { source: "live", uiMode: "mobile" },
+      { source: "target", uiMode: "desktop" },
     ].map((s) => ({
       ...s,
       profile: "portrait",
@@ -346,8 +346,8 @@ try {
     await c.load(
       id,
       [
-        { source: "live", layout: "mobile" },
-        { source: "target", layout: "desktop" },
+        { source: "live", uiMode: "mobile" },
+        { source: "target", uiMode: "desktop" },
       ].map((w) => ({ ...w, profile: "portrait", render: "2d", seat })),
       {},
       situation,
@@ -434,7 +434,7 @@ try {
       [
         {
           source: "live",
-          layout: "mobile",
+          uiMode: "mobile",
           profile: "portrait",
           render: "2d",
           seat: "hero_arien",

@@ -8,15 +8,22 @@ const config = {
   source: "live",
   profile: "portrait",
   render: "2d",
-  layout: "mobile",
+  uiMode: "mobile",
   seat: "hero_arien",
 };
 const situation = (id, seat, pane) => ({
   id,
   name: id,
   checkpoint: { state: { teams: { RED: { heroes: [{ id: seat }] } } } },
-  provenance: { slots: [{ ...config, seat }] },
-  presentations: { 0: { render: "2d", pane } },
+  schema: 2,
+  kind: "situation",
+  decisionStateId: "a".repeat(64),
+  presentation: {
+    schema: 2,
+    viewpoint: seat,
+    sessionState: { render: "2d", pane },
+    userState: {},
+  },
 });
 async function fixture(t) {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "goa2-reviews-"));
@@ -122,7 +129,9 @@ test("review restores every view, keeps sources, groups evidence by captured ste
   );
   assert.ok(
     c.windows.every(
-      (w) => w.config.seat === "hero_arien" && w.presentation.pane === "heroes",
+      (w) =>
+        w.config.seat === "hero_arien" &&
+        w.presentation.sessionState.pane === "heroes",
     ),
   );
   assert.ok(
@@ -139,7 +148,9 @@ test("review restores every view, keeps sources, groups evidence by captured ste
   await r.step({ id: status.id, index: 0, direction: 1 });
   assert.ok(
     c.windows.every(
-      (w) => w.config.seat === "hero_snorri" && w.presentation.pane === "hand",
+      (w) =>
+        w.config.seat === "hero_snorri" &&
+        w.presentation.sessionState.pane === "hand",
     ),
   );
   assert.equal(r.status().next, false);
@@ -215,17 +226,24 @@ test("past reviews survive restart, rerun original snapshots, and edited runs le
     bytes = await fs.readFile(file, "utf8");
   const restarted = new Reviews(f.c, f.r.devices, { root: f.root });
   const list = await restarted.list();
-  assert.equal(list.reviews.length, 1);
-  assert.equal(list.reviews[0].visited, 2);
-  assert.equal(list.reviews[0].reports, 1);
-  assert.equal(list.reviews[0].reportedSituations, 1);
-  assert.equal(list.reviews[0].status, "ended");
+  assert.equal(list.runs.length, 1);
+  assert.equal(list.runs[0].visited, 2);
+  assert.equal(list.runs[0].reports, 1);
+  assert.equal(list.runs[0].reportedSituations, 1);
+  assert.equal(list.runs[0].status, "ended");
   delete f.moments.first;
   delete f.moments.second;
   const rerun = await restarted.rerun({ id: original.id });
   assert.notEqual(rerun.id, original.id);
+  assert.equal(rerun.reviewId, original.reviewId);
+  assert.equal(rerun.reviewRevision, original.reviewRevision);
+  const originalDetail = await restarted.detail(original.id);
+  assert.deepEqual(
+    restarted.current.entries.map((e) => e.entryId),
+    originalDetail.entries.map((e) => e.entryId),
+  );
   assert.equal(rerun.total, 2);
-  assert.equal(restarted.current.parentReviewId, original.id);
+  assert.equal(restarted.current.parentRunId, original.id);
   assert.equal(restarted.current.reports.length, 0);
   assert.equal(restarted.current.entries[0].situation.name, "first");
   await assert.rejects(
@@ -238,6 +256,12 @@ test("past reviews survive restart, rerun original snapshots, and edited runs le
     name: "Edited run",
     entries: [{ fromIndex: 1 }, { situationId: "third" }],
   });
+  assert.equal(edited.reviewId, original.reviewId);
+  assert.equal(edited.reviewRevision, 2);
+  assert.equal(
+    restarted.current.entries[0].entryId,
+    originalDetail.entries[1].entryId,
+  );
   assert.equal(edited.total, 2);
   assert.equal(edited.name, "Edited run");
   assert.deepEqual(
@@ -255,7 +279,10 @@ test("past reviews survive restart, rerun original snapshots, and edited runs le
   ])
     await assert.rejects(() => restarted.rerun({ id: original.id, entries }));
   await assert.rejects(() => restarted.detail("../escape"), /Invalid review/);
-  assert.equal((await restarted.list()).reviews.length, 3);
+  const history = await restarted.list();
+  assert.equal(history.runs.length, 3);
+  assert.equal(history.reviews.length, 1);
+  assert.equal(history.reviews[0].runs.length, 3);
   const details = await restarted.detail(original.id);
   assert.deepEqual(
     details.entries.map((e) => e.name),
@@ -271,8 +298,8 @@ test("interrupted and malformed reviews are listed honestly without restoring ac
   await fs.writeFile(path.join(bad, "review.json"), "{bad");
   const restarted = new Reviews(f.c, f.r.devices, { root: f.root });
   const list = await restarted.list();
-  assert.equal(list.reviews.length, 1);
-  assert.equal(list.reviews[0].status, "interrupted");
+  assert.equal(list.runs.length, 1);
+  assert.equal(list.runs[0].status, "interrupted");
   assert.equal(list.warnings.length, 1);
   assert.equal(restarted.current, null);
 });

@@ -30,16 +30,77 @@ async function restore() {
     document.head.append(script);
     await until(() => window.GOA2Mobile2D);
   }
-  const warnings = [];
+  const intended = window.__GOA2_DEVICE__.intendedPresentation;
+  const warnings = [...(intended?.warnings || [])];
+  if (intended?.viewpoint && intended.viewpoint !== config.seat)
+    warnings.push(
+      `Viewpoint ${intended.viewpoint} is unavailable; displaying ${config.seat}.`,
+    );
   const attempt = async (name, action) => {
     try {
       await action();
-    } catch {
-      warnings.push(name);
+    } catch (error) {
+      warnings.push(`${name}: ${error.message || "Unavailable"}`);
     }
   };
   const pane = async (name) => {
-    if (config.layout !== "mobile") return;
+    if (config.source === "target") {
+      if (!document.documentElement.hasAttribute("data-m2-active")) {
+        if (name === "board") return;
+        throw Error("Userscript is inactive on this viewport");
+      }
+      const active = document.documentElement.hasAttribute("data-m2-deck-open")
+        ? "deck"
+        : document.documentElement.dataset.m2Panel ||
+          document.documentElement.dataset.m2Mode ||
+          "board";
+      const wanted = name === "settings" ? "tools" : name;
+      if (active === wanted) return;
+      const mode = wanted === "board" ? active : wanted;
+      (await until(() => visible(`[data-mode="${CSS.escape(mode)}"]`))).click();
+      return;
+    }
+    if (config.uiMode !== "mobile") {
+      if (name === "board") {
+        document.dispatchEvent(
+          new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+        );
+        visible(
+          '[data-lab-log="floating"] button[aria-expanded="true"]',
+        )?.click();
+        return;
+      }
+      if (name === "log") {
+        const control = await until(() =>
+          visible('[data-lab-log="floating"] button'),
+        );
+        if (control.getAttribute("aria-expanded") !== "true") control.click();
+        return;
+      }
+      if (name === "deck") {
+        (
+          await until(() =>
+            [...document.querySelectorAll("button")].find(
+              (b) =>
+                b.getClientRects().length && /View Deck/i.test(b.textContent),
+            ),
+          )
+        ).click();
+        return;
+      }
+      const selector =
+        name === "heroes"
+          ? "[data-lab-hero]"
+          : name === "hand"
+            ? "[data-lab-card]"
+            : null;
+      if (!selector) throw Error("No desktop adapter for this panel");
+      (await until(() => visible(selector))).scrollIntoView({
+        block: "nearest",
+      });
+      warnings.push(`${name} content is displayed inline on this Interface`);
+      return;
+    }
     const current = document.querySelector('[data-pane][aria-pressed="true"]');
     if (name === "board") {
       if (current) current.click();
@@ -96,6 +157,90 @@ async function restore() {
         )
       ).click();
     });
+  if (presentation.inspection3d && config.render === "3d")
+    await attempt("3D inspection", async () => {
+      (await until(() => window.__GOA2_LAB_BRIDGE__?.inspection3d)).set(
+        presentation.inspection3d,
+      );
+    });
+  if (presentation.rotation && config.source === "target")
+    await attempt("Board rotation", async () => {
+      (await until(() => window.GOA2Mobile2D?.__labRotation)).set(
+        presentation.rotation,
+      );
+    });
+  if (presentation.inspectedHero)
+    await attempt("Hero inspection", async () => {
+      if (window.__GOA2_LAB_BRIDGE__?.inspection3d)
+        window.__GOA2_LAB_BRIDGE__.inspection3d.set({
+          heroId: presentation.inspectedHero,
+        });
+      else {
+        (
+          await until(() =>
+            visible(
+              `[data-lab-hero="${CSS.escape(presentation.inspectedHero)}"]`,
+            ),
+          )
+        ).scrollIntoView({ block: "nearest" });
+        window.__GOA2_LAB_INSPECTED_HERO__ = presentation.inspectedHero;
+      }
+    });
+  if (presentation.inspectedCard)
+    await attempt("Card hover inspection", async () => {
+      const card = await until(() =>
+        visible(`[data-lab-card="${CSS.escape(presentation.inspectedCard)}"]`),
+      );
+      card.dataset.labHover = "true";
+      card.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
+    });
+  if (presentation.focusedHeroMobile && config.uiMode === "mobile")
+    await attempt("Focused hero", async () => {
+      await pane("board");
+      (
+        await until(() =>
+          visible(
+            `[data-lab-focus-hero="${CSS.escape(presentation.focusedHeroMobile)}"]`,
+          ),
+        )
+      ).click();
+    });
+  if (presentation.spellBrowserMobile && config.uiMode === "mobile")
+    await attempt("Public spell browser", async () => {
+      const state = presentation.spellBrowserMobile;
+      (
+        await until(() =>
+          visible(`[data-lab-open-spells="${CSS.escape(state.heroId)}"]`),
+        )
+      ).click();
+      if (state.selectedId)
+        (
+          await until(() =>
+            visible(
+              `[data-lab-preview-spell="${CSS.escape(state.selectedId)}"]`,
+            ),
+          )
+        ).click();
+    });
+  for (const state of presentation.scroll || []) {
+    const element = state.id
+      ? document.getElementById(state.id)
+      : [...document.querySelectorAll("*")].find(
+          (e) =>
+            typeof e.className === "string" && e.className === state.className,
+        );
+    if (element) {
+      element.scrollTop = state.top;
+      element.scrollLeft = state.left;
+    } else warnings.push("Saved scroll target is unavailable");
+  }
+  if (presentation.windowScroll)
+    scrollTo(presentation.windowScroll.x, presentation.windowScroll.y);
+  if (window.__GOA2_DEVICE_STORAGE_WARNING__)
+    warnings.push("User State: " + window.__GOA2_DEVICE_STORAGE_WARNING__);
+  window.__GOA2_DEVICE_EFFECTIVE_PRESENTATION__ = capturePresentation(
+    config.render,
+  );
   window.__GOA2_DEVICE_RESTORE_WARNINGS__ = warnings;
 }
 
@@ -323,7 +468,7 @@ async function mount() {
     return !saved && !!(capture || comment.value.trim());
   }
   function updateReviewControls() {
-    const review = reviewState?.review;
+    const review = reviewState?.reviewRun;
     $("reviewNav").hidden = !review;
     $("reviewCount").textContent = review
       ? `${review.index + 1}/${review.total}`
@@ -351,12 +496,12 @@ async function mount() {
     }
   }
   async function reviewStep(direction) {
-    if (!reviewState?.review || navigating) return;
+    if (!reviewState?.reviewRun || navigating) return;
     navigating = true;
     $("reviewError").textContent = "";
     updateReviewControls();
     try {
-      const r = reviewState.review;
+      const r = reviewState.reviewRun;
       await post("review-step", { id: r.id, index: r.index, direction });
       await reviewPoll();
     } catch (error) {
@@ -406,6 +551,8 @@ async function mount() {
       height: frameHeight,
       pixelRatio: devicePixelRatio,
       userAgent: navigator.userAgent,
+      touchPoints: navigator.maxTouchPoints,
+      screen: { width: screen.width, height: screen.height },
     };
     const started = performance.now();
     await new Promise((resolve) =>
@@ -416,6 +563,7 @@ async function mount() {
       const [moment, screenshot] = await Promise.all([
         post("capture", {
           presentation: capturePresentation(config.render),
+          restoreWarnings: window.__GOA2_DEVICE_RESTORE_WARNINGS__ || [],
           viewport,
         }),
         window.htmlToImage.toPng(document.body, {
