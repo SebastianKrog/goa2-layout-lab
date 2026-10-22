@@ -127,6 +127,7 @@ test("device dialog assigns Random, Simple, ISMCTS and mixed controls and preser
     );
     await page.locator("#deviceBotPreset").selectOption("ismcts");
     await page.locator("#deviceSeat").selectOption("hero_hanu");
+    await page.locator("#deviceBots .bot-customization > summary").click();
     await page.locator('[data-bot-hero="hero_brogan"]').selectOption("manual");
     assert.equal(
       (await page.locator("#deviceBotPreset").inputValue?.()) ??

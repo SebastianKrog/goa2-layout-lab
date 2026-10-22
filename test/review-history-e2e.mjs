@@ -106,6 +106,9 @@ try {
   await until(() =>
     card.getByRole("button", { name: "Edit and run", exact: true }).isEnabled(),
   );
+  await card
+    .locator("xpath=ancestor::details[contains(@class,'review-older-runs')]")
+    .evaluateAll((nodes) => nodes.forEach((n) => (n.open = true)));
   const count = (await api("review-runs")).runs.length;
   await card.getByRole("button", { name: "Edit and run", exact: true }).click();
   await desk.locator("#reviewEditDialog[open]").waitFor();

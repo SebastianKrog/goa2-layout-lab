@@ -42,8 +42,8 @@ Equal dimensions permit a pixel diff but do not establish a fair comparison by t
 ## Compare elements
 
 Use a selector crop when the question concerns the actual appearance of one or
-more controls. In the desk, expand **Crop image capture to an element**, enable
-**Crop screenshots**, choose a selector/match policy, then use **Capture**.
+more controls. In the desk, open **Workspace tools → Crop screenshots**, enable cropping,
+choose a selector/match policy, then use **Capture selected Views**.
 The same selector is applied independently to every selected view.
 
 | Policy             | Result                                                                                          |
@@ -66,7 +66,7 @@ portable helper examples, filenames, clipping limits and pair indexing.
 
 For source/style inspection, read
 [references/html-and-css.md](references/html-and-css.md). Use the prepared views
-and **Compare HTML & CSS** in the desk or `scripts/extract-sources.mjs` from the
+and **Workspace tools → Compare HTML & CSS** in the desk or `scripts/extract-sources.mjs` from the
 repository root. Select exactly two views, including any two from a three-view
 comparison. Default to selector-focused `--mode=element` with the narrowest useful
 selector. Avoid whole-page `full` and `active` collection unless the user requests

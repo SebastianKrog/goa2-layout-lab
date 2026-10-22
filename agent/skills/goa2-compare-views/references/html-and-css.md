@@ -23,7 +23,8 @@ not a cheap fallback. Image-only comparisons need no CSS export.
 | `active`  | Computed values and matched rules for all main-document elements; document HTML omitted.                                  |
 | `element` | Every CSS-selector match, its outer HTML, and computed/matched styles for its subtree.                                    |
 
-In **Compare HTML & CSS** on the desk, select exactly two Capture checkboxes,
+In **Workspace tools → Compare HTML & CSS**, select exactly two Views with
+**Include Views** (or set their Capture checkboxes before opening tools),
 choose the mode, enter the selector for Element, and select **Extract two views**.
 The selector is the same in both views. Standard CSS selector lists can cover
 source-specific markup, but check that each branch identifies equivalent content.

@@ -59,13 +59,13 @@ try {
     .selectOption("mobile");
   assert.equal(
     await desk
-      .locator('#editorFields select[aria-label="Renderer"]')
+      .locator('#editorAdvancedFields select[aria-label="Renderer"]')
       .inputValue(),
     "2d",
   );
   assert.equal(
     await desk
-      .locator('#editorFields select[aria-label="UI mode"]')
+      .locator('#editorAdvancedFields select[aria-label="UI mode"]')
       .inputValue(),
     "mobile",
   );
@@ -141,7 +141,8 @@ try {
     .click();
   await desk.locator("#editor[open]").waitFor();
   assert.equal(await desk.locator("#editorSubmit").textContent(), "Save");
-  await desk.locator("#editorFields input").fill("Edited view");
+  await desk.locator("#viewAdvanced summary").click();
+  await desk.locator("#editorAdvancedFields input").fill("Edited view");
   await desk.locator("#editorSubmit").click();
   await desk.locator("#editor").waitFor({ state: "hidden", timeout: 180000 });
   await idle();

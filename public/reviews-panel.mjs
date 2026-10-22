@@ -36,10 +36,7 @@ export function initReviewsPanel({
     return [
       count(r.total, "situation"),
       ...(r.visited === null ? [] : [`${r.visited} visited`]),
-      `Position ${r.position}/${r.total}`,
       count(r.reports, "report"),
-      count(r.reportedSituations, "situation reported", "situations reported"),
-      count(r.views, "view"),
     ].join(" · ");
   }
   async function run(r, entries, name, inputs = "frozen") {
@@ -78,15 +75,20 @@ export function initReviewsPanel({
         const list = node("div", undefined, "review-history-list");
         group.append(list);
         $("reviewsList").append(group);
-        groups.set(groupId, list);
+        const previous = node("details", undefined, "review-older-runs");
+        previous.append(node("summary", `Earlier runs (${runs.length - 1})`));
+        const older = node("div", undefined, "review-history-list");
+        previous.append(older);
+        if (runs.length > 1) group.append(previous);
+        groups.set(groupId, { list, older, count: 0 });
       }
       const card = node("article", undefined, "review-history-card");
       card.dataset.reviewId = review.id;
       card.append(
-        node("h2", review.name),
+        node("h3", `Run · ${formatDate(review.createdAt)}`),
         node(
           "p",
-          `Revision ${review.reviewRevision || 1} · ${formatDate(review.createdAt)} · ${review.status === "active" ? "In progress" : review.status === "interrupted" ? "Interrupted" : "Ended"}`,
+          `Revision ${review.reviewRevision || 1} · ${review.status === "active" ? "In progress" : review.status === "interrupted" ? "Interrupted" : "Ended"}`,
           "muted",
         ),
         node("p", stats(review), "review-history-stats"),
@@ -94,9 +96,18 @@ export function initReviewsPanel({
       const kinds = Object.entries(review.reportKinds)
         .map(([kind, count]) => `${kind}: ${count}`)
         .join(" · ");
-      if (kinds) card.append(node("p", kinds, "muted"));
+      const options = node("details", undefined, "review-run-options");
+      options.append(node("summary", "Run details and options"));
+      options.append(
+        node(
+          "p",
+          `Position ${review.position}/${review.total} · ${review.reportedSituations} situations reported · ${review.views} views`,
+          "muted",
+        ),
+      );
+      if (kinds) options.append(node("p", kinds, "muted"));
       if (review.parentRunId)
-        card.append(
+        options.append(
           node("p", "Rerun of " + review.parentRunId.slice(0, 8), "muted"),
         );
       const actions = node("div", undefined, "review-history-actions");
@@ -115,19 +126,33 @@ export function initReviewsPanel({
         option.value = value;
         inputs.append(option);
       }
-      actions.append(inputs);
+      const inputLabel = node("label", "Rerun inputs");
+      inputLabel.append(inputs);
+      options.append(inputLabel);
       const rerun = button(
         "Run again",
         () => void run(review, undefined, undefined, inputs.value),
       );
+      inputs.onchange = () => {
+        options.querySelector("summary").textContent =
+          inputs.value === "library"
+            ? "Run options · current library"
+            : "Run details and options";
+        rerun.title =
+          inputs.value === "library"
+            ? "Run current library Situations"
+            : "Run original saved snapshots";
+      };
+      inputs.onchange();
       rerun.dataset.reviewRun = "";
       const edit = button("Edit and run", () => void editReview(review.id));
       edit.dataset.reviewRun = "";
       actions.append(rerun, edit);
       if (review.status === "active")
         actions.append(button("Continue review", () => navigate("compare")));
-      card.append(actions);
-      groups.get(groupId).append(card);
+      card.append(actions, options);
+      const target = groups.get(groupId);
+      (target.count++ === 0 ? target.list : target.older).append(card);
     }
     $("reviewsEmpty").hidden = history.length > 0;
     updateState();

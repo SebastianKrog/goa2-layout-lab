@@ -1,8 +1,8 @@
 # Review a queue of situations
 
 In **Situations**, tick the entries you want to inspect, optionally filter by
-folder or Library/Local drafts, and press **Start review**. An optional name
-labels the collection. The checkbox beside **Select filtered** selects every
+folder or Library/Local drafts, search by name/hero/folder, and press **Start review**.
+Selecting entries reveals an optional name for the Review. The checkbox beside **Select filtered** selects every
 currently visible situation; clicking it again clears only those visible
 entries. Its mixed state means some visible entries are selected. Selections
 outside the filter are retained and counted. **Clear selection** clears all.
@@ -16,13 +16,16 @@ moment again; it does not retain gameplay performed on an earlier visit.
 
 ## Past reviews and reruns
 
-The **Reviews** tab groups Runs under their Review, newest first. Each card shows the
-creation date, status, situation count, distinct situations visited, last position,
-report count, situations with reports, view count and report types. An
+The **Reviews** tab groups Runs under their Review. The latest Run is visible;
+**Earlier runs** expands its history. Cards show date, status, situation count,
+visited count and report count. **Run details and options** contains position,
+report types, affected-situation/view counts and the rerun input choice. An
 **Interrupted** status means the desk stopped while the saved review was active;
 review sessions do not resume automatically.
 
-**Run again** creates a new Run of the same Review revision. **Original saved snapshots** is the default input, even if the library changed. **Current library Situations** explicitly rereads the queue IDs from the library.
+**Run again** creates a new Run of the same Review revision. **Original saved snapshots** is the default input, even if the library changed. **Current library Situations**, under **Run details and options**, explicitly
+rereads the queue IDs from the library. Its non-default choice stays visible in
+the details summary.
 Current views define the frontend sources and layouts; when no views are running,
 the previous review's saved view configurations are used. Earlier reports and
 snapshots stay untouched, and the new collection records its parent Run ID.

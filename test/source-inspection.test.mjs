@@ -282,19 +282,15 @@ test("desk exposes extraction modes and submits the selected pair without loadin
       });
     });
     await page.goto("http://fixture.test/");
+    await page.locator("#workspaceTools").click();
     await page.getByText("Compare HTML & CSS", { exact: true }).click();
-    await page.waitForFunction(
-      () => !document.querySelector("#extract").disabled,
-    );
-    await page.locator("#extract").click();
-    await page.waitForFunction(() =>
-      document.querySelector("#error").textContent.includes("exactly two"),
+    assert.equal(await page.locator("#extract").isDisabled(), true);
+    assert.match(
+      await page.locator("#extractSelectionNote").textContent(),
+      /3 selected/,
     );
     assert.equal(posts.length, 0);
-    await page
-      .getByRole("checkbox", { name: "Include in capture" })
-      .nth(2)
-      .uncheck();
+    await page.locator("#toolViewSelection input").nth(2).uncheck();
     await page.locator("#extractMode").selectOption("element");
     await page.locator("#extractSelector").fill(".card");
     await page.locator("#extract").click();
@@ -306,12 +302,14 @@ test("desk exposes extraction modes and submits the selected pair without loadin
       },
     ]);
     assert.deepEqual(errors, []);
+    if (!(await page.locator("#workspaceToolsDialog").evaluate((e) => e.open)))
+      await page.locator("#workspaceTools").click();
     await page.locator("#cropTools summary").click();
     await page.locator("#cropEnabled").check();
     await page.locator("#cropSelector").fill(".card");
     await page.locator("#cropMatch").selectOption("nth");
     await page.locator("#cropOccurrence").fill("2");
-    await page.locator("#capture").click();
+    await page.locator("#captureFromTools").click();
     await page.waitForFunction(
       () =>
         document.querySelector("#report h3")?.textContent === "Capture saved",
@@ -323,8 +321,9 @@ test("desk exposes extraction modes and submits the selected pair without loadin
         crop: { selector: ".card", match: "nth", occurrence: 2 },
       },
     });
+    await page.locator("#workspaceTools").click();
     await page.locator("#cropEnabled").uncheck();
-    await page.locator("#capture").click();
+    await page.locator("#captureFromTools").click();
     await page.waitForFunction(() => !document.body.classList.contains("busy"));
     assert.deepEqual(posts[2], {
       path: "/api/capture",

@@ -20,9 +20,24 @@ function place() {
     const scale = v.fit
       ? Math.min(host.clientWidth / width, host.clientHeight / height)
       : 1;
-    const x = Math.max(0, r.left),
+    const expanded = !!host.closest(".expanded");
+    const scroller = expanded ? null : host.closest(".slots");
+    const clips =
+      scroller &&
+      ["auto", "scroll", "hidden", "clip"].includes(
+        getComputedStyle(scroller).overflowX,
+      );
+    const clip = clips ? scroller.getBoundingClientRect() : null;
+    const clipLeft = clip ? Math.max(0, clip.left + scroller.clientLeft) : 0;
+    const clipRight = clip
+      ? Math.min(
+          innerWidth,
+          clip.left + scroller.clientLeft + scroller.clientWidth,
+        )
+      : innerWidth;
+    const x = Math.max(clipLeft, r.left),
       y = Math.max(0, r.top),
-      right = Math.min(innerWidth, r.left + host.clientWidth),
+      right = Math.min(clipRight, r.left + host.clientWidth),
       bottom = Math.min(innerHeight, r.top + host.clientHeight);
     const offsetX =
       (v.fit
@@ -45,8 +60,8 @@ function place() {
       offsetX,
       offsetY,
       scale,
-      visible: !modal && !document.hidden && r.width > 0 && r.height > 0,
-      expanded: !!host.closest(".expanded"),
+      visible: !modal && !document.hidden && right > x && bottom > y,
+      expanded,
     });
   }
   window.layoutLabDesktop.layout(items);

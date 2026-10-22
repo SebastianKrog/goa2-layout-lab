@@ -215,11 +215,11 @@ the saved checkpoint; **Reset all** does so for every window.
 
 ## Live updates and synchronization
 
-Turn on **Live updates** below the views to switch Current build views to the frontend working tree.
+Turn on **Live updates** in **Settings → Current build** to switch Current build views to the frontend working tree.
 Vite hot reload picks up edits, including uncommitted changes. The game, seat, camera, Base and Userscript target stay in place.
 Turn it off to return to the selected comparator commit. **Use latest commit** refreshes that pinned comparator separately.
 
-**Synchronize** defaults to **None**. Any view can drive the others:
+**Synchronize**, in **Workspace tools**, defaults to **None**. Any view can drive the others:
 
 - **None** keeps game actions and UI independent.
 - **API requests** applies the same game command to every clone, using the originating hero even when the other views show different heroes.
@@ -260,7 +260,10 @@ Saved Layout overrides, Presentation templates and local drafts live under ignor
 
 Use **situations** throughout the lab. Shared fixtures belong in `situations/<folder>/<id>.json` and are included in the repository. New saves, imports and generated situations go to `.layout-lab/situations/` as local drafts. Older formats require the [offline porting tool](docs/state-model.md#porting-older-situations); runtime imports accept composed Situations only.
 
-The **Situations** page groups entries by folder and Library / Local drafts. The folder filter includes subfolders; Compare also groups its situation picker by folder. **Move** accepts paths such as `cards/defense` or `heroes/snorri` and creates folders as needed. The same operation works on shared fixtures and local drafts.
+The **Situations** page supports search by name, hero or folder and groups entries
+by folder and Library / Local drafts. **New situation** holds creation/import
+actions; each row keeps **Open situation** visible and puts Export, Move, device
+sharing and promotion under **More**. The folder filter includes subfolders; Compare also groups its situation picker by folder. **Move** accepts paths such as `cards/defense` or `heroes/snorri` and creates folders as needed. The same operation works on shared fixtures and local drafts.
 
 Choose **Add to library** on a local draft to create a new shared copy in the selected folder. The draft is retained, machine-specific runtime provenance is removed, and nothing is committed automatically. Review the JSON and commit it alongside the implementation when ready. Ordinary saves never overwrite shared fixtures.
 
@@ -321,8 +324,9 @@ pass/fail tests.
 
 ### Crop captures to elements
 
-Open **Crop image capture to an element**, enable **Crop screenshots**, enter a
-CSS selector, then use **Capture** normally. The same selector and match policy
+Open **Workspace tools → Crop screenshots**, enable cropping, enter a CSS
+selector, then use **Capture selected Views**. The toolbar shows **Capture crop**
+while cropping is enabled. The same selector and match policy
 are applied independently to every selected view (one, two or three).
 
 - **Require one visible match** (default): exactly one match must have a visible
@@ -365,8 +369,9 @@ and `--match union` selects the combined rectangle. Use `--match individual` or
 
 ## Compare rendered HTML and CSS
 
-Prepare a comparison normally, then open **Compare HTML & CSS** below the views.
-Select exactly two views using their **Capture** checkboxes and choose:
+Prepare a comparison normally, then open **Workspace tools → Compare HTML & CSS**.
+Select two Views with **Include Views** in the dialog (or the Capture checkboxes
+on the Views) and choose:
 
 Start with **Element HTML + active CSS** and a narrow selector for routine styling
 reviews. Use full-page **Full** or **Active** only when explicitly needed for a
@@ -564,9 +569,9 @@ iterations, a two-second decision timeout and two-round continuation horizon.
 There are no search tuning controls. Backend timeout/failure handling may fall
 back to Simple for an individual decision.
 
-The default is one Live/Desktop view. Use **Add view** for a second or third view; the **Play solo** setup under Comparison tools remains available for one Live/mobile view.
-In any regular view, open **Edit view**, choose the human **Viewpoint**, then
-set **Other heroes** to **Random**, **Simple**, **ISMCTS**, **Manual**, or mixed choices.
+The default is one Live/Desktop view. Use **Add view** for a second or third view; the **Play solo** setup under **Workspace tools** remains available for one Live/mobile view.
+In any regular view, open **Edit view**, choose the human **Viewpoint**, expand
+**Controllers and auto switch**, then set **Other heroes** to **Random**, **Simple**, **ISMCTS**, **Manual**, or mixed choices.
 **Save** updates that clone's controllers without resetting its game.
 Before loading, these choices become part of that view's setup.
 

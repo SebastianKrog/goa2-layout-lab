@@ -363,6 +363,14 @@ under `.layout-lab/reviews/m8-utilities-*` and `.layout-lab/reports/`.
 No native Linux tests or automatic phone activation are included. Browser touch
 and fullscreen checks do not establish physical-device acceptance.
 
+## Desk interface
+
+`npm run test:ui` runs the maintained isolated desk browser suite. It serves the
+real public UI with shared Situation metadata and mocked API responses, requiring
+no game services and leaving existing sessions untouched. Checks cover desktop and
+narrow layouts, search/selection, menus, capture tools, View settings, controllers,
+review history/options, import and connection recovery. `npm test` includes it.
+
 ## State model and review workflows
 
 See [state-model checks](state-model.md#verification) for the focused Python,

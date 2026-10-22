@@ -40,11 +40,11 @@ async function edit(index) {
     .getByRole("button", { name: "Edit view", exact: true })
     .click();
   await page.locator("#editor").waitFor();
+  if (!(await page.locator("#playOptions").evaluate((e) => e.open)))
+    await page.locator("#playOptions > summary").click();
 }
 async function apply() {
-  await page
-    .getByRole("button", { name: "Apply changes", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Save", exact: true }).click();
   await idle();
   assert.equal(
     await page.locator("#error").isVisible(),
@@ -65,6 +65,7 @@ try {
   await page
     .locator("#situation option[value='a00000000001']")
     .waitFor({ state: "attached" });
+  await page.locator("#workspaceTools").click();
   await page.locator("#situation").selectOption("a00000000001");
   await page.locator("#preset").selectOption("Play solo");
   assert.equal(await page.locator("#count").inputValue(), "1");
@@ -89,6 +90,7 @@ try {
     0,
   );
   await page.locator("#viewBotPreset").selectOption("random");
+  await page.locator("#viewBotDetails summary").click();
   await page.locator('[data-view-bot-hero="hero_hanu"]').selectOption("ismcts");
   assert.equal(await page.locator("#viewBotPreset").inputValue(), "custom");
   await page.screenshot({ path: path.join(out, "controllers.png") });
@@ -108,6 +110,8 @@ try {
   assert.equal(report.pairs.length, 0);
   await page.screenshot({ path: path.join(out, "single-view.png") });
   await edit(0);
+  if (!(await page.locator("#playOptions").evaluate((e) => e.open)))
+    await page.locator("#playOptions > summary").click();
   await page.locator("#viewBotPreset").selectOption("manual");
   await apply();
   views = await api("views");
@@ -116,6 +120,7 @@ try {
   assert.deepEqual(views[0].config.bots, {});
   await new Promise((resolve) => setTimeout(resolve, 750));
   assert.equal((await api("views"))[0].state.hash, stopped);
+  await page.locator("#workspaceTools").click();
   await page.locator("#count").selectOption("2");
   await page.locator("#load").click();
   await idle();

@@ -51,7 +51,8 @@ let editing = null,
   focusedIndex = 0,
   editorCommitted = false,
   lastWindowKey = "",
-  toastTimer;
+  toastTimer,
+  applyingWorkspace = false;
 const reviewSelection = new Set();
 let filteredSituations = [];
 const excluded = new Set(),
@@ -112,6 +113,20 @@ const matching = (i) =>
 function showError(error) {
   $("error").hidden = false;
   $("error").textContent = error.message || String(error);
+  const dialog = document.querySelector("dialog[open]");
+  if (dialog) {
+    let alert = dialog.querySelector("[data-dialog-error]");
+    if (!alert) {
+      alert = el("div", "alert");
+      alert.dataset.dialogError = "";
+      alert.setAttribute("role", "alert");
+      (
+        dialog.querySelector(".dialog-heading") || dialog.firstElementChild
+      ).after(alert);
+    }
+    alert.textContent = $("error").textContent;
+    alert.hidden = false;
+  }
 }
 function notify(text) {
   $("toast").textContent = text;
@@ -135,6 +150,10 @@ function navigate(name) {
   if (name === "reviews") void reviewHistory?.refresh();
   window.scrollTo(0, 0);
 }
+document.querySelector(".brand").onclick = (event) => {
+  event.preventDefault();
+  navigate("compare");
+};
 document
   .querySelectorAll("[data-page]")
   .forEach((b) => (b.onclick = () => navigate(b.dataset.page)));
@@ -176,7 +195,14 @@ function controls() {
     .forEach((b) => (b.disabled = !!busy));
   for (const live of liveViews.values()) live.pause(!!busy);
   const count = state.windows?.length || 0;
-  for (const id of ["capture", "extract", "save", "reset", "clear"])
+  for (const id of [
+    "capture",
+    "captureFromTools",
+    "extract",
+    "save",
+    "reset",
+    "clear",
+  ])
     $(id).disabled = !!busy || count < (id === "extract" ? 2 : 1);
   if (!busy)
     document
@@ -203,6 +229,17 @@ function controls() {
     .forEach((b) => {
       b.disabled = !!busy;
     });
+  $("reportElement").disabled = !!busy || count < 1;
+  const captureCount = (state.windows || []).filter(
+    (_, i) => !excluded.has(i),
+  ).length;
+  $("extract").disabled = !!busy || captureCount !== 2;
+  $("extractSelectionNote").textContent =
+    captureCount === 2
+      ? "2 Views selected"
+      : `${captureCount} selected · choose exactly 2 Views`;
+
+  updateCropControls(busy);
   $("addView").disabled = !!busy || configs.length >= 3;
   $("addView").title = configs.length >= 3 ? "Up to three views" : "Add a view";
   updateReviewControls();
@@ -213,6 +250,9 @@ async function task(label, fn, { sync = true } = {}) {
   running = true;
   operation = label;
   $("error").hidden = true;
+  document
+    .querySelectorAll("[data-dialog-error]")
+    .forEach((e) => (e.hidden = true));
   updateStatus();
   controls();
   try {
@@ -336,6 +376,11 @@ function button(text, fn, cls = "") {
   b.onclick = fn;
   return b;
 }
+document.querySelectorAll("dialog").forEach((dialog) =>
+  dialog.addEventListener("close", () => {
+    dialog.querySelector("[data-dialog-error]")?.remove();
+  }),
+);
 function render() {
   while (configs.length < Number($("count").value))
     configs.push(structuredClone(configs.at(-1) || catalog.presets.Current[0]));
@@ -410,25 +455,14 @@ function render() {
           "live-stage empty-view",
           w?.closed ? "View closed" : "Choose a situation and start this view",
         );
-        empty.append(button("Start", () => openEditor(i)));
+        const start = button("Start", () => openEditor(i));
+        start.classList.add("primary");
+        empty.append(start);
         card.append(empty);
       }
       const actions = el("div", "slot-footer");
+      actions.hidden = !w;
       actions.append(button("Edit view", () => openEditor(i)));
-      if (w)
-        actions.append(
-          button("Remove", () =>
-            task("Removing view...", async () => {
-              await call("views/remove", { index: i });
-              configs.splice(i, 1);
-              if (!configs.length)
-                configs = structuredClone(catalog.presets.Current);
-              $("count").value = configs.length;
-              expandedIndex = null;
-              excluded.clear();
-            }),
-          ),
-        );
       card.classList.toggle("expanded", expandedIndex === i);
       const expand = button(
         w?.closed ? "Reopen" : expandedIndex === i ? "Collapse" : "Expand",
@@ -457,8 +491,8 @@ function render() {
       check.type = "checkbox";
       check.checked = !excluded.has(i);
       check.setAttribute("aria-label", "Include in capture");
-      check.onchange = () =>
-        check.checked ? excluded.delete(i) : excluded.add(i);
+      check.dataset.captureIndex = i;
+      check.onchange = () => setCaptureSelection(i, check.checked);
       capture.append(check, document.createTextNode("Capture"));
       actions.append(capture);
       card.append(actions);
@@ -488,6 +522,30 @@ function render() {
         human(w.config.seat),
     ]),
   );
+  $("toolViewSelection").replaceChildren(
+    ...(state.windows || []).map((win, i) => {
+      const label = el("label", "check"),
+        input = el("input");
+      input.type = "checkbox";
+      input.dataset.captureIndex = i;
+      input.checked = !excluded.has(i);
+      input.onchange = () => setCaptureSelection(i, input.checked);
+      label.append(
+        input,
+        document.createTextNode(`View ${String.fromCharCode(65 + i)}`),
+      );
+      return label;
+    }),
+  );
+  controls();
+}
+function setCaptureSelection(index, checked) {
+  if (checked) excluded.delete(index);
+  else excluded.add(index);
+  for (const input of document.querySelectorAll(
+    `[data-capture-index="${index}"]`,
+  ))
+    input.checked = checked;
   controls();
 }
 function refreshPreviews() {
@@ -497,6 +555,7 @@ function field(host, labelText, key, values) {
   const label = el("label", "", labelText),
     input = values ? el("select") : el("input");
   input.setAttribute("aria-label", labelText);
+  label.dataset.field = key;
   if (values)
     fill(
       input,
@@ -561,7 +620,9 @@ function normalizeDraft() {
 function editorFields() {
   const host = $("editorFields");
   host.replaceChildren();
-  field(host, "View name", "label");
+  const advanced = $("editorAdvancedFields");
+  advanced.replaceChildren();
+  field(advanced, "View name", "label");
   field(host, "Source", "source", Object.entries(sourceNames));
   field(host, "Device", "profile", Object.entries(devices));
   field(host, "Interface preset", "interfacePreset", [
@@ -572,7 +633,7 @@ function editorFields() {
     ...(editDraft.source !== "target" ? [["3d", "Desktop · 3D"]] : []),
   ]);
   field(
-    host,
+    advanced,
     "Renderer",
     "render",
     editDraft.source === "target"
@@ -583,7 +644,7 @@ function editorFields() {
         ],
   );
   field(
-    host,
+    advanced,
     "UI mode",
     "uiMode",
     ["base", "target"].includes(editDraft.source) || editDraft.render === "3d"
@@ -611,6 +672,7 @@ function editorBots() {
   const choices = others.map((id) => editDraft.bots?.[id] || "manual");
   $("viewBotPreset").value =
     new Set(choices).size <= 1 ? choices[0] || "manual" : "custom";
+  if (new Set(choices).size > 1) $("viewBotDetails").open = true;
   for (const id of others) {
     const label = el("label", "", human(id));
     const select = el("select");
@@ -685,6 +747,10 @@ async function openEditor(i) {
     ],
     "",
   );
+  $("viewAdvanced").open = false;
+  $("playOptions").open =
+    !!editDraft.autoSwitch || Object.keys(editDraft.bots || {}).length > 0;
+  $("viewBotDetails").open = false;
   editorFields();
   $("editorSubmit").textContent = creating ? "Start" : "Save";
   $("viewAutoSwitch").checked = !!editDraft.autoSwitch;
@@ -694,8 +760,19 @@ async function openEditor(i) {
   const action = (text, label, fn) => {
     const b = button(text, () => task(label, fn));
     b.dataset.needsWindow = i;
+    if (text === "Remove view") b.classList.add("danger");
     tools.append(b);
   };
+  action("Remove view", "Removing view…", async () => {
+    await call("views/remove", { index: i });
+    configs.splice(i, 1);
+    if (!configs.length) configs = structuredClone(catalog.presets.Current);
+    $("count").value = configs.length;
+    expandedIndex = null;
+    excluded.clear();
+    editorCommitted = true;
+    $("editor").close();
+  });
   action("Reset this view", "Resetting view…", () =>
     call("reset", { index: i }),
   );
@@ -886,11 +963,49 @@ $("organizeForm").onsubmit = (event) => {
 };
 $("libraryGroup").onchange = renderLibrary;
 $("libraryOrigin").onchange = renderLibrary;
+$("librarySearch").oninput = renderLibrary;
+document.addEventListener(
+  "toggle",
+  (event) => {
+    const menu = event.target;
+    if (!menu.matches?.(".action-menu") || !menu.open) return;
+    for (const other of document.querySelectorAll(".action-menu[open]"))
+      if (other !== menu) other.open = false;
+    const popup = menu.querySelector(".menu-items");
+    menu.classList.toggle(
+      "opens-up",
+      popup.getBoundingClientRect().bottom > innerHeight - 8 &&
+        menu.getBoundingClientRect().top > popup.offsetHeight,
+    );
+  },
+  true,
+);
+document.addEventListener("click", (event) => {
+  for (const menu of document.querySelectorAll(".action-menu[open]"))
+    if (
+      !menu.contains(event.target) ||
+      event.target.closest(".menu-items button,.menu-items a")
+    )
+      menu.open = false;
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key !== "Escape") return;
+  for (const menu of document.querySelectorAll(".action-menu[open]")) {
+    menu.open = false;
+    menu.querySelector("summary").focus();
+    event.preventDefault();
+  }
+});
 function renderLibrary() {
   const folder = $("libraryGroup").value,
-    origin = $("libraryOrigin").value;
+    origin = $("libraryOrigin").value,
+    query = $("librarySearch").value.trim().toLowerCase();
   const filtered = catalog.situations.filter(
     (s) =>
+      (!query ||
+        `${s.name} ${s.group || ""} ${s.presentation?.viewpoint || ""}`
+          .toLowerCase()
+          .includes(query)) &&
       (!origin || s.origin === origin) &&
       (!folder ||
         (folder === "__root"
@@ -898,6 +1013,8 @@ function renderLibrary() {
           : s.group === folder || s.group?.startsWith(folder + "/"))),
   );
   filteredSituations = filtered;
+  $("libraryResults").textContent =
+    `${filtered.length} of ${catalog.situations.length}`;
   for (const id of reviewSelection)
     if (!catalog.situations.some((s) => s.id === id))
       reviewSelection.delete(id);
@@ -915,7 +1032,7 @@ function renderLibrary() {
       $("library").append(section);
     }
     const card = el("article", "situation-card"),
-      text = el("div");
+      text = el("div", "situation-info");
     text.append(
       el("h3", "", s.name),
       el(
@@ -940,6 +1057,11 @@ function renderLibrary() {
     const selectLabel = el("label", "situation-select");
     selectLabel.append(selection);
     card.append(selectLabel);
+    const menu = el("details", "action-menu situation-menu");
+    const summary = el("summary", "", "More");
+    summary.setAttribute("aria-label", `Actions for ${s.name}`);
+    const secondary = el("div", "menu-items");
+    menu.append(summary, secondary);
     const exportLink = el("a", "", "Export");
     exportLink.href = "/export/" + s.id;
     if (
@@ -951,16 +1073,18 @@ function renderLibrary() {
       reportLink.href = "/reports/" + s.provenance.report + "/index.html";
       reportLink.target = "_blank";
       reportLink.rel = "noreferrer";
-      card.append(reportLink);
+      secondary.append(reportLink);
     }
-    card.append(
-      text,
+    card.append(text);
+    secondary.append(
       exportLink,
       button("Move", () => organizeSituation(s)),
       button("Open on device", () => void openDevice(s.id)),
     );
     if (s.origin !== "library")
-      card.append(button("Add to library", () => organizeSituation(s, true)));
+      secondary.append(
+        button("Add to library", () => organizeSituation(s, true)),
+      );
     card.append(
       button("Open situation", () => {
         $("situation").value = s.id;
@@ -968,11 +1092,16 @@ function renderLibrary() {
         void loadComparison();
       }),
     );
+    card.append(menu);
     groups.get(key).append(card);
   }
   if (!filtered.length)
     $("library").append(
-      el("p", "library-note", "No situations in this folder."),
+      el(
+        "p",
+        "library-note",
+        "No matching situations. Try another search or filter.",
+      ),
     );
   updateReviewControls();
 }
@@ -993,6 +1122,8 @@ function updateReviewControls() {
   $("reviewStart").disabled =
     !!busy || !reviewSelection.size || !!review?.active;
   $("reviewClearSelection").disabled = !!busy || !reviewSelection.size;
+  $("reviewClearSelection").hidden = reviewSelection.size === 0;
+  $("reviewNameField").hidden = reviewSelection.size === 0;
   $("reviewBar").hidden = !review;
   if (review) {
     $("reviewTitle").textContent = review.name;
@@ -1017,6 +1148,8 @@ function updateReviewControls() {
       "addView",
       "preset",
       "count",
+      "situation",
+      "synchronize",
       "liveUpdates",
       "revision",
       "refresh",
@@ -1115,7 +1248,7 @@ function updateStatus() {
           ? "Setup changed. Load to apply."
           : count
             ? `${count} ${count === 1 ? "view" : "views"} / clocks frozen`
-            : "Select a situation and load it.");
+            : "Start a View to choose a Situation.");
   $("connection").textContent =
     running || state.busy ? "Working locally" : "Connected";
   $("connectionDot").classList.remove("offline");
@@ -1196,6 +1329,7 @@ async function refreshConnection() {
       if (state.situationId) $("situation").value = state.situationId;
       render();
       initialized = true;
+      updateStatus();
       void refreshPreviews();
     }
   } catch (error) {
@@ -1212,6 +1346,8 @@ async function refreshConnection() {
   }
 }
 async function loadComparison() {
+  applyingWorkspace = $("workspaceToolsDialog").open;
+  $("workspaceToolsDialog").close();
   return task("Loading comparison…", async () => {
     state = await call("load", {
       situationId: $("situation").value,
@@ -1225,6 +1361,7 @@ async function loadComparison() {
         : {}),
     });
     syncViews();
+    $("workspaceToolsDialog").close();
     notify("Comparison loaded.");
   });
 }
@@ -1239,6 +1376,15 @@ $("situation").onchange = () => {
   updateStatus();
   controls();
 };
+$("workspaceTools").onclick = () => $("workspaceToolsDialog").showModal();
+$("workspaceToolsDialog").addEventListener("close", () => {
+  if (!applyingWorkspace && draftSetup && state.windows?.length) {
+    syncViews();
+    render();
+    updateStatus();
+  }
+  applyingWorkspace = false;
+});
 $("load").onclick = loadComparison;
 $("reset").onclick = () => task("Resetting views…", () => call("reset"));
 $("clear").onclick = () =>
@@ -1282,8 +1428,12 @@ $("composeSituationForm").onsubmit = (event) => {
     notify("Situation created.");
   });
 };
+$("saveKind").onchange = () => {
+  $("saveFrom").closest("label").hidden = $("saveKind").value === "setup";
+};
 $("save").onclick = () => {
   $("name").value = "";
+  $("saveKind").onchange();
   $("saveDialog").showModal();
 };
 $("saveForm").onsubmit = (event) => {
@@ -1300,7 +1450,7 @@ $("saveForm").onsubmit = (event) => {
     }
     if ($("saveKind").value === "setup") {
       await call("layout/save", { name, slots: configs });
-      notify("Layout saved in comparison tools.");
+      notify("Layout saved in Workspace tools.");
       return;
     }
     const s = await call("save", { name, index, kind: $("saveKind").value });
@@ -1316,21 +1466,19 @@ $("saveForm").onsubmit = (event) => {
     notify("Situation saved.");
   });
 };
-$("savePreset").onclick = () => {
-  const name = $("name").value.trim();
-  if (!name) {
-    $("name").reportValidity();
-    return;
-  }
-  $("saveDialog").close();
-  void task(
-    "Saving view setup…",
-    async () => {
-      await call("layout/save", { name, slots: configs });
-      notify("View setup saved in the Comparison menu.");
-    },
-    { sync: false },
-  );
+function updateCropControls(busy = running || state.busy || disconnected) {
+  $("cropOccurrence").closest("label").hidden = $("cropMatch").value !== "nth";
+  for (const id of ["cropSelector", "cropMatch", "cropOccurrence"])
+    $(id).disabled = !!busy || !$("cropEnabled").checked;
+  $("capture").textContent = $("cropEnabled").checked
+    ? "Capture crop"
+    : "Capture";
+}
+$("cropMatch").onchange = () => updateCropControls();
+$("cropEnabled").onchange = () => updateCropControls();
+$("captureFromTools").onclick = () => {
+  $("workspaceToolsDialog").close();
+  $("capture").click();
 };
 $("capture").onclick = () =>
   task("Capturing settled views…", async () => {
@@ -1369,6 +1517,7 @@ $("capture").onclick = () =>
     a.rel = "noopener";
     $("report").replaceChildren(text, a);
     $("report").hidden = false;
+    $("workspaceToolsDialog").close();
     notify("Comparison captured.");
   });
 $("extractMode").onchange = () => {
@@ -1403,6 +1552,7 @@ $("extract").onclick = () =>
     );
     $("report").replaceChildren(title, note, link);
     $("report").hidden = false;
+    $("workspaceToolsDialog").close();
     notify("Source comparison exported.");
   });
 $("synchronize").onchange = () => {

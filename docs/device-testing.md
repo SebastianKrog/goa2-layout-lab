@@ -2,7 +2,7 @@
 
 Start the layout lab normally with `npm run compare`. In **Compare**, select any
 saved situation and click **Open on device**. The same action is available on
-each card in **Situations**. You do not have to load or replace a comparison first.
+each card’s **More** menu in **Situations**. You do not have to load or replace a comparison first.
 
 Choose a frontend, Interface preset and Viewpoint, then **Start device website**. Scan the QR
 code using a phone or tablet on the same Wi-Fi, or open the displayed LAN link.
@@ -44,7 +44,8 @@ profile's selected device view. Use another browser/profile for independent tabs
 
 Bots also work in regular desk views. Select **Views: 1 view** or the **Play solo**
 setup for one board, or use two/three views. Under each view's **Edit view**, choose
-its human **Viewpoint** and set **Other heroes** independently. Apply changes to a
+its human **Viewpoint**, expand **Controllers and auto switch**, and set
+**Other heroes** independently. Expand **Individual heroes** for mixed controllers. Apply changes to a
 loaded view keeps its current game moment. Reset uses that view's chosen bots;
 saved setups retain controller choices. Changing the viewpoint leaves bot assignments unchanged. Synchronization is disabled
 while any view has bots; independently driven clones may diverge.

@@ -22,7 +22,7 @@
         <button class="nav-item" data-page="settings">Settings</button>
       </nav>
       <button
-        class="danger"
+        class="danger quiet"
         id="stop"
         title="Stop the desk and its owned services, including a pending load"
       >
@@ -33,47 +33,21 @@
       </div>
     </header>
     <main>
-      <div id="error" class="alert" role="alert" hidden></div>
+      <div id="error" class="alert" role="alert" hidden=""></div>
       <section id="comparePage" class="page">
         <h1 class="sr-only">Compare</h1>
-        <section class="setup-panel" aria-label="Comparison setup">
-          <details class="advanced-setup">
-            <summary>Comparison tools</summary>
-            <div class="setup-fields">
-              <label class="situation-field"
-                >Situation<select
-                  id="situation"
-                  aria-label="Saved situation"
-                ></select
-              ></label>
-              <label
-                >Layout<select id="preset" aria-label="Layout"></select
-              ></label>
-              <label class="count-field"
-                >Views<select id="count" aria-label="Views">
-                  <option value="1" selected>1 view</option>
-                  <option value="2">2 views</option>
-                  <option value="3">3 views</option>
-                </select></label
-              >
-              <label class="sync-control"
-                >Synchronize<select id="synchronize" aria-label="Synchronize">
-                  <option value="none">None</option>
-                  <option value="api">API requests</option>
-                  <option value="api-clicks">API + clicks</option>
-                </select></label
-              >
-            </div>
-            <button class="primary" id="load">Load all views</button>
-          </details>
+        <section
+          class="setup-panel workspace-toolbar"
+          aria-label="Comparison setup"
+        >
           <div class="setup-bottom">
             <div class="setup-actions">
-              <button id="reportElement" aria-pressed="false">
+              <button id="reportElement" aria-pressed="false" class="primary">
                 Report an element</button
               ><button id="openDevice">Open on device</button
               ><button id="save">Save...</button
-              ><button id="reset">Reset all</button
               ><button id="capture">Capture</button>
+              <button class="quiet" id="workspaceTools">Workspace tools</button>
             </div>
           </div>
         </section>
@@ -81,7 +55,7 @@
           id="reviewBar"
           class="review-bar"
           aria-label="Review navigation"
-          hidden
+          hidden=""
         >
           <strong id="reviewTitle"></strong
           ><span id="reviewProgress" aria-live="polite"></span>
@@ -96,10 +70,9 @@
         </nav>
         <div class="section-line">
           <p id="status" role="status" aria-live="polite">Connecting...</p>
-          <span id="viewCount" hidden>3</span
-          ><button class="quiet" id="clear">Close comparison</button>
+          <span id="viewCount" hidden="">3</span>
         </div>
-        <p id="browserNote" class="browser-note" hidden>
+        <p id="browserNote" class="browser-note" hidden="">
           Browser preview uses streamed frames. For animations, use the Layout
           lab desktop window.
         </p>
@@ -113,90 +86,33 @@
             +<span>Add view</span>
           </button>
         </div>
-        <details class="source-tools" id="cropTools">
-          <summary>Crop image capture to an element</summary>
-          <label class="check"
-            ><input id="cropEnabled" type="checkbox" />Crop screenshots</label
-          >
-          <label
-            >Crop CSS selector
-            <input id="cropSelector" placeholder="e.g. [data-pane=hand]"
-          /></label>
-          <label
-            >Multiple matches
-            <select id="cropMatch">
-              <option value="unique">Require one visible match</option>
-              <option value="nth">Specific visible occurrence</option>
-              <option value="union">
-                All visible matches (bounding rectangle)
-              </option>
-              <option value="individual">
-                Individual — image per visible match
-              </option>
-              <option value="combine">
-                Combine — individual crops in one image
-              </option>
-            </select></label
-          >
-          <label
-            >Occurrence (from 1)
-            <input id="cropOccurrence" type="number" min="1" step="1" value="1"
-          /></label>
-          <p class="muted">
-            Uses the current viewport without scrolling. Occurrences follow DOM
-            order among visible matches. Bounding rectangle includes the space
-            between matches. Individual saves each match; Combine joins those
-            crops without the original gaps. Hidden/offscreen matches are
-            ignored; missing matches are an error in any selected view. Then use
-            Capture above.
-          </p>
-        </details>
-        <details class="source-tools">
-          <summary>Compare HTML &amp; CSS</summary>
-          <p class="muted">
-            Select exactly two views using their Capture checkboxes. Extract the
-            current page or matching elements without changing the game.
-          </p>
-          <label
-            >Extract
-            <select id="extractMode">
-              <option value="full">Full HTML + CSS</option>
-              <option value="active">
-                Active CSS (computed + matched rules)
-              </option>
-              <option value="element">Element HTML + active CSS</option>
-            </select></label
-          >
-          <label
-            >CSS selector
-            <input id="extractSelector" placeholder="e.g. [data-pane=hand]"
-          /></label>
-          <button id="extract">Extract two views</button>
-        </details>
-        <section id="report" hidden></section>
-        <footer class="build-strip">
-          <span
-            ><span id="buildKind">Build </span
-            ><code id="buildSha">...</code></span
-          ><label class="check"
-            ><input type="checkbox" id="liveUpdates" />Live updates</label
-          ><button class="quiet" id="latest">Use latest commit</button>
-        </footer>
+
+        <section id="report" hidden=""></section>
       </section>
-      <section id="situationsPage" class="page" hidden>
+      <section id="situationsPage" class="page" hidden="">
         <header class="page-header">
           <h1>Saved situations</h1>
-          <button id="openImport">Import</button>
+
+          <details class="action-menu creation-menu">
+            <summary>New situation</summary>
+            <div class="menu-items">
+              <button id="starter">New planning situation</button
+              ><button id="timed">New timed situation</button
+              ><button type="button" id="composeSituation">
+                Create from Decision State</button
+              ><button id="openImport">Import</button>
+            </div>
+          </details>
         </header>
-        <div class="library-intro">
-          <button id="starter">New planning situation</button
-          ><button id="timed">New timed situation</button>
-        </div>
-        <p class="library-note">
-          Library situations live in this repo. Local drafts stay on this
-          computer until you add them to the library.
-        </p>
+
         <div class="library-filters">
+          <label class="library-search"
+            >Search<input
+              id="librarySearch"
+              type="search"
+              placeholder="Name, hero or folder"
+              aria-label="Find situations"
+          /></label>
           <label
             >Folder<select id="libraryGroup">
               <option value="">All folders</option>
@@ -209,10 +125,9 @@
               <option value="local">Local drafts</option>
             </select></label
           >
+          <span class="muted" id="libraryResults" role="status"></span>
         </div>
-        <button type="button" id="composeSituation">
-          Create from Decision State
-        </button>
+
         <div class="review-selection" aria-label="Review selection">
           <label class="check-button"
             ><input
@@ -222,8 +137,10 @@
             />Select filtered</label
           >
           <span id="reviewSelectedCount" aria-live="polite">0 selected</span>
-          <button id="reviewClearSelection">Clear selection</button>
-          <label
+          <button id="reviewClearSelection" class="quiet" hidden="">
+            Clear selection
+          </button>
+          <label id="reviewNameField" hidden=""
             >Review name<input
               id="reviewName"
               maxlength="100"
@@ -233,7 +150,7 @@
         </div>
         <div id="library" class="library"></div>
       </section>
-      <section id="reviewsPage" class="page" hidden>
+      <section id="reviewsPage" class="page" hidden="">
         <header class="page-header">
           <h1>Reviews</h1>
           <button id="reviewHistoryRefresh">Refresh</button>
@@ -242,7 +159,7 @@
           Run a previous review again, or edit its situation queue. Each run
           keeps its own reports.
         </p>
-        <p id="reviewHistoryActiveNote" class="library-note" hidden>
+        <p id="reviewHistoryActiveNote" class="library-note" hidden="">
           End the current review before starting another run.
         </p>
         <p id="reviewHistoryWarnings" role="status"></p>
@@ -252,10 +169,30 @@
         </p>
         <div id="reviewsList" class="review-history-list"></div>
       </section>
-      <section id="settingsPage" class="page" hidden>
+      <section id="settingsPage" class="page" hidden="">
         <header class="page-header"><h1>Settings</h1></header>
         <section class="settings-card">
-          <h2>Frozen references</h2>
+          <h2>Current build</h2>
+          <div class="inline-form">
+            <label
+              >Revision<select
+                id="revision"
+                aria-label="Comparator revision"
+              ></select></label
+            ><button id="refresh">Switch build</button>
+          </div>
+          <p class="muted">
+            Choose a committed build, or use Live updates for working-tree
+            changes.
+          </p>
+          <div class="inline-form build-controls">
+            <label class="check"
+              ><input type="checkbox" id="liveUpdates" />Live updates</label
+            ><button class="quiet" id="latest">Use latest commit</button>
+          </div>
+        </section>
+        <details class="settings-card">
+          <summary>Frozen references</summary>
           <p>Set at launch. Restart to change them.</p>
           <dl id="refs"></dl>
           <code class="command"
@@ -265,23 +202,12 @@
           <p class="muted">
             <code>GOA2_LAB_BASE_REF</code>, <code>GOA2_LAB_SCRIPT_REF</code>
           </p>
-        </section>
-        <section class="settings-card">
-          <h2>Comparator revision</h2>
-          <div class="inline-form">
-            <label
-              >Revision<select
-                id="revision"
-                aria-label="Comparator revision"
-              ></select></label
-            ><button id="refresh">Switch build</button>
-          </div>
-          <p class="muted">Default: <code>GOA2_LAB_COMPARATOR_REF</code></p>
-        </section>
-        <section class="settings-card">
-          <h2>Launcher configuration</h2>
+        </details>
+
+        <details class="settings-card">
+          <summary>Runtime and checkout paths</summary>
           <dl id="runtimeSettings"></dl>
-        </section>
+        </details>
         <section class="settings-card">
           <h2>Game controls</h2>
           <label class="check"
@@ -297,7 +223,7 @@
           <pre id="processes"></pre>
         </details>
       </section>
-      <div id="toast" role="status" hidden></div>
+      <div id="toast" role="status" hidden=""></div>
     </main>
     <dialog id="deviceDialog" class="modal" aria-labelledby="deviceDialogTitle">
       <div class="dialog-heading">
@@ -307,7 +233,7 @@
           data-close="deviceDialog"
           aria-label="Close device dialog"
         >
-          &times;
+          ×
         </button>
       </div>
       <p>
@@ -324,14 +250,14 @@
           </select></label
         >
         <label
-          >Layout<select id="deviceLayout">
+          >Interface<select id="deviceLayout">
             <option value="mobile">Mobile 2D</option>
             <option value="2d">Desktop 2D</option>
             <option value="3d">Desktop 3D</option>
           </select></label
         >
         <label>Your hero<select id="deviceSeat"></select></label>
-        <fieldset id="deviceBots" hidden>
+        <fieldset id="deviceBots" hidden="">
           <legend>Other heroes</legend>
           <label
             >Set all others<select id="deviceBotPreset">
@@ -343,13 +269,16 @@
             </select></label
           >
           <p class="muted">
-            Random chooses legal actions at random. Simple uses basic rules.
-            ISMCTS searches ahead with heuristic scoring and default search
-            limits, without a neural network. Manual waits for a person.
+            Random, Simple, or ISMCTS (heuristic search). Manual waits for a
+            person.
           </p>
-          <div id="deviceBotRows"></div>
+
+          <details class="bot-customization">
+            <summary>Individual heroes</summary>
+            <div id="deviceBotRows"></div>
+          </details>
         </fieldset>
-        <p id="deviceBotsUnavailable" class="muted" hidden>
+        <p id="deviceBotsUnavailable" class="muted" hidden="">
           Bots are unavailable with this backend. See the device-testing guide
           to enable the bots checkout.
         </p>
@@ -357,7 +286,7 @@
           <button type="submit" class="primary">Start device website</button>
         </div>
       </form>
-      <section id="deviceLink" hidden>
+      <section id="deviceLink" hidden="">
         <p id="deviceRoster" class="muted"></p>
         <img
           id="deviceQR"
@@ -377,15 +306,19 @@
           situation. Reports exclude the reporting controls.
         </p>
       </section>
-      <p class="muted">
-        Windows: allow port 3300 on your private LAN with
-        <code>scripts/device-access.ps1</code> (Administrator PowerShell). The
-        desk stays private on localhost.
-      </p>
+
+      <details class="device-help">
+        <summary>Connection help</summary>
+        <p class="muted">
+          Windows: allow port 3300 on your private LAN with
+          <code>scripts/device-access.ps1</code> (Administrator PowerShell). The
+          desk stays private on localhost.
+        </p>
+      </details>
       <div id="deviceViews"></div>
     </dialog>
 
-    <dialog id="editor" class="editor">
+    <dialog id="editor" class="editor" aria-labelledby="editorTitle">
       <div class="dialog-heading">
         <div>
           <span id="editorEyebrow" class="muted">View A</span>
@@ -396,51 +329,60 @@
           data-close="editor"
           aria-label="Close view settings"
         >
-          &times;
+          ×
         </button>
       </div>
       <form id="editorForm">
         <label
-          >Game state<select id="viewSituation"></select
+          >Situation<select id="viewSituation"></select
           ><small id="viewSituationHelp"
-            >A situation contains game state only.</small
+            >Keep current progress, or load a saved moment with its
+            Presentation.</small
           ></label
         >
-        <label
-          >Presentation<select id="viewPresentation"></select
-          ><small>Menus, highlighted cards, camera and scroll.</small></label
-        >
+
         <div id="editorFields" class="editor-fields"></div>
-        <label class="check"
-          ><input id="viewAutoSwitch" type="checkbox" />Auto switch after each
-          action</label
-        >
-        <p class="muted">
-          Follow a player with a pending decision. This only changes the
-          viewpoint; actions and bot assignments stay unchanged.
-        </p>
-        <fieldset id="viewBots" hidden>
-          <legend>Other heroes</legend>
-          <p class="muted">
-            Controllers apply to this view only. Changes keep the current game
-            moment. Bots play independently, with synchronization off. ISMCTS
-            uses default search limits and heuristic scoring without a neural
-            network.
-          </p>
-          <label
-            >Set all others<select id="viewBotPreset">
-              <option value="manual">Manual</option>
-              <option value="random">Random</option>
-              <option value="heuristic">Simple</option>
-              <option value="ismcts">ISMCTS</option>
-              <option value="custom" disabled>Mixed</option>
-            </select></label
+        <details class="editor-section" id="playOptions">
+          <summary>Controllers and auto switch</summary>
+          <label class="check"
+            ><input id="viewAutoSwitch" type="checkbox" />Auto switch after each
+            action</label
           >
-          <div id="viewBotRows" class="editor-fields"></div>
-        </fieldset>
-        <p id="viewBotsUnavailable" class="muted" hidden>
-          Random/Simple/ISMCTS bots require a bot-capable backend checkout.
-        </p>
+          <p class="muted">Follow a player who has a decision to make.</p>
+          <fieldset id="viewBots" hidden="">
+            <legend>Other heroes</legend>
+            <p class="muted">
+              Bots control the other heroes in this View. Synchronization stays
+              off.
+            </p>
+            <label
+              >Set all others<select id="viewBotPreset">
+                <option value="manual">Manual</option>
+                <option value="random">Random</option>
+                <option value="heuristic">Simple</option>
+                <option value="ismcts">ISMCTS</option>
+                <option value="custom" disabled="">Mixed</option>
+              </select></label
+            >
+
+            <details class="bot-customization" id="viewBotDetails">
+              <summary>Individual heroes</summary>
+              <div id="viewBotRows" class="editor-fields"></div>
+            </details>
+          </fieldset>
+          <p id="viewBotsUnavailable" class="muted" hidden="">
+            Random/Simple/ISMCTS bots require a bot-capable backend checkout.
+          </p>
+        </details>
+        <details class="editor-section" id="viewAdvanced">
+          <summary>Advanced settings</summary>
+          <div class="editor-fields" id="editorAdvancedFields"></div>
+          <label
+            >Presentation<select id="viewPresentation"></select
+            ><small>Menus, highlighted cards, camera and scroll.</small></label
+          >
+        </details>
+
         <details class="view-tools">
           <summary>View tools</summary>
           <div id="editorTools"></div>
@@ -451,21 +393,18 @@
         </div>
       </form>
     </dialog>
-    <dialog id="saveDialog" class="modal">
+    <dialog id="saveDialog" class="modal" aria-labelledby="saveDialogTitle">
       <div class="dialog-heading">
-        <h2>Save</h2>
+        <h2 id="saveDialogTitle">Save</h2>
         <button
           class="icon-button"
           data-close="saveDialog"
           aria-label="Close save dialog"
         >
-          &times;
+          ×
         </button>
       </div>
-      <p>
-        A Situation saves the game moment and its Presentation. A Layout saves
-        view settings.
-      </p>
+      <p>Save the moment, its Presentation, or the View arrangement.</p>
       <form id="saveForm">
         <label
           >Save as<select id="saveKind">
@@ -480,14 +419,13 @@
         <label
           >Name<input
             id="name"
-            required
+            required=""
             maxlength="80"
             placeholder="e.g. Arien choosing a target"
             autocomplete="off" /></label
         ><label>From view<select id="saveFrom"></select></label>
         <div class="dialog-footer">
-          <button type="button" id="savePreset" hidden>Save setup only</button
-          ><button type="submit" class="primary">Save</button>
+          <button type="submit" class="primary">Save</button>
         </div>
       </form>
     </dialog>
@@ -495,10 +433,10 @@
       <form id="composeSituationForm">
         <h2 id="composeSituationTitle">Create a Situation</h2>
         <label
-          >Name<input id="composeSituationName" required maxlength="80"
+          >Name<input id="composeSituationName" required="" maxlength="80"
         /></label>
         <label
-          >Decision State<select id="composeDecisionState" required></select
+          >Decision State<select id="composeDecisionState" required=""></select
         ></label>
         <label
           >Presentation template<select id="composePresentation">
@@ -524,7 +462,7 @@
           creates a new run; the original review and its reports stay intact.
         </p>
         <label
-          >Review name<input id="reviewEditName" maxlength="100" required
+          >Review name<input id="reviewEditName" maxlength="100" required=""
         /></label>
         <section>
           <h3>Saved queue</h3>
@@ -543,7 +481,7 @@
               placeholder="Name or folder"
           /></label>
           <div id="reviewEditAvailable" class="review-queue-list"></div>
-          <p id="reviewEditNoMatches" hidden>No matching situations.</p>
+          <p id="reviewEditNoMatches" hidden="">No matching situations.</p>
         </section>
         <label
           >Retained entries use<select id="reviewEditInputs">
@@ -568,7 +506,7 @@
           data-close="importDialog"
           aria-label="Close import dialog"
         >
-          &times;
+          ×
         </button>
       </div>
       <form id="importForm">
@@ -577,13 +515,13 @@
             id="file"
             type="file"
             accept=".json,.jsonl"
-            required /></label
+            required="" /></label
         ><label
           >File type<select id="kind">
             <option value="save">Game save / exported situation</option>
             <option value="replay">Replay (.jsonl)</option>
           </select></label
-        ><label id="decisionField" hidden
+        ><label id="decisionField" hidden=""
           >Decision index<input
             id="decision"
             type="number"
@@ -605,7 +543,7 @@
           data-close="organizeDialog"
           aria-label="Close folder dialog"
         >
-          &times;
+          ×
         </button>
       </div>
       <p id="organizeNote"></p>
@@ -638,7 +576,7 @@
           data-close="elementReportDialog"
           aria-label="Close element report"
         >
-          &times;
+          ×
         </button>
       </div>
       <p id="elementReportProgress" role="status">Preparing capture...</p>
@@ -648,11 +586,11 @@
             id="elementReportComment"
             rows="5"
             maxlength="10000"
-            required
+            required=""
             placeholder="What should be fixed? Enter sends; Shift+Enter adds a line."
           ></textarea>
         </label>
-        <p id="elementReportError" role="alert" hidden></p>
+        <p id="elementReportError" role="alert" hidden=""></p>
         <div class="dialog-footer">
           <button id="elementReportDiscard" type="button">Discard</button
           ><button type="button" data-close="elementReportDialog">Close</button
@@ -663,5 +601,122 @@
       </form>
     </dialog>
     <script type="module" src="/desk.mjs"></script>
+
+    <dialog
+      class="modal workspace-tools"
+      id="workspaceToolsDialog"
+      aria-labelledby="workspaceToolsTitle"
+    >
+      <div class="dialog-heading">
+        <h2 id="workspaceToolsTitle">Workspace tools</h2>
+        <button
+          class="icon-button"
+          data-close="workspaceToolsDialog"
+          aria-label="Close workspace tools"
+        >
+          ×
+        </button>
+      </div>
+      <details class="advanced-setup" open="">
+        <summary>Load a Situation and Layout</summary>
+        <div class="setup-fields">
+          <label class="situation-field"
+            >Situation<select
+              id="situation"
+              aria-label="Saved situation"
+            ></select
+          ></label>
+          <label>Layout<select id="preset" aria-label="Layout"></select></label>
+          <label class="count-field"
+            >Views<select id="count" aria-label="Views">
+              <option value="1" selected="">1 view</option>
+              <option value="2">2 views</option>
+              <option value="3">3 views</option>
+            </select></label
+          >
+          <label class="sync-control"
+            >Synchronize<select id="synchronize" aria-label="Synchronize">
+              <option value="none">None</option>
+              <option value="api">API requests</option>
+              <option value="api-clicks">API + clicks</option>
+            </select></label
+          >
+        </div>
+        <button class="primary" id="load">Load all views</button>
+      </details>
+      <fieldset class="tool-view-selection">
+        <legend>Include Views</legend>
+        <div id="toolViewSelection"></div>
+      </fieldset>
+      <details class="source-tools" id="cropTools">
+        <summary>Crop screenshots</summary>
+        <label class="check"
+          ><input id="cropEnabled" type="checkbox" />Crop screenshots</label
+        >
+        <label
+          >Crop CSS selector
+          <input id="cropSelector" placeholder="e.g. [data-pane=hand]"
+        /></label>
+        <label
+          >Multiple matches
+          <select id="cropMatch">
+            <option value="unique">Require one visible match</option>
+            <option value="nth">Specific visible occurrence</option>
+            <option value="union">
+              All visible matches (bounding rectangle)
+            </option>
+            <option value="individual">
+              Individual — image per visible match
+            </option>
+            <option value="combine">
+              Combine — individual crops in one image
+            </option>
+          </select></label
+        >
+        <label
+          >Occurrence (from 1)
+          <input id="cropOccurrence" type="number" min="1" step="1" value="1"
+        /></label>
+        <p class="muted">
+          Capture visible matches without scrolling. Missing matches are
+          reported in each selected View.
+        </p>
+      </details>
+      <details class="source-tools">
+        <summary>Compare HTML &amp; CSS</summary>
+        <p class="muted">Use the Capture checkboxes to select two Views.</p>
+        <label
+          >Extract
+          <select id="extractMode">
+            <option value="full">Full HTML + CSS</option>
+            <option value="active">
+              Active CSS (computed + matched rules)
+            </option>
+            <option value="element" selected>Element HTML + active CSS</option>
+          </select></label
+        >
+        <label
+          >CSS selector
+          <input id="extractSelector" placeholder="e.g. [data-pane=hand]"
+        /></label>
+        <button id="extract">Extract two views</button
+        ><small id="extractSelectionNote" role="status"></small>
+      </details>
+      <div class="dialog-footer">
+        <button id="captureFromTools" class="primary" type="button">
+          Capture selected Views
+        </button>
+      </div>
+      <div class="workspace-maintenance">
+        <button id="reset">Reset all</button
+        ><button class="quiet" id="clear">Close comparison</button>
+      </div>
+      <footer class="build-strip workspace-build">
+        <span
+          ><span id="buildKind">Build </span
+          ><code id="buildSha">...</code></span
+        >
+      </footer>
+    </dialog>
   </body>
 </html>

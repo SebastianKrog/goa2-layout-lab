@@ -39,11 +39,15 @@ that View's own starting Decision State and Presentation. Replacements are prepa
 before current Views are retired, so a failed open preserves the current game.
 
 **Interface preset** selects a supported combination of **Renderer** (2D/3D) and
-**UI mode** (desktop/mobile). Both fields can also be adjusted separately. These
+**UI mode** (desktop/mobile). Separate fields and Presentation templates are
+under **Advanced settings**; bot policy and automatic Viewpoint changes are
+under **Controllers and auto switch**. Individual bot assignments expand on demand. These
 settings are separate from Layout.
 Device profiles specify viewport dimensions and input emulation. Physical devices
 retain their actual screen/input environment, which reports capture separately.
-The current desk supports one to three Views and one configured backend service
+**Workspace tools** holds Layout loading, synchronization, capture crops, HTML/CSS
+extraction, reset and close actions. **View tools** within Edit view includes
+removal and per-View operations. The current desk supports one to three Views and one configured backend service
 with isolated game instances per View.
 
 ## Defaults, Situations and overrides

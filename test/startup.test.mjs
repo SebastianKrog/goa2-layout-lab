@@ -148,13 +148,14 @@ test("Stop desk is visible and usable on Compare while a load is busy", async ()
     assert.deepEqual(posts, []);
     busy = false;
     await page.waitForFunction(() => !document.body.classList.contains("busy"));
-    await page.locator(".advanced-setup summary").click();
+    await page.locator("#workspaceTools").click();
     assert.equal(
       await page.locator("#restore").count(),
       0,
       "Legacy restoration is not exposed",
     );
     assert.equal(await page.getByLabel("Layout", { exact: true }).count(), 1);
+    await page.keyboard.press("Escape");
     busy = true;
     await page.waitForFunction(() => document.body.classList.contains("busy"));
     assert.equal(await stop.isEnabled(), true);
