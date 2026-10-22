@@ -2,7 +2,7 @@
 
 **1.0** · [Changelog](CHANGELOG.md)
 
-Guards of Atlantis II is designed by Artyom Nichipurov and published by Wolff Designa.
+Guards of Atlantis II is designed by (Artyom Nichipurov)[https://boardgamegeek.com/boardgamedesigner/90916/artyom-nichipurov] and published by (Wolff Designa)[https://wolffdesigna.com/].
 
 This local workspace lets you compare game-interfaces on the (https://goa2.frontend.pedroliv.dev/)[goa2.frontend.pedroliv.dev] platform, reproduce exact game moments, and collect useful reports. Start with one View of your current frontend, then add up to two more, or test on your device.
 
