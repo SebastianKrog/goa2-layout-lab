@@ -8,6 +8,15 @@ development servers on ports 3000/8000 are separate.
 
 For agent work, start with [AGENTS.md](AGENTS.md) and the repository skills it links.
 
+## Situation reviews
+
+Select multiple entries in **Situations**, use **Select filtered** to toggle the
+visible entries, then **Start review**. Previous/Next above the views and in the
+movable device Report bubble restore every view together. Captures and reports
+collect under one review folder. The **Reviews** tab lists past runs and statistics;
+use **Run again** or **Edit and run** to create a fresh run while preserving the
+original evidence. See [Review queues and evidence](docs/reviews.md).
+
 ## Repository layout
 
 ```text

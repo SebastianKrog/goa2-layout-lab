@@ -915,3 +915,126 @@ dialog::backdrop {
     width: 48px;
   }
 }
+
+.review-selection,
+.review-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 12px;
+  margin: 8px 0 14px;
+  border: 1px solid #bac9dc;
+  border-radius: 8px;
+  background: #f1f6fc;
+}
+.review-selection label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.review-selection input[type="text"],
+#reviewName {
+  max-width: 220px;
+}
+.check-button {
+  padding: 8px 10px;
+  border: 1px solid #bac9dc;
+  border-radius: 6px;
+  min-height: 36px;
+  cursor: pointer;
+}
+.situation-select {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  min-height: 44px;
+  cursor: pointer;
+}
+.situation-select input {
+  width: 18px;
+  height: 18px;
+}
+.situation-card:has(.situation-select input:checked) {
+  outline: 2px solid #5685c5;
+  outline-offset: -2px;
+}
+.review-bar #reviewProgress {
+  flex: 1;
+  min-width: 180px;
+}
+
+.review-history-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr));
+  gap: 14px;
+}
+.review-history-card {
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 16px;
+}
+.review-history-card h2 {
+  font-size: 17px;
+  margin: 0 0 8px;
+  overflow-wrap: anywhere;
+}
+.review-history-card p {
+  margin: 8px 0;
+  line-height: 1.5;
+}
+.review-history-stats {
+  font-size: 13px;
+}
+.review-history-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 12px;
+}
+#reviewEditDialog {
+  width: min(94vw, 740px);
+  max-height: 92dvh;
+  overflow: auto;
+}
+#reviewEditDialog section {
+  margin: 18px 0;
+}
+#reviewEditDialog h3 {
+  margin-bottom: 8px;
+}
+#reviewEditDialog label:has(> input:not([type="checkbox"])) {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 10px 0;
+}
+.review-queue-list {
+  max-height: 28dvh;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  margin-top: 8px;
+}
+.review-queue-entry {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  min-height: 42px;
+  cursor: pointer;
+  border-bottom: 1px solid #e5eaf0;
+}
+.review-queue-entry:last-child {
+  border-bottom: 0;
+}
+.review-queue-entry:has(input:checked) {
+  background: #eef4fc;
+}
+.review-queue-entry input {
+  flex: none;
+}

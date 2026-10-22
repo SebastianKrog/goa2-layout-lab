@@ -61,36 +61,38 @@ test("Stop desk is visible and usable on Compare while a load is busy", async ()
       if (url.pathname.startsWith("/api/")) {
         if (route.request().method() === "POST") posts.push(url.pathname);
         const data =
-          url.pathname === "/api/catalog"
-            ? {
-                situations: [
-                  {
-                    id: "saved",
-                    name: "Saved setup",
-                    origin: "local",
-                    group: "",
-                    summary: { phase: "PLANNING", round: 1 },
-                    provenance: { slots: PRESETS["Mobile migration"] },
-                    presentations: {},
-                  },
-                  {
-                    id: "gameOnly",
-                    name: "Game only",
-                    origin: "local",
-                    group: "",
-                    summary: { phase: "PLANNING", round: 1 },
-                    provenance: {},
-                    presentations: {},
-                  },
-                ],
-                presets: PRESETS,
-                profiles: PROFILES,
-                commits: [],
-                settings: { preset: "Mobile migration" },
-              }
-            : url.pathname === "/api/status"
-              ? { windows: [], busy, services: [], situationId: null }
-              : {};
+          url.pathname === "/api/reviews"
+            ? { reviews: [], warnings: [] }
+            : url.pathname === "/api/catalog"
+              ? {
+                  situations: [
+                    {
+                      id: "saved",
+                      name: "Saved setup",
+                      origin: "local",
+                      group: "",
+                      summary: { phase: "PLANNING", round: 1 },
+                      provenance: { slots: PRESETS["Mobile migration"] },
+                      presentations: {},
+                    },
+                    {
+                      id: "gameOnly",
+                      name: "Game only",
+                      origin: "local",
+                      group: "",
+                      summary: { phase: "PLANNING", round: 1 },
+                      provenance: {},
+                      presentations: {},
+                    },
+                  ],
+                  presets: PRESETS,
+                  profiles: PROFILES,
+                  commits: [],
+                  settings: { preset: "Mobile migration" },
+                }
+              : url.pathname === "/api/status"
+                ? { windows: [], busy, services: [], situationId: null }
+                : {};
         return route.fulfill({ json: data });
       }
       const file = url.pathname === "/" ? "index.html" : url.pathname.slice(1);
@@ -100,6 +102,7 @@ test("Stop desk is visible and usable on Compare while a load is busy", async ()
           "desk.mjs",
           "device-panel.mjs",
           "element-report-panel.mjs",
+          "reviews-panel.mjs",
           "desk.css",
           "live.mjs",
           "native.mjs",

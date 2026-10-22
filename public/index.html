@@ -16,6 +16,9 @@
         <button class="nav-item" data-page="situations">
           Situations <span id="savedCount">0</span>
         </button>
+        <button class="nav-item" data-page="reviews">
+          Reviews <span id="reviewHistoryCount">0</span>
+        </button>
         <button class="nav-item" data-page="settings">Settings</button>
       </nav>
       <button
@@ -83,6 +86,23 @@
             </div>
           </div>
         </section>
+        <nav
+          id="reviewBar"
+          class="review-bar"
+          aria-label="Review navigation"
+          hidden
+        >
+          <strong id="reviewTitle"></strong
+          ><span id="reviewProgress" aria-live="polite"></span>
+          <button id="reviewPrevious" aria-label="Previous situation">
+            ‹ Previous
+          </button>
+          <button id="reviewNext" aria-label="Next situation">Next ›</button>
+          <a id="reviewCollection" target="_blank" rel="noreferrer"
+            >Review reports</a
+          >
+          <button id="reviewEnd">End review</button>
+        </nav>
         <div class="section-line">
           <p id="status" role="status" aria-live="polite">Connecting...</p>
           <span id="viewCount" hidden>3</span
@@ -199,7 +219,44 @@
             </select></label
           >
         </div>
+        <div class="review-selection" aria-label="Review selection">
+          <label class="check-button"
+            ><input
+              id="reviewSelectFiltered"
+              type="checkbox"
+              aria-label="Select all filtered situations"
+            />Select filtered</label
+          >
+          <span id="reviewSelectedCount" aria-live="polite">0 selected</span>
+          <button id="reviewClearSelection">Clear selection</button>
+          <label
+            >Review name<input
+              id="reviewName"
+              maxlength="100"
+              placeholder="Optional name"
+          /></label>
+          <button class="primary" id="reviewStart">Start review</button>
+        </div>
         <div id="library" class="library"></div>
+      </section>
+      <section id="reviewsPage" class="page" hidden>
+        <header class="page-header">
+          <h1>Reviews</h1>
+          <button id="reviewHistoryRefresh">Refresh</button>
+        </header>
+        <p class="library-note">
+          Run a previous review again, or edit its situation queue. Each run
+          keeps its own reports.
+        </p>
+        <p id="reviewHistoryActiveNote" class="library-note" hidden>
+          End the current review before starting another run.
+        </p>
+        <p id="reviewHistoryWarnings" role="status"></p>
+        <p id="reviewsEmpty" class="library-note">
+          No saved reviews yet. Select situations and start a review to create
+          one.
+        </p>
+        <div id="reviewsList" class="review-history-list"></div>
       </section>
       <section id="settingsPage" class="page" hidden>
         <header class="page-header"><h1>Settings</h1></header>
@@ -438,6 +495,44 @@
           <button type="button" id="savePreset" hidden>Save setup only</button
           ><button type="submit" class="primary">Save</button>
         </div>
+      </form>
+    </dialog>
+    <dialog id="reviewEditDialog" aria-labelledby="reviewEditTitle">
+      <form id="reviewEditForm">
+        <header><h2 id="reviewEditTitle">Edit and run review</h2></header>
+        <p>
+          Keep or remove saved situations, then add more from the library. This
+          creates a new run; the original review and its reports stay intact.
+        </p>
+        <label
+          >Review name<input id="reviewEditName" maxlength="100" required
+        /></label>
+        <section>
+          <h3>Saved queue</h3>
+          <label class="check"
+            ><input type="checkbox" id="reviewEditKeepAll" />Keep all saved
+            situations</label
+          >
+          <div id="reviewEditKept" class="review-queue-list"></div>
+        </section>
+        <section>
+          <h3>Add situations</h3>
+          <label
+            >Find a situation<input
+              id="reviewEditSearch"
+              type="search"
+              placeholder="Name or folder"
+          /></label>
+          <div id="reviewEditAvailable" class="review-queue-list"></div>
+          <p id="reviewEditNoMatches" hidden>No matching situations.</p>
+        </section>
+        <p id="reviewEditCount" aria-live="polite"></p>
+        <footer>
+          <button type="button" data-close="reviewEditDialog">Cancel</button
+          ><button type="submit" id="reviewEditSubmit" class="primary">
+            Start edited review
+          </button>
+        </footer>
       </form>
     </dialog>
     <dialog id="importDialog" class="modal">

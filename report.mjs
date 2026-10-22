@@ -146,10 +146,18 @@ export async function captureReport(comparison, indexes, options = {}) {
     );
   }
   const id = `${new Date().toISOString().replace(/[:.]/g, "-")}-${randomUUID().slice(0, 8)}`;
-  const dir = path.join(DATA, "reports", id);
+  const collection = options.collection;
+  const dir = path.join(collection?.root || path.join(DATA, "reports"), id);
   await fs.mkdir(dir, { recursive: true });
   const metadata = {
     id,
+    review: collection
+      ? {
+          id: collection.id,
+          index: collection.index,
+          situationId: collection.situationId,
+        }
+      : null,
     capturedAt: new Date().toISOString(),
     ...comparison.status(),
     captures: [],
@@ -281,7 +289,11 @@ export async function captureReport(comparison, indexes, options = {}) {
     JSON.stringify(metadata, null, 2),
   );
   await fs.writeFile(path.join(dir, "index.html"), reportHTML(metadata));
-  return { id, url: `/reports/${id}/index.html`, diverged: metadata.diverged };
+  return {
+    id,
+    url: `/reports/${[collection?.prefix, id].filter(Boolean).join("/")}/index.html`,
+    diverged: metadata.diverged,
+  };
 }
 export function reportHTML(meta) {
   const safe = JSON.stringify(meta).replaceAll("<", "\\u003c");

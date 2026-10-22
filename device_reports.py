@@ -3,6 +3,7 @@ import base64
 import binascii
 import json
 import uuid
+import re
 from pathlib import Path
 from html import escape
 
@@ -50,13 +51,17 @@ def install_device_reports(app, *, checkpoint, write, root, now):
         except (ValueError, binascii.Error, AttributeError):
             raise HTTPException(422, "A PNG screenshot under 10 MiB is required")
         identifier = body["id"]
-        folder = Path(root) / "reports" / "device" / identifier
+        review = capture["provenance"].get("review")
+        if review and (not isinstance(review, dict) or not re.fullmatch(r"[a-f0-9]{24}", str(review.get("id", "")))):
+            raise HTTPException(422, "Invalid review identifier")
+        prefix = f"reviews/{review['id']}/reports/device" if review else "device"
+        folder = Path(root) / "reports" / prefix / identifier
         folder.mkdir(parents=True, exist_ok=True)
         (folder / "screenshot.png").write_bytes(png)
         (folder / "report.json").write_text(json.dumps({
             "id": identifier, "comment": comment.strip(), "captured_at": capture["at"],
             "viewport": capture["viewport"], "presentation": capture["presentation"],
-            "provenance": capture["provenance"],
+            "provenance": capture["provenance"], "review": review,
         }, indent=2), encoding="utf-8")
         (folder / "index.html").write_text(
             '<!doctype html><html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
@@ -68,11 +73,11 @@ def install_device_reports(app, *, checkpoint, write, root, now):
             encoding="utf-8",
         )
         provenance = {**capture["provenance"], "kind": "device-report", "comment": comment.strip(),
-                      "viewport": capture["viewport"], "report": f"device/{identifier}"}
+                      "viewport": capture["viewport"], "report": f"{prefix}/{identifier}"}
         situation = write(capture["checkpoint"], comment.strip()[:160],
                           situation_id=identifier, provenance=provenance,
                           presentations={"0": capture["presentation"], "1": capture["presentation"]},
                           group="device-reports")
         # Keep all integer-valued engine data in Python throughout capture/save.
         (folder / "situation.json").write_text(json.dumps(situation, indent=2), encoding="utf-8")
-        return {"id": identifier, "report": f"/reports/device/{identifier}/index.html"}
+        return {"id": identifier, "report": f"/reports/{prefix}/{identifier}/index.html"}

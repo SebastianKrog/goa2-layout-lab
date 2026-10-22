@@ -9,6 +9,7 @@ Use these names consistently in UI text, documentation and new APIs.
 | **Viewpoint** | Whose game information the view displays. | Arien, Hanu, spectator. Auto switch changes this seat only. |
 | **Presentation** | Local UI state that does not advance the game. | Open Hand menu, highlighted card, inspected hero, camera, scroll. |
 | **View setup** | Configuration for displaying and controlling views. | Frontend source/revision, device size, renderer, shell, viewpoint, bots, auto switch. |
+| **Review** | An ordered queue of situation snapshots with per-step presentation/viewpoint restoration and an evidence collection. | Inspect several decisions and collect reports under one review folder. |
 | **Comparison** | The activity of examining two or more views together. | Comparing working-tree mobile UI with a pinned desktop commit. |
 
 A frontend-only highlighted card is Presentation. A card already committed to the engine is Situation. Camera angle is Presentation; player identity is Viewpoint. A view's running game is mutable; its saved Situation is the starting checkpoint. The backend remains the configured live checkout for the desk, shared as a service, with isolated game instances per view.

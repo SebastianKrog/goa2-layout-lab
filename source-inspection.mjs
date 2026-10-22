@@ -339,6 +339,7 @@ export async function extractSources(
   comparison,
   body,
   reportsRoot = path.join(DATA, "reports"),
+  collection = null,
 ) {
   const options = inspectionOptions(body, comparison.windows.length);
   const before = await Promise.all(
@@ -384,6 +385,13 @@ export async function extractSources(
   const id = "source-" + randomUUID();
   const report = {
     schema: 3,
+    review: collection
+      ? {
+          id: collection.id,
+          index: collection.index,
+          situationId: collection.situationId,
+        }
+      : null,
     id,
     capturedAt: new Date().toISOString(),
     mode: options.mode,
@@ -443,5 +451,9 @@ export async function extractSources(
     JSON.stringify(computedChanges(...views.map((v) => v.snapshot))),
   );
   await fs.writeFile(path.join(dir, "index.html"), inspectionHTML(report));
-  return { id, url: `/reports/${id}/index.html`, diverged: report.diverged };
+  return {
+    id,
+    url: `/reports/${[collection?.prefix, id].filter(Boolean).join("/")}/index.html`,
+    diverged: report.diverged,
+  };
 }

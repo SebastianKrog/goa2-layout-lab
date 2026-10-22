@@ -499,5 +499,68 @@ class SituationTests(unittest.TestCase):
         self.assertEqual(restored["hash"], clone["hash"])
 
 
+    def test_review_snapshots_keep_exact_engine_integers_and_validate_references(self):
+        situation = self.client.get("/__lab/situations/e81bc3bd5fff", headers=self.headers).json()
+        hero = situation["checkpoint"]["state"]["teams"]["RED"]["heroes"][0]
+        hero["gold"] = 2 ** 60 + 3
+        saved = self.post("/import", {"content": situation, "name": "Exact review snapshot"})
+        spec = {"reviewId": "b" * 24, "index": 0}
+        snapshot = self.post("/review/snapshot", {"id": saved["id"], **spec})
+        self.assertEqual(snapshot["review_snapshot"], spec)
+        clone = self.post("/clone", {"review_snapshot": spec, "situation": {"checkpoint": {}}})
+        game = self.client.app.state.registry.get(clone["game_id"])
+        from goa2.domain.models.enums import TeamColor
+        self.assertEqual(game.session.state.teams[TeamColor.RED].heroes[0].gold, 2 ** 60 + 3)
+        snapshot_file = Path(self.temp.name) / "reports" / "reviews" / spec["reviewId"] / "situations" / "000.json"
+        exact = json.loads(snapshot_file.read_text(encoding="utf-8"))
+        self.assertEqual(exact["checkpoint"]["state"]["teams"]["RED"]["heroes"][0]["gold"], 2 ** 60 + 3)
+        for bad in [{"reviewId": "../escape", "index": 0}, {"reviewId": "a" * 24, "index": -1}, "bad"]:
+            response = self.client.post("/__lab/clone", json={"review_snapshot": bad}, headers=self.headers)
+            self.assertEqual(response.status_code, 422)
+
+    def test_review_rerun_copies_snapshot_without_refreshing_the_library(self):
+        spec = {"reviewId": "c" * 24, "index": 0}
+        first = self.post("/review/snapshot", {"id": "e81bc3bd5fff", **spec})
+        source = Path(self.temp.name) / "reports" / "reviews" / spec["reviewId"] / "situations" / "000.json"
+        original = source.read_bytes()
+        rerun_spec = {"reviewId": "d" * 24, "index": 1}
+        # The source snapshot is sufficient even if the library entry changes or disappears.
+        from situations import SituationStore
+        with patch.object(SituationStore, "read", side_effect=AssertionError("Do not reread library")):
+            rerun = self.post("/review/snapshot", {"id": first["id"], "from": spec, **rerun_spec})
+        self.assertEqual(rerun["checkpoint"], first["checkpoint"])
+        self.assertEqual(rerun["review_snapshot"], rerun_spec)
+        self.assertEqual(source.read_bytes(), original)
+        clone = self.post("/clone", {"review_snapshot": rerun_spec})
+        self.assertTrue(clone["game_id"])
+        response = self.client.post("/__lab/review/snapshot", json={"id": first["id"], "from": {"reviewId": "../bad", "index": 0}, "reviewId": "e" * 24, "index": 0}, headers=self.headers)
+        self.assertEqual(response.status_code, 422)
+
+    def test_device_reports_are_grouped_under_validated_review_folder(self):
+        import base64
+        clone = self.post("/clone", {"situation_id": "e81bc3bd5fff"})
+        review_id = "a" * 24
+        review = {"id": review_id, "index": 1, "situationId": "e81bc3bd5fff"}
+        captured = self.post("/device/capture", {
+            "game_id": clone["game_id"], "provenance": {"review": review},
+            "presentation": {"pane": "heroes"}, "viewport": {"width": 378, "height": 781},
+        })
+        png = "data:image/png;base64," + base64.b64encode(b"\x89PNG\r\n\x1a\nfixture").decode()
+        body = {"id": captured["id"], "game_id": clone["game_id"], "comment": "Review <script>test</script>", "screenshot": png}
+        result = self.post("/device/report", body)
+        relative = f"reviews/{review_id}/reports/device/{captured['id']}"
+        self.assertEqual(result["report"], f"/reports/{relative}/index.html")
+        folder = Path(self.temp.name) / "reports" / relative
+        report = json.loads((folder / "report.json").read_text(encoding="utf-8"))
+        self.assertEqual(report["review"], review)
+        self.assertIn("&lt;script&gt;", (folder / "index.html").read_text(encoding="utf-8"))
+        situation = json.loads((folder / "situation.json").read_text(encoding="utf-8"))
+        self.assertEqual(situation["provenance"]["report"], relative)
+        self.assertEqual(self.post("/device/report", body), result)
+        bad = self.post("/device/capture", {"game_id": clone["game_id"], "provenance": {"review": {"id": "../../escape"}}})
+        response = self.client.post("/__lab/device/report", json={**body, "id": bad["id"]}, headers=self.headers)
+        self.assertEqual(response.status_code, 422)
+
+
 if __name__ == "__main__":
     unittest.main()

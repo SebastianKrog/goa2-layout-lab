@@ -59,10 +59,17 @@ function reportHTML(report) {
 export class ElementReports {
   constructor(
     comparison,
-    { root = path.join(DATA, "reports"), schedule = (fn) => fn() } = {},
+    {
+      root = path.join(DATA, "reports"),
+      schedule = (fn) => fn(),
+      reportContext = () => null,
+      onReport = async () => {},
+    } = {},
   ) {
     this.comparison = comparison;
     this.root = root;
+    this.reportContext = reportContext;
+    this.onReport = onReport;
     this.schedule = schedule;
     this.active = false;
     this.draft = null;
@@ -136,6 +143,7 @@ export class ElementReports {
     const id = "element-" + randomUUID();
     const draft = (this.draft = {
       id,
+      collection: this.reportContext(),
       selectedAt: new Date().toISOString(),
       selectedIndex: this.comparison.windows.indexOf(win),
       descriptor,
@@ -157,7 +165,8 @@ export class ElementReports {
     }
   }
   async capture(draft, windows) {
-    draft.dir = path.join(this.root, ".pending-" + draft.id);
+    draft.root = draft.collection?.root || this.root;
+    draft.dir = path.join(draft.root, ".pending-" + draft.id);
     await fs.mkdir(draft.dir, { recursive: true });
     const status = this.comparison.status();
     const revision = (args, cwd) => {
@@ -233,7 +242,16 @@ export class ElementReports {
         view.situation.presentations = { 0: presentation };
         view.situation.provenance = {
           kind: "element-report",
-          report: draft.id,
+          review: draft.collection
+            ? {
+                id: draft.collection.id,
+                index: draft.collection.index,
+                situationId: draft.collection.situationId,
+              }
+            : null,
+          report: [draft.collection?.prefix, draft.id]
+            .filter(Boolean)
+            .join("/"),
           source_situation: win.situation?.id || draft.situationId,
           source_slot: index,
           slots: [configs[index]],
@@ -349,6 +367,13 @@ export class ElementReports {
       draft.views.find((v) => v.situation)?.situation;
     const report = {
       schema: 1,
+      review: draft.collection
+        ? {
+            id: draft.collection.id,
+            index: draft.collection.index,
+            situationId: draft.collection.situationId,
+          }
+        : null,
       id: draft.id,
       comment: draft.comment.trim(),
       selectedAt: draft.selectedAt,
@@ -381,10 +406,10 @@ export class ElementReports {
     );
     await fs.writeFile(path.join(draft.dir, "index.html"), reportHTML(report));
     const sourceDir = path.resolve(draft.dir),
-      targetDir = path.resolve(this.root, draft.id);
+      targetDir = path.resolve(draft.root || this.root, draft.id);
     if (
-      path.dirname(sourceDir) !== path.resolve(this.root) ||
-      path.dirname(targetDir) !== path.resolve(this.root) ||
+      path.dirname(sourceDir) !== path.resolve(draft.root || this.root) ||
+      path.dirname(targetDir) !== path.resolve(draft.root || this.root) ||
       path.basename(sourceDir) !== ".pending-" + draft.id ||
       !/^element-[a-f0-9-]{36}$/.test(draft.id)
     )
@@ -392,9 +417,14 @@ export class ElementReports {
     await fs.rename(sourceDir, targetDir);
     this.lastReport = {
       id: draft.id,
-      url: `/reports/${draft.id}/index.html`,
+      url: `/reports/${[draft.collection?.prefix, draft.id].filter(Boolean).join("/")}/index.html`,
       situationId: draft.savedSituation?.id,
     };
+    await this.onReport(draft.collection, {
+      ...this.lastReport,
+      kind: "element",
+      label: report.comment.slice(0, 160),
+    });
     this.draft = null;
     return this.lastReport;
   }
@@ -406,7 +436,7 @@ export class ElementReports {
     if (this.draft.dir) {
       const target = path.resolve(this.draft.dir);
       if (
-        path.dirname(target) !== path.resolve(this.root) ||
+        path.dirname(target) !== path.resolve(this.draft.root || this.root) ||
         path.basename(target) !== ".pending-" + id
       )
         throw Error("Invalid draft directory.");

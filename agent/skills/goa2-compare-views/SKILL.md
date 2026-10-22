@@ -92,6 +92,24 @@ for the draft/send APIs and matching limits. Capture occurs on selection;
 missing/ambiguous counterparts and changing game states must remain explicit.
 This is separate from the paired HTML/CSS extraction command's two-view limit.
 
+## Review several situations
+
+For a manual inspection queue, use the Situations checkboxes, **Select filtered**
+and **Start review**, or the review API in [Review queues](../../../docs/reviews.md).
+Keep frontend sources fixed while the review restores each snapshot's compatible
+Presentation and Viewpoint. Previous/Next advances all desk and shared device
+views. Existing Capture, element, device and HTML/CSS tools write under the review
+collection automatically; keep report drafts attached to their capture step.
+Finish or discard drafts before navigating. Review controllers are manual and
+auto switch is disabled. Do not claim saved presentation restoration for plain
+Situations with no presentation metadata.
+
+The **Reviews** tab lists persisted runs and statistics. **Run again** preserves
+the original snapshots in a fresh collection; **Edit and run** retains selected
+original entries and adds current library Situations. Original evidence stays
+unchanged. End the active review first. See the same review documentation for API
+payloads and restart behavior.
+
 ## Leave a human viewer ready
 
 For interactive review, launch the native embedded desk in a visible desktop session, load and arrange the requested views, verify them, and leave its owning process running. Give the user the active window/local URL, exact A/B/script SHAs, situation, seat/device/renderer, sync mode, reset behavior and the stop command. A static report supports zoom/overlay/pair selection but does not replay animations. Browser JPEG previews are a fallback for static layout work.

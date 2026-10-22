@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 import subprocess
 import tempfile
@@ -377,10 +378,59 @@ def create_app():
                 presentations=body.get("presentations"),
             )
 
+    def review_snapshot_path(spec):
+        if not isinstance(spec, dict):
+            raise HTTPException(422, "Invalid review snapshot")
+        identifier, index = spec.get("reviewId", ""), spec.get("index")
+        if not isinstance(identifier, str) or not re.fullmatch(r"[a-f0-9]{24}", identifier) or type(index) is not int or not 0 <= index < 200:
+            raise HTTPException(422, "Invalid review snapshot")
+        return root / "reports" / "reviews" / identifier / "situations" / f"{index:03d}.json"
+
+    @app.post("/__lab/review/snapshot")
+    def snapshot_review(body: dict):
+        spec = {"reviewId": body.get("reviewId"), "index": body.get("index")}
+        target = review_snapshot_path(spec)
+        if target.exists():
+            situation = json.loads(target.read_text(encoding="utf-8"))
+            if situation["id"] != body.get("id"):
+                raise HTTPException(409, "Review snapshot already exists")
+        else:
+            if body.get("from"):
+                source = review_snapshot_path(body["from"])
+                if source.is_file():
+                    situation = json.loads(source.read_text(encoding="utf-8"))
+                else:
+                    # Compatibility with the first review format's embedded snapshots.
+                    manifest = source.parent.parent / "review.json"
+                    if not manifest.is_file():
+                        raise HTTPException(404, "Saved review snapshot not found")
+                    old = json.loads(manifest.read_text(encoding="utf-8"))
+                    try:
+                        situation = old["entries"][body["from"]["index"]]["situation"]
+                    except (KeyError, IndexError, TypeError) as error:
+                        raise HTTPException(404, "Saved review snapshot not found") from error
+                    if "checkpoint" not in situation:
+                        raise HTTPException(404, "Saved review snapshot not found")
+                if situation.get("id") != body.get("id"):
+                    raise HTTPException(422, "Saved snapshot does not match the review entry")
+            else:
+                situation = read(body.get("id"))
+            target.parent.mkdir(parents=True, exist_ok=True)
+            temporary = target.with_suffix(".tmp")
+            temporary.write_text(json.dumps(situation), encoding="utf-8")
+            temporary.replace(target)
+        return {**situation, "review_snapshot": spec}
+
     @app.post("/__lab/clone")
     async def clone(body: dict):
         try:
-            situation = body.get("situation") or read(body.get("situation_id") or body.get("scenario_id"))
+            if body.get("review_snapshot"):
+                target = review_snapshot_path(body["review_snapshot"])
+                if not target.is_file():
+                    raise HTTPException(404, "Review snapshot not found")
+                situation = json.loads(target.read_text(encoding="utf-8"))
+            else:
+                situation = body.get("situation") or read(body.get("situation_id") or body.get("scenario_id"))
             session, result = restore(situation["checkpoint"])
         except (ValueError, KeyError, TypeError) as error:
             raise HTTPException(

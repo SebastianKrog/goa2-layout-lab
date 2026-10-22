@@ -99,26 +99,26 @@ async function restore() {
   window.__GOA2_DEVICE_RESTORE_WARNINGS__ = warnings;
 }
 
-function makeMovable(button) {
+function makeMovable(button, movable = button) {
   const key = "goa2-lab-report-position-v1";
   let pointer = null,
     timer,
     dragging = false,
     suppressClick = false;
   const clamp = (x, y) => ({
-    x: Math.max(8, Math.min(x, innerWidth - button.offsetWidth - 8)),
-    y: Math.max(8, Math.min(y, innerHeight - button.offsetHeight - 8)),
+    x: Math.max(8, Math.min(x, innerWidth - movable.offsetWidth - 8)),
+    y: Math.max(8, Math.min(y, innerHeight - movable.offsetHeight - 8)),
   });
   function place(x, y) {
     const position = clamp(x, y);
-    Object.assign(button.style, {
+    Object.assign(movable.style, {
       left: `${position.x}px`,
       top: `${position.y}px`,
       right: "auto",
     });
   }
   function save() {
-    const rect = button.getBoundingClientRect();
+    const rect = movable.getBoundingClientRect();
     try {
       localStorage.setItem(
         key,
@@ -141,7 +141,7 @@ function makeMovable(button) {
   button.addEventListener("contextmenu", (event) => event.preventDefault());
   button.addEventListener("pointerdown", (event) => {
     if (event.button !== 0 || !event.isPrimary) return;
-    const rect = button.getBoundingClientRect();
+    const rect = movable.getBoundingClientRect();
     pointer = {
       id: event.pointerId,
       startX: event.clientX,
@@ -201,12 +201,16 @@ function makeMovable(button) {
     },
     true,
   );
-  addEventListener("resize", () => {
-    if (button.style.left) {
-      const rect = button.getBoundingClientRect();
+  const constrain = () => {
+    if (movable.style.left) {
+      const rect = movable.getBoundingClientRect();
       place(rect.left, rect.top);
     }
-  });
+  };
+  addEventListener("resize", constrain);
+  const observer = new ResizeObserver(constrain);
+  observer.observe(movable);
+  addEventListener("pagehide", () => observer.disconnect(), { once: true });
 }
 
 function captureAdapters() {
@@ -278,11 +282,12 @@ async function mount() {
   const shadow = host.attachShadow({ mode: "open" });
   shadow.innerHTML = `<style>
     :host{all:initial;font:14px system-ui;color:#f8f3e9}button,textarea{font:inherit}button{min-height:44px;padding:8px 14px;cursor:pointer}button:disabled{opacity:.5}
-    #launch{position:fixed;z-index:2147483000;top:max(8px,env(safe-area-inset-top));right:max(8px,env(safe-area-inset-right));border:1px solid #e8ba60;border-radius:24px;background:#292238;color:#ffe0a0;box-shadow:0 3px 12px #0009;font-weight:600;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
-    #launch[data-dragging]{box-shadow:0 0 0 3px #e8ba6080,0 5px 18px #000b;cursor:grabbing}
+    [hidden]{display:none!important}#bubble{display:flex;align-items:center;position:fixed;z-index:2147483000;top:max(8px,env(safe-area-inset-top));right:max(8px,env(safe-area-inset-right));border:1px solid #e8ba60;border-radius:24px;background:#292238;color:#ffe0a0;box-shadow:0 3px 12px #0009;font-weight:600;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+    #launch{border:0;border-radius:24px;background:transparent;color:inherit;font-weight:600;touch-action:none;user-select:none}#reviewNav{display:flex;align-items:center}#reviewNav button{padding:6px 10px;border:0;background:transparent;color:inherit;font-size:20px}#reviewCount{font-size:11px}#reviewError{position:absolute;top:100%;right:0;max-width:240px;padding:6px;background:#292238;color:#ffe0a0;font:12px system-ui}#reviewError:empty{display:none}
+    #bubble:has(#launch[data-dragging]){box-shadow:0 0 0 3px #e8ba6080,0 5px 18px #000b;cursor:grabbing}
     dialog{position:fixed;box-sizing:border-box;width:min(94vw,480px);max-height:90dvh;overflow:auto;border:1px solid #897455;border-radius:12px;background:#24202e;color:#f8f3e9;padding:16px}dialog::backdrop{background:#000b}
     h2{font-size:19px;margin:0 0 12px}textarea{display:block;box-sizing:border-box;width:100%;padding:10px;margin-top:8px;background:#15121b;color:inherit;border:1px solid #91836d;border-radius:6px}p{font-size:13px}img{display:block;max-width:100%;max-height:28dvh;margin:0 auto 12px;object-fit:contain}img:not([src]){display:none}footer{display:flex;gap:10px;justify-content:flex-end}
-  </style><button id="launch" aria-label="Report testing issue" title="Tap to report. Hold to move.">✎ Report</button>
+  </style><div id="bubble"><span id="reviewNav" hidden><button id="previous" aria-label="Previous situation">‹</button><span id="reviewCount"></span><button id="next" aria-label="Next situation">›</button></span><button id="launch" aria-label="Report testing issue" title="Tap to report. Hold to move.">✎ Report</button><span id="reviewError" role="alert"></span></div>
   <dialog aria-labelledby="title"><h2 id="title">Report an issue or idea</h2><div id="editor"><img alt="Captured game screen without reporting controls"><label>What should be fixed or changed?<textarea rows="4" maxlength="10000"></textarea></label><p>Situation, screenshot and comment are saved in the layout lab on your PC.</p></div><p id="status" role="status"></p><p id="error" role="alert"></p><footer><button id="discard">Discard</button><button id="cancel" autofocus>Close</button><button id="save">Save report</button></footer></dialog>`;
   const $ = (id) => shadow.getElementById(id);
   const dialog = shadow.querySelector("dialog"),
@@ -292,7 +297,7 @@ async function mount() {
     capturing = false,
     saving = false,
     saved = false;
-  makeMovable($("launch"));
+  makeMovable($("launch"), $("bubble"));
   async function post(action, payload) {
     const response = await fetch(`/__device/${action}`, {
       method: "POST",
@@ -310,7 +315,64 @@ async function mount() {
     $("cancel").disabled = saving;
     $("discard").disabled = capturing || saving;
     $("discard").hidden = saved;
+    updateReviewControls();
   };
+  let reviewState = null,
+    navigating = false;
+  function hasDraft() {
+    return !saved && !!(capture || comment.value.trim());
+  }
+  function updateReviewControls() {
+    const review = reviewState?.review;
+    $("reviewNav").hidden = !review;
+    $("reviewCount").textContent = review
+      ? `${review.index + 1}/${review.total}`
+      : "";
+    $("previous").disabled =
+      !review?.previous || navigating || capturing || saving || hasDraft();
+    $("next").disabled =
+      !review?.next || navigating || capturing || saving || hasDraft();
+  }
+  async function reviewPoll() {
+    try {
+      const response = await fetch("/__device/review");
+      if (!response.ok) return;
+      reviewState = await response.json();
+      updateReviewControls();
+      if (
+        reviewState.revision !== window.__GOA2_DEVICE__.revision &&
+        !capturing &&
+        !saving &&
+        !hasDraft()
+      )
+        location.replace(reviewState.url);
+    } catch {
+      /* Keep the current game on a transient network failure. */
+    }
+  }
+  async function reviewStep(direction) {
+    if (!reviewState?.review || navigating) return;
+    navigating = true;
+    $("reviewError").textContent = "";
+    updateReviewControls();
+    try {
+      const r = reviewState.review;
+      await post("review-step", { id: r.id, index: r.index, direction });
+      await reviewPoll();
+    } catch (error) {
+      $("reviewError").textContent = error.message;
+    } finally {
+      navigating = false;
+      updateReviewControls();
+    }
+  }
+  $("previous").onclick = () => void reviewStep(-1);
+  $("next").onclick = () => void reviewStep(1);
+  await reviewPoll();
+  const reviewTimer = setInterval(() => void reviewPoll(), 1200);
+  addEventListener("pagehide", () => clearInterval(reviewTimer), {
+    once: true,
+  });
   $("launch").addEventListener("click", async () => {
     if (dialog.open) return;
     if (capturing || (capture && !saved)) {
@@ -391,11 +453,18 @@ async function mount() {
     }
   });
   $("cancel").onclick = () => dialog.close();
-  $("discard").onclick = () => {
+  $("discard").onclick = async () => {
     if (capturing || saving) return;
+    try {
+      await post("report-discard", {});
+    } catch (error) {
+      $("error").textContent = error.message;
+      return;
+    }
     capture = null;
     comment.value = "";
     dialog.close();
+    updateReviewControls();
   };
   dialog.addEventListener("cancel", (event) => {
     if (saving) event.preventDefault();

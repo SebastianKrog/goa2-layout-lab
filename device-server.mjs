@@ -131,9 +131,10 @@ export class DeviceServer {
           s.layout === config.layout,
       );
     const presentation =
-      body.restoreViews === false
+      body.presentation ??
+      (body.restoreViews === false
         ? {}
-        : situation.presentations?.[sourceIndex] || {};
+        : situation.presentations?.[sourceIndex] || {});
     const port = await this.services.frontend(config.source);
     const targetScript =
       config.source === "target"
@@ -142,6 +143,7 @@ export class DeviceServer {
     await this.listen();
     const clone = await this.api("/clone", {
       situation_id: situation.id,
+      ...(body.reviewSnapshot ? { review_snapshot: body.reviewSnapshot } : {}),
       human_seat: config.seat,
       bots,
     });
@@ -149,6 +151,9 @@ export class DeviceServer {
     const session = {
       secret,
       id: randomBytes(8).toString("hex"),
+      reviewId: body.reviewId || null,
+      revision: 0,
+      reportPending: false,
       situationId: situation.id,
       name: situation.name,
       config,
@@ -163,6 +168,7 @@ export class DeviceServer {
       clone,
       port,
       targetScript,
+      oldPaths: new Set(),
       captures: new Set(),
       sockets: new Set(),
     };
@@ -173,6 +179,91 @@ export class DeviceServer {
       errorCorrectionLevel: "M",
     });
     return this.describe(session);
+  }
+  async prepareReview(situation, plan, reviewId) {
+    const prepared = [];
+    try {
+      for (const session of this.sessions.values()) {
+        const next = plan(session.config);
+        const bots = Object.fromEntries(
+          Object.entries(next.config.bots || session.bots || {}).filter(
+            ([id]) =>
+              id !== next.config.seat &&
+              Object.values(situation.checkpoint.state.teams).some((t) =>
+                t.heroes.some((h) => h.id === id),
+              ),
+          ),
+        );
+        const clone = await this.api("/clone", {
+          situation_id: situation.id,
+          ...(situation.review_snapshot
+            ? { review_snapshot: situation.review_snapshot }
+            : { situation }),
+          human_seat: next.config.seat,
+          bots,
+        });
+        prepared.push({
+          session,
+          clone,
+          config: next.config,
+          presentation: next.presentation,
+          bots,
+          situation,
+          reviewId,
+          oldClone: session.clone,
+          oldBots: session.bots,
+        });
+      }
+      return prepared;
+    } catch (error) {
+      await this.retireReview(
+        prepared.map((p) => ({ ...p, oldClone: p.clone, oldBots: p.bots })),
+      );
+      throw error;
+    }
+  }
+  commitReview(plans) {
+    for (const p of plans) {
+      const s = p.session;
+      s.oldPaths.add(`/game/${s.clone.game_id}`);
+      Object.assign(s, {
+        clone: p.clone,
+        config: p.config,
+        presentation: p.presentation,
+        bots: p.bots,
+        situationId: p.situation.id,
+        name: p.situation.name,
+        reviewId: p.reviewId,
+        revision: s.revision + 1,
+        reportPending: false,
+      });
+      s.roster = Object.values(p.situation.checkpoint.state.teams).flatMap(
+        (t) =>
+          t.heroes.map((h) => ({
+            id: h.id,
+            name: p.situation.checkpoint.hero_names?.[h.id] || h.name || h.id,
+          })),
+      );
+      for (const socket of s.sockets) socket.destroy();
+    }
+  }
+  async retireReview(plans) {
+    await Promise.allSettled(
+      plans.map(async (p) => {
+        if (Object.keys(p.oldBots || {}).length)
+          await this.api("/device/stop", { game_id: p.oldClone.game_id });
+        await this.api(`/games/${p.oldClone.game_id}`, undefined, "DELETE");
+      }),
+    );
+  }
+  reviewStatus(session) {
+    const review = this.review?.status();
+    const game = new URL(gameURL(this.port, session.clone, session.config));
+    return {
+      review: review?.active && session.reviewId === review.id ? review : null,
+      revision: session.revision,
+      url: game.pathname + game.search,
+    };
   }
   describe(session) {
     const urls = (this.hosts().length ? this.hosts() : ["localhost"]).map(
@@ -186,6 +277,7 @@ export class DeviceServer {
       roster: session.roster,
       urls,
       qr: session.qr,
+      reviewId: session.reviewId,
       localURL: `http://localhost:${this.port}/device/${session.secret}`,
     };
   }
@@ -267,6 +359,15 @@ export class DeviceServer {
         return send(403, {
           error: "Open the device link from the layout lab first.",
         });
+      if (req.method === "GET" && session.oldPaths.has(url.pathname)) {
+        res.writeHead(302, {
+          Location: this.reviewStatus(session).url,
+          "Cache-Control": "no-store",
+        });
+        return res.end();
+      }
+      if (url.pathname === "/__device/review" && req.method === "GET")
+        return send(200, this.reviewStatus(session));
       if (!this.allowed(session, url.pathname))
         return send(403, { error: "This link only permits its own game." });
       if (url.pathname === "/__device/bootstrap.js") {
@@ -274,6 +375,7 @@ export class DeviceServer {
         const config = JSON.stringify({
           config: session.config,
           presentation: session.presentation,
+          revision: session.revision,
         }).replaceAll("<", "\\u003c");
         return send(
           200,
@@ -322,7 +424,21 @@ export class DeviceServer {
           chunks.push(chunk);
         }
         const body = JSON.parse(Buffer.concat(chunks).toString());
+        if (url.pathname === "/__device/review-step") {
+          await this.navigateReview(body);
+          return send(200, this.reviewStatus(session));
+        }
+        if (url.pathname === "/__device/report-discard") {
+          session.reportPending = false;
+          return send(200, { ok: true });
+        }
         if (url.pathname === "/__device/capture") {
+          if (this.review?.loading)
+            throw Error(
+              "The review is changing situations. Wait before reporting.",
+            );
+          session.reportPending = true;
+          const review = this.review?.context();
           const comparisonSlot = {
             ...session.config,
             source:
@@ -335,6 +451,7 @@ export class DeviceServer {
             presentation: body.presentation,
             viewport: body.viewport,
             provenance: {
+              review: review?.id === session.reviewId ? review : null,
               source_situation: session.situationId,
               bots: session.bots,
               slots: [session.config, comparisonSlot],
@@ -352,16 +469,24 @@ export class DeviceServer {
         if (
           url.pathname === "/__device/report" &&
           session.captures.has(body.id)
-        )
-          return send(
-            200,
-            await this.api("/device/report", {
-              id: body.id,
-              game_id: session.clone.game_id,
-              comment: body.comment,
-              screenshot: body.screenshot,
-            }),
-          );
+        ) {
+          const result = await this.api("/device/report", {
+            id: body.id,
+            game_id: session.clone.game_id,
+            comment: body.comment,
+            screenshot: body.screenshot,
+          });
+          const review = this.review?.context();
+          if (review?.id === session.reviewId)
+            await this.review.record(review, {
+              id: result.id,
+              url: result.report,
+              kind: "device",
+              label: body.comment?.slice(0, 160),
+            });
+          session.reportPending = false;
+          return send(200, result);
+        }
         return send(409, {
           error: "Capture expired. Close and capture again.",
         });

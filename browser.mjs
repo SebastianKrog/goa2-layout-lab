@@ -83,7 +83,11 @@ export class Comparison {
       existingClone ||
       (await this.api("/clone", {
         situation_id: situation?.id || this.situationId,
-        ...(situation ? { situation } : {}),
+        ...(situation?.review_snapshot
+          ? { review_snapshot: situation.review_snapshot }
+          : situation
+            ? { situation }
+            : {}),
         human_seat: this.manualSeat(config, situation),
         bots: config.bots || {},
       }));

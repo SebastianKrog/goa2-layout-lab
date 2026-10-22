@@ -1,3 +1,4 @@
+import { initReviewsPanel } from "./reviews-panel.mjs";
 import { initElementReportPanel } from "./element-report-panel.mjs";
 import { initDevicePanel } from "./device-panel.mjs";
 import { LiveView } from "./live.mjs";
@@ -29,7 +30,7 @@ const paneNames = {
   log: "Log",
   settings: "Settings",
 };
-let openDevice;
+let openDevice, reviewHistory;
 let catalog = {},
   state = {},
   configs = [],
@@ -51,6 +52,8 @@ let editing = null,
   editorCommitted = false,
   lastWindowKey = "",
   toastTimer;
+const reviewSelection = new Set();
+let filteredSituations = [];
 const excluded = new Set(),
   liveViews = new Map();
 const human = (value) =>
@@ -99,12 +102,13 @@ function navigate(name) {
   }
   if (name !== "compare") liveViews.clear();
   else if (initialized) render();
-  for (const page of ["compare", "situations", "settings"])
+  for (const page of ["compare", "situations", "reviews", "settings"])
     $(page + "Page").hidden = page !== name;
   document.querySelectorAll("[data-page]").forEach((b) => {
     b.classList.toggle("active", b.dataset.page === name);
     b.setAttribute("aria-current", b.dataset.page === name ? "page" : "false");
   });
+  if (name === "reviews") void reviewHistory?.refresh();
   window.scrollTo(0, 0);
 }
 document
@@ -188,6 +192,8 @@ function controls() {
   $("savedViewHelp").textContent = hasSavedViewSetup()
     ? "Restores saved views, players, screens, cameras and panels. Off keeps your setup. The game moment always loads."
     : "No saved view setup. Your current setup will be used; the saved game moment still loads.";
+  updateReviewControls();
+  reviewHistory?.updateState();
 }
 async function task(label, fn, { sync = true } = {}) {
   if (running || state.busy) return;
@@ -200,6 +206,7 @@ async function task(label, fn, { sync = true } = {}) {
     const result = await fn();
     await reloadCatalog();
     state = await read("/api/status");
+    void reviewHistory?.refresh();
     lastWindowKey = (state.windows || []).map(viewKey).join("|");
     if (sync && state.windows?.length) syncViews();
     render();
@@ -304,6 +311,16 @@ function setPreset() {
 function button(text, fn, cls = "") {
   const b = el("button", cls, text);
   b.type = "button";
+  if (
+    [
+      "Edit view",
+      "Remove",
+      "Reopen",
+      "Reset this view",
+      "Rotate phone",
+    ].includes(text)
+  )
+    b.dataset.reviewSetup = "";
   b.onclick = fn;
   return b;
 }
@@ -835,6 +852,10 @@ function renderLibrary() {
           ? !s.group
           : s.group === folder || s.group?.startsWith(folder + "/"))),
   );
+  filteredSituations = filtered;
+  for (const id of reviewSelection)
+    if (!catalog.situations.some((s) => s.id === id))
+      reviewSelection.delete(id);
   $("library").replaceChildren();
   const groups = new Map();
   for (const s of filtered) {
@@ -861,10 +882,23 @@ function renderLibrary() {
           (s.summary.decision ? " - " + human(s.summary.decision) : ""),
       ),
     );
+    const selection = el("input");
+    selection.type = "checkbox";
+    selection.checked = reviewSelection.has(s.id);
+    selection.setAttribute("aria-label", `Select situation ${s.name}`);
+    selection.dataset.situationId = s.id;
+    selection.onchange = () => {
+      if (selection.checked) reviewSelection.add(s.id);
+      else reviewSelection.delete(s.id);
+      updateReviewControls();
+    };
+    const selectLabel = el("label", "situation-select");
+    selectLabel.append(selection);
+    card.append(selectLabel);
     const exportLink = el("a", "", "Export");
     exportLink.href = "/export/" + s.id;
     if (
-      /^(?:device\/[a-f0-9]{12}|element-[a-f0-9-]{36})$/.test(
+      /^(?:(?:reviews\/[a-f0-9]{24}\/reports\/)?(?:device\/[a-f0-9]{12}|element-[a-f0-9-]{36}))$/.test(
         s.provenance?.report || "",
       )
     ) {
@@ -896,7 +930,94 @@ function renderLibrary() {
     $("library").append(
       el("p", "library-note", "No situations in this folder."),
     );
+  updateReviewControls();
 }
+
+function updateReviewControls() {
+  const busy = running || state.busy || disconnected,
+    review = state.review;
+  const chosen = filteredSituations.filter((s) =>
+    reviewSelection.has(s.id),
+  ).length;
+  $("reviewSelectFiltered").checked =
+    filteredSituations.length > 0 && chosen === filteredSituations.length;
+  $("reviewSelectFiltered").indeterminate =
+    chosen > 0 && chosen < filteredSituations.length;
+  $("reviewSelectFiltered").disabled = !!busy || !filteredSituations.length;
+  $("reviewSelectedCount").textContent =
+    `${reviewSelection.size} selected (${chosen} in filter)`;
+  $("reviewStart").disabled =
+    !!busy || !reviewSelection.size || !!review?.active;
+  $("reviewClearSelection").disabled = !!busy || !reviewSelection.size;
+  $("reviewBar").hidden = !review;
+  if (review) {
+    $("reviewTitle").textContent = review.name;
+    $("reviewProgress").textContent =
+      `${review.index + 1} / ${review.total} · ${review.situationName}${review.active ? "" : " · Finished"}`;
+    $("reviewPrevious").disabled = !!busy || !review.previous;
+    $("reviewNext").disabled = !!busy || !review.next;
+    $("reviewEnd").disabled = !!busy || !review.active;
+    $("reviewEnd").hidden = !review.active;
+    $("reviewCollection").href = review.url;
+  }
+  if (review?.active)
+    document.querySelectorAll("[data-review-setup]").forEach((b) => {
+      b.disabled = true;
+      b.title = "End the review before changing view setup.";
+    });
+  if (review?.active)
+    for (const id of [
+      "load",
+      "reset",
+      "clear",
+      "addView",
+      "preset",
+      "count",
+      "liveUpdates",
+      "restore",
+      "revision",
+      "refresh",
+    ])
+      $(id).disabled = true;
+}
+$("reviewSelectFiltered").onchange = () => {
+  for (const s of filteredSituations)
+    if ($("reviewSelectFiltered").checked) reviewSelection.add(s.id);
+    else reviewSelection.delete(s.id);
+  renderLibrary();
+};
+$("reviewClearSelection").onclick = () => {
+  reviewSelection.clear();
+  renderLibrary();
+};
+$("reviewStart").onclick = () =>
+  void task("Starting review…", async () => {
+    const ids = catalog.situations
+      .filter((s) => reviewSelection.has(s.id))
+      .map((s) => s.id);
+    const result = await call("review/start", {
+      ids,
+      name: $("reviewName").value,
+      slots: configs,
+    });
+    navigate("compare");
+    return result;
+  });
+for (const [id, direction] of [
+  ["reviewPrevious", -1],
+  ["reviewNext", 1],
+])
+  $(id).onclick = () =>
+    void task("Loading review situation…", () =>
+      call("review/step", {
+        id: state.review.id,
+        index: state.review.index,
+        direction,
+      }),
+    );
+$("reviewEnd").onclick = () =>
+  void task("Ending review…", () => call("review/end"));
+
 function definitionList(host, entries) {
   host.replaceChildren();
   for (const [key, value] of entries) {
@@ -1313,3 +1434,15 @@ document.addEventListener(
 openDevice = initDevicePanel({ selectedSituation, task, call, read, notify });
 
 initElementReportPanel({ read, call, notify, onSaved: reloadCatalog });
+
+reviewHistory = initReviewsPanel({
+  read,
+  call,
+  task,
+  navigate,
+  getCatalog: () => catalog,
+  canRun: () =>
+    !running && !state.busy && !state.review?.active && !disconnected,
+  showError,
+});
+void reviewHistory.refresh();

@@ -13,6 +13,10 @@ the draft; **Resume report** reopens it. The comment is retained across browser
 reloads while the desk stays running. **Discard** deletes the unsent capture and
 creates no saved situation. Sending is safe to retry without duplicating a report.
 
+During a [situation review](reviews.md), reports are collected below that review's
+`reports/` folder with capture-time step attribution. Finish or discard the draft
+before using Previous/Next.
+
 ## What is captured
 
 Selection captures all configured views, regardless of the Capture checkboxes.

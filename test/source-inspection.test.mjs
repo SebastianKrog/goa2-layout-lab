@@ -223,22 +223,24 @@ test("desk exposes extraction modes and submits the selected pair without loadin
             body: route.request().postDataJSON(),
           });
         const data =
-          url.pathname === "/api/catalog"
-            ? {
-                situations: [],
-                presets: PRESETS,
-                profiles: PROFILES,
-                commits: [],
-                settings: { preset: "Mobile migration" },
-              }
-            : url.pathname === "/api/status"
-              ? { windows, services: [], busy: false, situationId: null }
-              : url.pathname === "/api/extract"
-                ? {
-                    id: "source-fixture",
-                    url: "/reports/source-fixture/index.html",
-                  }
-                : {};
+          url.pathname === "/api/reviews"
+            ? { reviews: [], warnings: [] }
+            : url.pathname === "/api/catalog"
+              ? {
+                  situations: [],
+                  presets: PRESETS,
+                  profiles: PROFILES,
+                  commits: [],
+                  settings: { preset: "Mobile migration" },
+                }
+              : url.pathname === "/api/status"
+                ? { windows, services: [], busy: false, situationId: null }
+                : url.pathname === "/api/extract"
+                  ? {
+                      id: "source-fixture",
+                      url: "/reports/source-fixture/index.html",
+                    }
+                  : {};
         return route.fulfill({ json: data });
       }
       const file = url.pathname === "/" ? "index.html" : url.pathname.slice(1);
@@ -248,6 +250,7 @@ test("desk exposes extraction modes and submits the selected pair without loadin
           "desk.mjs",
           "device-panel.mjs",
           "element-report-panel.mjs",
+          "reviews-panel.mjs",
           "desk.css",
           "live.mjs",
           "native.mjs",

@@ -1,3 +1,4 @@
+import { Reviews } from "./reviews.mjs";
 import http from "node:http";
 import { ElementReports } from "./element-reports.mjs";
 import { DeviceServer } from "./device-server.mjs";
@@ -67,6 +68,7 @@ export async function startDesk({
     busy = false,
     lastError = null,
     closing = false;
+  let reviews;
   const elementReports = new ElementReports(comparison, {
     schedule: (fn) => {
       const work = queue.then(async () => {
@@ -87,6 +89,41 @@ export async function startDesk({
     },
   });
   comparison.reporter = elementReports;
+  reviews = new Reviews(comparison, devices, {
+    guard: () => {
+      if (elementReports.draft || elementReports.active)
+        throw Error(
+          "Finish or discard the element report before changing review situations.",
+        );
+      if ([...devices.sessions.values()].some((s) => s.reportPending))
+        throw Error(
+          "Finish or discard the report on the device before changing review situations.",
+        );
+    },
+  });
+  elementReports.reportContext = () => reviews.reportContext();
+  elementReports.onReport = (context, report) =>
+    reviews.record(context, report);
+  devices.review = reviews;
+  devices.navigateReview = (body) => {
+    const work = queue.then(async () => {
+      busy = true;
+      lastError = null;
+      try {
+        await comparison.sync.queue;
+        await streams.pause();
+        return await reviews.step(body);
+      } catch (error) {
+        lastError = error.message;
+        throw error;
+      } finally {
+        busy = false;
+        await streams.resume();
+      }
+    });
+    queue = work.catch(() => {});
+    return work;
+  };
   let following = false;
   const followTimer = setInterval(() => {
     if (
@@ -177,6 +214,16 @@ export async function startDesk({
         return send({ error: "Use the local comparison desk origin." }, 403);
       if (req.method === "GET" && url.pathname === "/api/element-report/status")
         return send(elementReports.status());
+      if (req.method === "GET" && url.pathname === "/api/reviews")
+        return send(await reviews.list());
+      if (req.method === "GET" && url.pathname.startsWith("/api/reviews/"))
+        return send(
+          await reviews.detail(
+            decodeURIComponent(url.pathname.slice("/api/reviews/".length)),
+          ),
+        );
+      if (req.method === "GET" && url.pathname === "/api/review")
+        return send(reviews.status());
       if (req.method === "GET" && url.pathname === "/api/device/options")
         return send(await devices.options(url.searchParams.get("situationId")));
       if (req.method === "GET" && url.pathname === "/api/device/views")
@@ -184,6 +231,7 @@ export async function startDesk({
       if (req.method === "GET" && url.pathname === "/api/status")
         return send({
           ...comparison.status(),
+          review: reviews.status(),
           busy,
           lastError,
           headless: !!comparison.options.headless,
@@ -288,6 +336,23 @@ export async function startDesk({
           try {
             await comparison.sync.queue;
             await streams.pause();
+            if (
+              reviews.status()?.active &&
+              [
+                "/api/load",
+                "/api/clear",
+                "/api/views/add",
+                "/api/views/remove",
+                "/api/configure",
+                "/api/live",
+                "/api/reset",
+                "/api/presentation/apply",
+                "/api/refresh",
+              ].includes(url.pathname)
+            )
+              throw Error(
+                "End the review before changing view setup or loading another situation.",
+              );
             switch (url.pathname) {
               case "/api/element-report/mode":
                 return await elementReports.setEnabled(body.enabled === true);
@@ -295,8 +360,16 @@ export async function startDesk({
                 return await elementReports.send(body.id, body.comment);
               case "/api/element-report/discard":
                 return await elementReports.discard(body.id);
+              case "/api/review/rerun":
+                return await reviews.rerun(body);
+              case "/api/review/start":
+                return await reviews.start(body);
+              case "/api/review/step":
+                return await reviews.step(body);
+              case "/api/review/end":
+                return await reviews.end();
               case "/api/device-open":
-                return await devices.open(body);
+                return await devices.open(reviews.deviceBody(body));
               case "/api/device-stop":
                 return devices.stop(body.id);
               case "/api/load": {
@@ -414,12 +487,32 @@ export async function startDesk({
               case "/api/focus":
                 await comparison.window(body.index).page.bringToFront();
                 return { ok: true };
-              case "/api/extract":
-                return await extractSources(comparison, body);
-              case "/api/capture":
-                return await captureReport(comparison, body.indexes, {
-                  crop: body.crop,
+              case "/api/extract": {
+                const collection = reviews.reportContext();
+                const report = await extractSources(
+                  comparison,
+                  body,
+                  collection?.root,
+                  collection,
+                );
+                await reviews.record(collection, {
+                  ...report,
+                  kind: "html-css",
                 });
+                return report;
+              }
+              case "/api/capture": {
+                const collection = reviews.reportContext();
+                const report = await captureReport(comparison, body.indexes, {
+                  crop: body.crop,
+                  collection,
+                });
+                await reviews.record(collection, {
+                  ...report,
+                  kind: "capture",
+                });
+                return report;
+              }
               case "/api/refresh": {
                 const next = resolveComparator(
                   body.ref || STARTUP.comparatorRef,
@@ -508,6 +601,8 @@ export async function startDesk({
           filename = path.join(TOOL, "public/live.mjs");
         else if (url.pathname === "/element-report-panel.mjs")
           filename = path.join(TOOL, "public/element-report-panel.mjs");
+        else if (url.pathname === "/reviews-panel.mjs")
+          filename = path.join(TOOL, "public/reviews-panel.mjs");
         else if (url.pathname === "/device-panel.mjs")
           filename = path.join(TOOL, "public/device-panel.mjs");
         else if (url.pathname === "/desk.mjs")
@@ -604,5 +699,5 @@ export async function startDesk({
     await close();
     throw error;
   }
-  return { comparison, services, server, close };
+  return { comparison, services, server, devices, reviews, close };
 }
