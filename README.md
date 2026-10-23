@@ -2,9 +2,11 @@
 
 **1.0** · [Changelog](CHANGELOG.md)
 
-A local workspace for comparing Guards of Atlantis II interfaces, reproducing
-game moments, and collecting useful reports. Start with one View of your current
-frontend, then add up to two more.
+Guards of Atlantis II is designed by [Artyom Nichipurov](https://boardgamegeek.com/boardgamedesigner/90916/artyom-nichipurov) and published by [Wolff Designa](https://wolffdesigna.com/).
+
+This local workspace lets you compare game-interfaces on the [goa2.frontend.pedroliv.dev](https://goa2.frontend.pedroliv.dev/) platform, reproduce exact game moments, and collect useful reports. Start with one View of your current frontend, then add up to two more, or test on your device.
+
+Depends on [goa2-backend](https://github.com/PedroVIOliv/goa2-backend) and [goa2-frontend](https://github.com/PedroVIOliv/goa2-frontend-portfolio) by [PedroVIOliv](https://github.com/PedroVIOliv) with automation from [ludoroo's fork](https://github.com/ludoroo/goa2-backend).
 
 ![The lab showing Board and Hand views of the same game moment](docs/assets/interface.png)
 
@@ -16,13 +18,15 @@ _Two independent phone Views in the browser desk, using the live frontend._
 - Save reproducible Situations, including the viewing player, open panels, selected cards, and supported preferences.
 - Open a Situation on a physical device using a link or QR code, and play against Random, Simple, or ISMCTS bots.
 - Inspect a queue of Situations, report elements across Views, and collect screenshots, HTML/CSS, comments, and revision evidence.
+- **Automated agents** can use the included skills for precise evaluations of UI-changes through comparisons of rendering, HTML and/or CSS.
+- For human review, ask an agent to prepare a relevant Review Run for you.
 
 ## Start
 
 Keep the frontend and backend checkouts alongside this repository:
 
 ```text
-GitHub/
+shared-repositories/
   goa2-layout-lab/
   goa2-frontend/
   goa2-backend/
