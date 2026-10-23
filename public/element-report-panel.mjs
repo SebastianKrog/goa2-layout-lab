@@ -31,12 +31,12 @@ export function initElementReportPanel({
         ? "Resume report"
         : "Report an element";
     toggle.title = state.active
-      ? "Click a glowing div in any view. Escape cancels."
-      : "Select a div and report it across all views.";
-    send.disabled = submitting || !textarea.value.trim();
+      ? "Click a highlighted element in any view. Escape cancels."
+      : "Select an element (Alt+↑/↓ changes its scope) and report it across all views.";
+    send.disabled = submitting || draft?.stage !== "ready" || !textarea.value.trim();
     send.textContent = submitting ? "Saving report..." : "Send report";
     $("elementReportDiscard").disabled =
-      submitting || draft?.stage === "capturing";
+      submitting;
     if (draft) {
       if (draft.id !== currentId) {
         currentId = draft.id;
@@ -47,7 +47,7 @@ export function initElementReportPanel({
       const missing = (draft.views || []).filter((v) => v.error);
       $("elementReportProgress").textContent =
         draft.stage === "capturing"
-          ? `Capturing all views from view ${draft.selectedIndex + 1}. You can write now.`
+          ? `${draft.progress || "Preparing capture"}. You can write now or cancel.`
           : `Capture ready: ${(draft.views || []).length} view(s).` +
             (missing.length
               ? " " +
@@ -72,7 +72,7 @@ export function initElementReportPanel({
       $("report").replaceChildren(title, link);
       $("report").hidden = false;
     }
-    send.disabled = submitting || !textarea.value.trim();
+    send.disabled = submitting || draft?.stage !== "ready" || !textarea.value.trim();
   }
   async function poll() {
     if (polling) return;
@@ -97,7 +97,7 @@ export function initElementReportPanel({
       state = await call("element-report/mode", { enabled: !state.active });
       update();
       if (state.active)
-        notify("Report mode: click a glowing div in any view. Escape cancels.");
+        notify("Report mode: click a highlighted element in any view. Escape cancels.");
     } catch (e) {
       notify(e.message);
     }

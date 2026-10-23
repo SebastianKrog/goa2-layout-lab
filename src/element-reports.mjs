@@ -86,6 +86,7 @@ export class ElementReports {
         ? {
             id: d.id,
             stage: d.stage,
+            progress: d.progress,
             selectedIndex: d.selectedIndex,
             comment: d.comment,
             error: d.error,
@@ -135,14 +136,14 @@ export class ElementReports {
   async select(win, descriptor) {
     if (!this.active || this.draft) return;
     if (
-      descriptor?.tag !== "div" ||
+      !(/^[a-z][a-z0-9-]{0,40}$/.test(descriptor?.tag ?? "")) ||
       typeof descriptor.path !== "string" ||
       descriptor.path.length > 2000 ||
       !Array.isArray(descriptor.selectors) ||
       descriptor.selectors.length > 30 ||
       descriptor.selectors.some((s) => typeof s !== "string" || s.length > 2000)
     )
-      throw Error("Invalid div selection.");
+      throw Error("Invalid element selection.");
     const id = "element-" + randomUUID();
     const draft = (this.draft = {
       id,
@@ -158,13 +159,14 @@ export class ElementReports {
     // Disable every overlay before any screenshots or CSS extraction.
     try {
       await this.setEnabled(false);
-      await this.schedule(async () => {
-        await this.capture(draft, windows);
+      draft.capturePromise = this.schedule(async () => {
+        if (!draft.cancelled) await this.capture(draft, windows);
       });
+      await draft.capturePromise;
     } catch (error) {
       draft.error = error.message;
     } finally {
-      draft.stage = "ready";
+      draft.stage = draft.cancelled ? "cancelled" : "ready";
     }
   }
   async capture(draft, windows) {
@@ -179,8 +181,12 @@ export class ElementReports {
         return null;
       }
     };
+    draft.progress = "Collecting source evidence";
+    const started = performance.now();
+    draft.timings = {};
     draft.sourceEvidence =
       (await this.comparison.services?.provenance?.()) || null;
+    draft.timings.provenanceMs = Math.round(performance.now() - started);
     draft.capturedAt = new Date().toISOString();
     draft.situationId = this.comparison.situationId;
     draft.references = {
@@ -226,7 +232,12 @@ export class ElementReports {
         await fs.writeFile(path.join(draft.dir, file), value);
         view.files[key] = file;
       };
+      const viewStarted = performance.now();
+      let phaseStart = viewStarted;
+      view.timings = {};
+      const timed = (name) => { view.timings[name] = Math.round(performance.now() - phaseStart); phaseStart = performance.now(); };
       try {
+        if (draft.cancelled) return;
         if (win.page.isClosed())
           throw Error("This view was closed at capture time.");
         const checkpoint = await this.comparison.api(
@@ -283,6 +294,8 @@ export class ElementReports {
           ".presentation.json",
           JSON.stringify(presentation),
         );
+        timed("checkpointAndPresentationMs");
+        draft.progress = `Matching view ${index + 1}`;
         const match = await win.page.evaluate(
           ({ descriptor, source }) =>
             window.__GOA2_ELEMENT_PICKER__.resolve(descriptor, source),
@@ -299,6 +312,8 @@ export class ElementReports {
           match: "unique",
         });
         view.crop = crop;
+        timed("matchingMs");
+        draft.progress = `Capturing image in view ${index + 1}`;
         const bytes = await win.page.screenshot({
           animations: "disabled",
           caret: "hide",
@@ -315,10 +330,16 @@ export class ElementReports {
         );
         await save("image", ".png", image);
         view.imageHash = createHash("sha256").update(image).digest("hex");
+        timed("screenshotMs");
+        draft.progress = `Extracting styles in view ${index + 1}`;
         const snapshot = await inspectPage(win.page, {
           mode: "element",
           selector: match.selector,
+          includeStylesheetText: false,
+          maxElements: 1200,
+          isCancelled: () => !!draft.cancelled,
         });
+        view.warnings.push(...snapshot.warnings);
         snapshot.labWallTime = snapshot.capturedAt;
         snapshot.capturedAt = new Date().toISOString();
         await save(
@@ -333,6 +354,7 @@ export class ElementReports {
           ({ text, ...header }) => header,
         );
         await save("styles", ".styles.json", JSON.stringify(snapshot));
+        timed("styleExportMs");
         const after = await this.comparison.api(
           `/games/${win.clone.game_id}`,
           undefined,
@@ -344,6 +366,8 @@ export class ElementReports {
           );
       } catch (error) {
         view.error = error.message;
+      } finally {
+        view.captureMs = Math.round(performance.now() - viewStarted);
       }
     };
     // Native capture temporarily changes surface placement; keep it serialized.
@@ -391,8 +415,10 @@ export class ElementReports {
       situationId: draft.situationId,
       selectedIndex: draft.selectedIndex,
       selectedDiv: draft.descriptor,
+      selectedElement: draft.descriptor,
       references: draft.references,
       sourceEvidence: draft.sourceEvidence,
+      timings: draft.timings,
       captureError: draft.error,
       diverged:
         new Set(draft.views.filter((v) => v.stateHash).map((v) => v.stateHash))
@@ -444,8 +470,11 @@ export class ElementReports {
   async discard(id) {
     if (this.draft?.id !== id)
       throw Error("This report draft is no longer active.");
-    if (this.draft.stage === "capturing")
-      throw Error("Wait for the capture before discarding.");
+    if (this.draft.stage === "capturing") {
+      const draft = this.draft;
+      draft.cancelled = true;
+      await draft.capturePromise?.catch(() => {});
+    }
     if (this.draft.dir) {
       const target = path.resolve(this.draft.dir);
       if (

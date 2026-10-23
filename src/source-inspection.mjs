@@ -29,7 +29,7 @@ export function inspectionOptions(body, count) {
 }
 
 // Serialized into the inspected page. No DOM changes or game actions.
-function readDocument({ selector, mode }) {
+function readDocument({ selector, mode, maxElements }) {
   const all = [...document.querySelectorAll("*")];
   let roots;
   try {
@@ -65,6 +65,7 @@ function readDocument({ selector, mode }) {
   const elements = [];
   for (const [index, e] of all.entries()) {
     if (!roots.some((root) => root.contains(e))) continue;
+    if (maxElements && elements.length >= maxElements) continue;
     const computed = properties(getComputedStyle(e));
     const pseudo = {};
     for (const name of ["::before", "::after", "::marker"]) {
@@ -86,6 +87,7 @@ function readDocument({ selector, mode }) {
     });
   }
   const warnings = [];
+  if (maxElements && all.filter(e => roots.some(root => root.contains(e))).length > maxElements) warnings.push(`Partial style export: limited to ${maxElements} elements. HTML and image are retained.`);
   if (document.querySelector("iframe,frame"))
     warnings.push("Child-frame documents are not traversed.");
   if (all.some((e) => e.shadowRoot))
@@ -176,6 +178,7 @@ export function expandMatched(value, definitions) {
 }
 
 export async function inspectPage(page, options) {
+  const { isCancelled, ...queryOptions } = options;
   const session = await page.context().newCDPSession(page);
   const headers = new Map();
   session.on("CSS.styleSheetAdded", ({ header }) =>
@@ -189,7 +192,7 @@ export async function inspectPage(page, options) {
       nodeId: root.nodeId,
       selector: "*",
     });
-    const snapshot = await page.evaluate(readDocument, options);
+    const snapshot = await page.evaluate(readDocument, queryOptions);
     const check = await session.send("DOM.querySelectorAll", {
       nodeId: root.nodeId,
       selector: "*",
@@ -206,6 +209,7 @@ export async function inspectPage(page, options) {
     await Promise.all(
       Array.from({ length: 4 }, async () => {
         while (next < snapshot.elements.length) {
+          if (isCancelled?.()) throw Error("Element capture cancelled.");
           const element = snapshot.elements[next++];
           const matched = await session.send("CSS.getMatchedStylesForNode", {
             nodeId: nodeIds[element.index],
@@ -219,7 +223,7 @@ export async function inspectPage(page, options) {
     const sheets = [];
     for (const [id, header] of headers) {
       try {
-        const { text } = await session.send("CSS.getStyleSheetText", {
+        const { text } = options.includeStylesheetText === false ? { text: undefined } : await session.send("CSS.getStyleSheetText", {
           styleSheetId: id,
         });
         sheets.push({

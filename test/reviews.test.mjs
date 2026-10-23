@@ -341,3 +341,25 @@ for (const failure of ["provenance", "definition", "persist"])
       "failed persistence leaves no orphan definition",
     );
   });
+
+
+test("agentic Runs retain performer metadata and human reruns are independently labeled", async (t) => {
+  const { r, c, root } = await fixture(t);
+  r.performedBy = "agent";
+  await assert.rejects(() => r.start({ ids: ["first"], performedBy: "robot" }), /performer/);
+  const agent = await r.start({ ids: ["first"], name: "Agent checks" });
+  assert.equal(agent.performedBy, "agent");
+  assert.equal(r.context().performedBy, "agent");
+  await r.end();
+  const restarted = new Reviews(c, r.devices, { root });
+  assert.equal((await restarted.list()).runs[0].performedBy, "agent");
+  assert.match(await fs.readFile(path.join(root, agent.id, "index.html"), "utf8"), /Agentic review/);
+  const human = await restarted.rerun({ id: agent.id });
+  assert.equal(human.performedBy, "human");
+  assert.equal((await restarted.detail(agent.id)).performedBy, "agent");
+  await restarted.end();
+  const saved = await restarted.saved(human.id);
+  delete saved.performedBy;
+  await restarted.persist(saved);
+  assert.equal((await restarted.detail(human.id)).performedBy, "human");
+});

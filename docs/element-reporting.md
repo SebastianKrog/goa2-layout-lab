@@ -93,3 +93,20 @@ while the normal game input uses touch emulation. Set distinct `GOA2_LAB_*_PORT`
 values first. These checks submit QA reports, verify exported revision/element/
 situation files and unchanged game hashes, then stop their desk. Evidence stays
 under `.layout-lab/reviews/element-reports/{native,browser}/`.
+
+
+### Precise element capture
+
+The picker accepts HTML elements such as buttons, spans/card faces and calculation
+lists as well as divs. Hover the desired part; Alt+Up selects its parent and
+Alt+Down returns toward the hovered leaf. Selection suppresses game actions.
+The source selection can still be reported if another layout has no counterpart.
+Older div descriptors and reports remain readable.
+
+During capture the report panel shows progress and supports cancellation. New
+reports record source-provenance and per-view checkpoint/matching/image/style
+phase timings. Element style exports are limited to 1200 elements and omit global
+stylesheet bodies; an oversized selection retains its HTML/image and explicitly
+warns that its style export is partial. Select a smaller component for complete
+style evidence, or use the full source-extraction workflow for an intentional
+whole-document inspection.

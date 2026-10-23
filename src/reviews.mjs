@@ -12,8 +12,13 @@ export class Reviews {
   constructor(
     comparison,
     devices,
-    { root = path.join(DATA, "reports", "reviews"), guard = () => {} } = {},
+    {
+      root = path.join(DATA, "reports", "reviews"),
+      guard = () => {},
+      performedBy = "human",
+    } = {},
   ) {
+    this.performedBy = performedBy;
     this.comparison = comparison;
     this.devices = devices;
     this.root = root;
@@ -34,6 +39,7 @@ export class Reviews {
           reviewRevision: r.reviewRevision,
           entryId: r.entries[r.index]?.entryId || `${r.id}:${r.index}`,
           name: r.name,
+          performedBy: r.performedBy || "human",
           active: r.active,
           index: r.index,
           total: r.entries.length,
@@ -91,6 +97,7 @@ export class Reviews {
       reviewId: r.reviewId,
       reviewRevision: r.reviewRevision,
       name: r.name,
+      performedBy: r.performedBy || "human",
       createdAt: r.createdAt,
       endedAt: r.endedAt || null,
       status: live ? "active" : r.active ? "interrupted" : "ended",
@@ -156,7 +163,9 @@ export class Reviews {
       })),
     };
   }
-  async rerun({ id, entries, name, slots, inputs = "frozen" }) {
+  async rerun({
+    id, entries, name, slots, inputs = "frozen", performedBy = this.performedBy,
+  }) {
     this.guard();
     if (this.current?.active)
       throw Error("End the current review before starting another.");
@@ -190,6 +199,7 @@ export class Reviews {
     }
     return this.start({
       name: name ?? previous.name,
+      performedBy,
       slots: slots || layoutSlots(previous.layout),
       queue: selected.map((entry) =>
         Object.hasOwn(entry, "fromIndex")
@@ -219,6 +229,7 @@ export class Reviews {
       reviewRevision: r.reviewRevision,
       entryId: r.entries[r.index].entryId || `${r.id}:${r.index}`,
       name: r.name,
+      performedBy: r.performedBy || "human",
       index: r.index,
       situationId: r.entries[r.index].situation.id,
     };
@@ -259,7 +270,7 @@ export class Reviews {
         const e = escapeHTML;
         await fs.writeFile(
           path.join(dir, "index.html"),
-          `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${e(r.name)}</title><style>body{font:16px system-ui;max-width:1000px;margin:24px auto;padding:0 16px}li{margin:12px 0}a{overflow-wrap:anywhere}</style><h1>${e(r.name)}</h1><p>${r.entries.length} situations · ${r.reports.length} reports</p><p><a href="review.json">Review data</a></p><ol>${r.entries
+          `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${e(r.name)}</title><style>body{font:16px system-ui;max-width:1000px;margin:24px auto;padding:0 16px}li{margin:12px 0}a{overflow-wrap:anywhere}</style><h1>${e(r.name)}</h1>${r.performedBy === "agent" ? "<p><strong>Agentic review</strong></p>" : ""}<p>${r.entries.length} situations · ${r.reports.length} reports</p><p><a href="review.json">Review data</a></p><ol>${r.entries
             .map(
               (entry, index) =>
                 `<li>${e(entry.situation.name)} ${entry.situation.review_snapshot ? `<a href="situations/${String(index).padStart(3, "0")}.json">Situation snapshot</a>` : ""}<ul>${r.reports
@@ -292,10 +303,13 @@ export class Reviews {
     previous,
     edited = false,
     inputs = "frozen",
+    performedBy = this.performedBy,
   }) {
     this.guard();
     if (this.current?.active)
       throw Error("End the current review before starting another.");
+    if (!["human", "agent"].includes(performedBy))
+      throw Error("Review performer must be human or agent.");
     if (queue) ids = queue.map((entry) => entry.id);
     if (
       !Array.isArray(ids) ||
@@ -351,6 +365,7 @@ export class Reviews {
       const record = {
         schema: 2,
         kind: "review-run",
+        performedBy,
         reviewId: definition.id,
         reviewRevision: definition.revision,
         parentRunId: parentRunId || null,

@@ -247,6 +247,13 @@ test("working-tree evidence hashes served bytes and never labels local modificat
   assert.equal(changed.commit, clean.commit);
   assert.notEqual(changed.workingTreeHash, clean.workingTreeHash);
   assert.equal(changed.files.length, 2);
+  await fs.mkdir(path.join(root, "nested"));
+  git(["-C", "nested", "init"]);
+  const nested = await checkoutEvidence(root);
+  assert.deepEqual(nested.excludedDirectories, ["nested/"]);
+  assert.equal(nested.files.length, 2);
+  assert.equal(nested.dirty, true);
+
   await fs.writeFile(path.join(root, "code.js"), "changed again");
   assert.notEqual(
     (await checkoutEvidence(root)).workingTreeHash,

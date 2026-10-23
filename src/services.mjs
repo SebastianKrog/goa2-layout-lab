@@ -42,6 +42,7 @@ export async function checkoutEvidence(checkout) {
   ].sort();
   const digest = createHash("sha256").update(commit);
   const files = [];
+  const excludedDirectories = [];
   for (const name of paths) {
     const target = path.resolve(checkout, name);
     if (!target.startsWith(path.resolve(checkout) + path.sep))
@@ -49,6 +50,12 @@ export async function checkoutEvidence(checkout) {
     let bytes;
     try {
       const stat = await fs.lstat(target);
+      // Nested untracked Git checkouts are directories, not source files.
+      if (stat.isDirectory()) {
+        excludedDirectories.push(name);
+        digest.update(name).update("\0directory\0");
+        continue;
+      }
       bytes = stat.isSymbolicLink()
         ? Buffer.from(await fs.readlink(target))
         : await fs.readFile(target);
@@ -71,6 +78,7 @@ export async function checkoutEvidence(checkout) {
     status,
     workingTreeHash: digest.digest("hex"),
     files,
+    excludedDirectories,
   };
 }
 export const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));

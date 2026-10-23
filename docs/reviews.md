@@ -14,6 +14,19 @@ arrow is disabled. Every step loads a fresh copy of that entry into every desk
 view and every currently shared device view. Previous restores the saved starting
 moment again; it does not retain gameplay performed on an earlier visit.
 
+## Agentic reviews
+
+Runs performed by an agent carry `performedBy: "agent"`. They are hidden from the
+Reviews list and its count by default. **Show agentic reviews** includes them; each such Run and its saved evidence page is clearly
+marked **Agentic review**. Existing unmarked Runs retain human-review behavior.
+A mixed Review shows only its human Runs until this option is selected.
+
+Verification desks (`--verification`) mark new Runs automatically. Agent workflows
+outside those desks must pass `performedBy: "agent"` when starting or rerunning a
+Run. Preparing a queue for the human to evaluate remains `performedBy: "human"`.
+The person performing a rerun determines its marker, independently of the parent.
+The API retains both kinds so evidence and explicit lookup remain available.
+
 ## Past reviews and reruns
 
 The **Reviews** tab groups Runs under their Review. The latest Run is visible;

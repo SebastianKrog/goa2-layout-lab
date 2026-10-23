@@ -189,6 +189,7 @@ test("picker reports all views, captures CSS/HTML/checkpoints without overlays, 
     await panel.locator("#elementReportComment").press("End");
     await panel.locator("#elementReportComment").press("Shift+Enter");
     await panel.locator("#elementReportComment").type("details");
+    await until(() => panel.locator("#elementReportSend").isEnabled());
     await panel.locator("#elementReportComment").press("Enter");
     await until(() => manager.lastReport?.id === id);
     const report = JSON.parse(
@@ -257,4 +258,38 @@ test("picker reports all views, captures CSS/HTML/checkpoints without overlays, 
     await new Promise((r) => server.close(r));
     await fs.rm(root, { recursive: true, force: true });
   }
+});
+
+
+test("picker selects non-div leaves, cycles ancestors, and survives a source rerender without gameplay", async () => {
+ const browser = await chromium.launch({headless:true});
+ try {
+  const page = await browser.newPage(); const selections=[];
+  await page.exposeBinding('__labElementPick', (_, x) => selections.push(x.descriptor));
+  await page.setContent('<div><button onclick="window.played=true"><span data-card-size="tiny">Tiny card</span></button><dl aria-label="Attack calculation"><dt>Attack</dt><dd>4</dd></dl></div>');
+  await page.evaluate(installElementPicker);
+  await page.evaluate(() => window.__GOA2_ELEMENT_PICKER__.setActive(true));
+  await page.locator('[data-card-size]').click();
+  assert.equal(selections[0].tag,'span');
+  assert.equal(await page.evaluate(() => !!window.played),false);
+  await page.evaluate(() => {window.__GOA2_ELEMENT_PICKER__.setActive(false); const e=document.querySelector('[data-card-size]');e.replaceWith(e.cloneNode(true));});
+  assert.ok((await page.evaluate(d => window.__GOA2_ELEMENT_PICKER__.resolve(d,true),selections[0])).selector);
+  await page.evaluate(() => window.__GOA2_ELEMENT_PICKER__.setActive(true));
+  await page.locator('[data-card-size]').hover(); await page.keyboard.press('Alt+ArrowUp');
+  await page.locator('[data-card-size]').click();
+  assert.equal(selections[1].tag,'button');
+  assert.equal(await page.evaluate(() => !!window.played),false);
+  await page.evaluate(() => window.__GOA2_ELEMENT_PICKER__.setActive(true));
+  await page.locator('dd').click(); assert.equal(selections[2].tag,'dd');
+ } finally {await browser.close();}
+});
+
+test("a capture can be cancelled while its work is pending", async () => {
+ const win={};const manager=new ElementReports({windows:[win]});manager.active=true;
+ manager.setEnabled=async()=>{};
+ manager.capture=async(draft)=>{while(!draft.cancelled)await new Promise(r=>setTimeout(r,5));};
+ const capture=manager.select(win,{tag:'span',path:'span',selectors:[],text:'card'});
+ await until(()=>!!manager.draft?.capturePromise);
+ await manager.discard(manager.draft.id);await capture;
+ assert.equal(manager.draft,null);
 });

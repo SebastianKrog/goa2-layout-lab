@@ -49,6 +49,39 @@ Load effects through goa2.bootstrap.register_all_effects() before constructing/r
 
 Keep the waiting step and execution context in the checkpoint. A prompt object on its own is not a resumable game. Use GameSession.advance(InputResponse(...)) for answering prior prompts, with the current request's ID. Planning uses commit_card/pass_turn/finish_planning instead of advance(). Re-read IDs after restore; never reuse another clone's opaque request ID.
 
+## Keep the core state plausible
+
+Fabricate the moment directly; do not play through a whole game or reconstruct
+its complete economy and movement history. Aim for a plausible playable snapshot
+of the requested condition, unless the user deliberately asks for an invalid case.
+Engine acceptance alone does not establish that plausibility.
+
+- Match levels to the acquired upgrades and unlocked abilities. Follow legal
+  upgrade eligibility, including prerequisite tiers/colors: a normal tier III
+  upgrade requires all three tiered colors to have reached tier II. Prefer the engine's
+  upgrade helpers when convenient; direct setup is fine if it produces the same
+  inventory. Keep the selected upgrade, its paired item, and the retired predecessor
+  consistent. Do not tuck an arbitrary high-tier card just to obtain a stat bonus.
+- Derive item totals from the actual item cards. Include unavoidable paired-item
+  bonuses when calculating the displayed condition; an effect's +3 Defense may
+  coexist with a mandatory +1 Defense item.
+- Keep cards in one live zone: hand, committed/current, resolved slot, or discard.
+  Preserve the master catalogue separately. An upgraded predecessor cannot remain
+  usable, and a committed card cannot also be offered from hand.
+- Give the relevant heroes coherent commitments, resolved turn slots and counters,
+  current actor, and remaining actors. Compare computed Initiative, including items
+  and markers: a slower source action cannot already have resolved before a faster
+  attack in the same turn. Adjust the attacking card or schedule to make this fit.
+- Respect effect timing. A lasting effect can come from an earlier turn's resolved
+  card; a this-turn buff must have been established earlier in the current turn.
+  Match its active flag, source card, creation turn/round and duration to that story.
+
+Before saving, inspect a short inventory/turn schedule and verify the relevant
+values and offered cards after restoration. Record useful upgrade choices and
+source-action timing in the factory or provenance so the setup is reproducible.
+Keep this check proportional to the situation; it does not require proving every
+board position reachable or running broad game-rule tests.
+
 ## Add the viewpoints and UI state
 
 Load the same checkpoint into independent lab clones. Use Synchronize None while arranging different presentations; API requests may be used when deliberately advancing every clone together. API + clicks is optional convenience, not a fixture-generation dependency: it skips unmatched controls.

@@ -1126,7 +1126,7 @@ function updateReviewControls() {
   $("reviewNameField").hidden = reviewSelection.size === 0;
   $("reviewBar").hidden = !review;
   if (review) {
-    $("reviewTitle").textContent = review.name;
+    $("reviewTitle").textContent = `${review.performedBy === "agent" ? "Agentic review · " : ""}${review.name}`;
     $("reviewProgress").textContent =
       `${review.index + 1} / ${review.total} · ${review.situationName}${review.active ? "" : " · Finished"}`;
     $("reviewPrevious").disabled = !!busy || !review.previous;
@@ -1174,6 +1174,7 @@ $("reviewStart").onclick = () =>
     const result = await call("review-runs/start", {
       ids,
       name: $("reviewName").value,
+      performedBy: "human",
       slots: configs,
     });
     navigate("compare");

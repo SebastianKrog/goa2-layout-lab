@@ -422,3 +422,15 @@ test("matched-style pooling preserves shared inherited rule data without repeate
       JSON.stringify(Array.from({ length: 200 }, () => raw)).length / 10,
   );
 });
+
+
+test("element export bounds style work, retains HTML and supports cancellation", async () => {
+ const browser=await chromium.launch({headless:true});
+ try {
+  const page=await browser.newPage();await page.setContent('<section id="target">'+Array.from({length:20},(_,i)=>`<span>Item ${i}</span>`).join('')+'</section>');
+  const result=await inspectPage(page,{mode:'element',selector:'#target',maxElements:3,includeStylesheetText:false});
+  assert.equal(result.elements.length,3);assert.ok(result.matches[0].html.includes('Item 19'));
+  assert.ok(result.warnings.some(w=>w.includes('Partial style export')));
+  await assert.rejects(inspectPage(page,{mode:'element',selector:'#target',isCancelled:()=>true}),/cancelled/);
+ } finally {await browser.close();}
+});

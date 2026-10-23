@@ -319,3 +319,16 @@ test("empty startup has one clear Start action and Layout saves omit the per-Vie
   await loaded.locator("#saveKind").selectOption("situation");
   assert.equal(await loaded.locator("#saveFrom").isVisible(), true);
 });
+
+
+test("agentic Runs are hidden by default, labeled when shown and excluded from counts", async (t) => {
+ const {page}=await fixture(t,1);
+ const human={id:"b".repeat(24),reviewId:"a".repeat(24),name:"Human checks",createdAt:"2026-10-22T10:00:00Z",status:"ended",total:1,visited:1,reports:0,position:1,reportedSituations:0,views:1,reportKinds:{},url:"/reports/test"};
+ const agent={...human,id:"c".repeat(24),performedBy:"agent",createdAt:"2026-10-23T10:00:00Z"};
+ const agentOnly={...agent,id:"e".repeat(24),reviewId:"d".repeat(24),name:"Agent only"};
+ await page.context().route("**/api/reviews",route=>route.fulfill({json:{reviews:[{id:human.reviewId,runs:[agent,human]},{id:agentOnly.reviewId,runs:[agentOnly]}],warnings:[]}}));
+ await page.locator('[data-page="reviews"]').click();await page.locator('.review-history-card').first().waitFor();
+ assert.equal(await page.locator('.review-history-card').count(),1);assert.equal(await page.locator('#reviewHistoryCount').textContent(),"1");assert.equal(await page.locator('.review-older-runs').count(),0);
+ await page.getByLabel('Show agentic reviews').check();assert.equal(await page.locator('.review-history-card').count(),3);assert.equal(await page.locator('#reviewHistoryCount').textContent(),"2");assert.equal(await page.locator('[data-performed-by=agent]').count(),2);assert.match(await page.locator('[data-performed-by=agent] h3').first().textContent(),/Agentic review/);
+ await page.getByLabel('Show agentic reviews').uncheck();assert.equal(await page.locator('.review-history-card').count(),1);
+});

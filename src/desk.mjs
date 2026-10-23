@@ -92,6 +92,7 @@ export async function startDesk({
   });
   comparison.reporter = elementReports;
   reviews = new Reviews(comparison, devices, {
+    performedBy: flags.has("--verification") ? "agent" : "human",
     guard: () => {
       if (elementReports.draft || elementReports.active)
         throw Error(

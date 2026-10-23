@@ -44,6 +44,7 @@ export function initReviewsPanel({
       const value = await call("review-runs/rerun", {
         id: r.id,
         inputs,
+        performedBy: "human",
         ...(entries ? { entries } : {}),
         ...(name ? { name } : {}),
       });
@@ -56,16 +57,17 @@ export function initReviewsPanel({
   }
   function render() {
     $("reviewsList").replaceChildren();
+    const visible = history.filter(run => run.performedBy !== "agent" || $("reviewShowAgentic").checked);
     $("reviewHistoryCount").textContent = String(
-      new Set(history.map((r) => r.reviewId)).size,
+      new Set(visible.map((r) => r.reviewId)).size,
     );
     const groups = new Map();
-    for (const review of history) {
+    for (const review of visible) {
       const groupId = review.reviewId;
       if (!groups.has(groupId)) {
         const group = node("section", undefined, "review-history-group");
         group.dataset.reviewDefinitionId = groupId;
-        const runs = history.filter((r) => r.reviewId === groupId);
+        const runs = visible.filter((r) => r.reviewId === groupId);
         group.append(
           node(
             "h2",
@@ -84,8 +86,9 @@ export function initReviewsPanel({
       }
       const card = node("article", undefined, "review-history-card");
       card.dataset.reviewId = review.id;
+      card.dataset.performedBy = review.performedBy || "human";
       card.append(
-        node("h3", `Run · ${formatDate(review.createdAt)}`),
+        node("h3", `${review.performedBy === "agent" ? "Agentic review" : "Run"} · ${formatDate(review.createdAt)}`),
         node(
           "p",
           `Revision ${review.reviewRevision || 1} · ${review.status === "active" ? "In progress" : review.status === "interrupted" ? "Interrupted" : "Ended"}`,
@@ -154,7 +157,8 @@ export function initReviewsPanel({
       const target = groups.get(groupId);
       (target.count++ === 0 ? target.list : target.older).append(card);
     }
-    $("reviewsEmpty").hidden = history.length > 0;
+    $("reviewsEmpty").hidden = visible.length > 0;
+    $("reviewsEmpty").textContent = history.length ? "No Reviews match these filters." : "No saved Reviews yet. Select Situations and start a review to create one.";
     updateState();
   }
   async function refresh() {
@@ -269,6 +273,7 @@ export function initReviewsPanel({
     renderKept();
   };
   $("reviewEditSearch").oninput = renderAdded;
+  $("reviewShowAgentic").onchange = render;
   $("reviewHistoryRefresh").onclick = () => void refresh();
   $("reviewEditForm").onsubmit = (event) => {
     event.preventDefault();

@@ -6,7 +6,8 @@ export function installElementPicker(initiallyActive = false) {
     suppressUntil = 0,
     overlay,
     cursorStyle,
-    target;
+    target,
+    hitTarget;
   const cleanText = (node) =>
     (node.textContent || "").replace(/\s+/g, " ").trim().slice(0, 180);
   const classes = (node) =>
@@ -43,36 +44,38 @@ export function installElementPicker(initiallyActive = false) {
     ])
       if (node.hasAttribute(name))
         selectors.push(
-          "div[" + name + "=" + JSON.stringify(node.getAttribute(name)) + "]",
+          node.localName + "[" + name + "=" + JSON.stringify(node.getAttribute(name)) + "]",
         );
     if (node.classList.length)
       selectors.push(
-        "div" + [...node.classList].map((c) => "." + CSS.escape(c)).join(""),
+        node.localName + [...node.classList].map((c) => "." + CSS.escape(c)).join(""),
       );
     for (const name of [...node.classList]) {
       const match = /^(_?[A-Za-z][A-Za-z0-9]*?)_[a-z0-9]{5,}_/i.exec(name);
       if (match)
-        selectors.push("div[class*=" + JSON.stringify(match[1] + "_") + "]");
+        selectors.push(node.localName + "[class*=" + JSON.stringify(match[1] + "_") + "]");
     }
     return {
       selectors: [...new Set(selectors)],
       path: path(node),
       text: cleanText(node),
       classes: classes(node),
-      tag: "div",
+      tag: node.localName,
     };
   }
   function resolve(descriptor, source = false) {
     const visible = (e) =>
-      e.localName === "div" &&
+      e instanceof HTMLElement &&
       !e.hasAttribute("data-lab-element-overlay") &&
       e.checkVisibility() &&
       e.getBoundingClientRect().width > 0 &&
       e.getBoundingClientRect().height > 0;
     if (source) {
-      const e = target?.isConnected ? target : null;
-      if (e && visible(e)) return { selector: path(e), match: "selected div" };
-      return { error: "The selected div is no longer present." };
+      const original = target?.isConnected ? target : null;
+      const candidate = document.querySelector(descriptor.path);
+      const e = original ?? (candidate?.localName === descriptor.tag && cleanText(candidate) === descriptor.text ? candidate : null);
+      if (e && visible(e)) return { selector: path(e), match: "selected element" };
+      return { error: e ? "The selected element has no visible bounds." : "The selected element is detached." };
     }
     let ambiguous = false;
     for (const selector of descriptor.selectors || []) {
@@ -99,8 +102,8 @@ export function installElementPicker(initiallyActive = false) {
       };
     return {
       error: ambiguous
-        ? "The equivalent div is ambiguous in this view."
-        : "No equivalent div is visible in this view.",
+        ? "The equivalent element is ambiguous in this view."
+        : "No equivalent element is visible in this view.",
     };
   }
   function draw() {
@@ -119,8 +122,9 @@ export function installElementPicker(initiallyActive = false) {
   }
   function point(event) {
     const hit = document.elementFromPoint(event.clientX, event.clientY);
-    target = hit?.closest("div:not([data-lab-element-overlay])");
-    if (target?.hasAttribute("data-lab-element-overlay")) target = null;
+    const element = hit instanceof HTMLElement ? hit : hit?.parentElement;
+    if (element !== hitTarget) { hitTarget = element; target = element; }
+    if (target?.closest("[data-lab-element-overlay]") || ["html", "body"].includes(target?.localName)) target = null;
     draw();
   }
   function setActive(value) {
@@ -198,6 +202,12 @@ export function installElementPicker(initiallyActive = false) {
     (event) => {
       if (!active) return;
       stop(event);
+      if (event.altKey && event.key === "ArrowUp" && target?.parentElement && !["html", "body"].includes(target.parentElement.localName)) { target = target.parentElement; draw(); }
+      if (event.altKey && event.key === "ArrowDown" && target && hitTarget) {
+        let child = hitTarget;
+        while (child?.parentElement && child.parentElement !== target) child = child.parentElement;
+        if (child?.parentElement === target) { target = child; draw(); }
+      }
       if (event.key === "Escape")
         void window.__labElementPick({ kind: "cancel" });
     },
