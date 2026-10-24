@@ -1,0 +1,25 @@
+{
+  "id": "e2744003760e",
+  "name": "Planning: empty Hand while other heroes choose",
+  "description": "Planning, round 1. Saved before the next game choice.",
+  "backend_revision": "301ee738b8cc238a64b7b518402f9bac4630437d",
+  "saved_at": 1792827192.3729715,
+  "provenance": {
+    "kind": "ui-fabrication"
+  },
+  "summary": {
+    "phase": "PLANNING",
+    "round": 1,
+    "decision": null,
+    "responder": null
+  },
+  "schema": 3,
+  "kind": "situation",
+  "decisionStateId": "ebacd08e859bf47075acdf3827b66acb096e4b4b283437d712d484845e3589d9",
+  "tags": [
+    "hero:arien",
+    "phase:planning",
+    "topic:hand",
+    "topic:planning"
+  ]
+}

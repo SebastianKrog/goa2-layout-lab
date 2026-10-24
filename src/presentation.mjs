@@ -48,7 +48,7 @@ export function readPresentation(input) {
     ? root.hasAttribute("data-m2-deck-open")
       ? "deck"
       : root.dataset.m2Panel || root.dataset.m2Mode || "board"
-    : selected?.dataset.pane || (deckOpen ? "deck" : logOpen ? "log" : "board");
+    : document.querySelector('[aria-label="Mobile game"]')?.dataset.mobilePane || selected?.dataset.pane || (deckOpen ? "deck" : logOpen ? "log" : "board");
   const pane = rawPane === "tools" ? "settings" : rawPane;
   const storage = {};
   for (const key of Object.keys(localStorage)) {
@@ -127,7 +127,7 @@ export function readPresentation(input) {
 }
 
 export async function showPane(page, pane, config) {
-  if (!["board", "heroes", "hand", "deck", "log", "settings"].includes(pane))
+  if (!["board", "choice", "heroes", "hand", "deck", "log", "settings"].includes(pane))
     throw new Error("Unknown pane.");
   const kind =
     config.source === "target"
@@ -136,23 +136,16 @@ export async function showPane(page, pane, config) {
         ? "mobile"
         : "desktop";
   if (kind === "mobile") {
-    const selected = page.locator('[data-pane][aria-pressed="true"]');
-    const active = (await selected.count())
-      ? await selected.getAttribute("data-pane")
-      : null;
-    if (pane === "board") {
-      if (active)
-        await clickControl(page, page.locator(`[data-pane="${active}"]`));
-    } else if (active !== pane)
-      await clickControl(page, page.locator(`[data-pane="${pane}"]`));
-    // React Router mounts panels asynchronously after the navigation click.
-    await page.waitForFunction(
-      (pane) =>
-        (document.querySelector('[data-pane][aria-pressed="true"]')?.dataset
-          .pane || "board") === pane,
-      pane,
-      { timeout: 5000 },
-    );
+    const currentPane = () => page.evaluate(() => document.querySelector('[aria-label="Mobile game"]')?.dataset.mobilePane || document.querySelector('[data-pane][aria-pressed="true"]')?.dataset.pane || "board");
+    const active = await currentPane();
+    if (pane === "board" && active !== "board") {
+      await clickControl(page, page.locator(active === "choice" ? '[data-pane="board-choice"]' : '[data-pane="' + active + '"]'));
+    } else if (pane !== "board" && active !== pane) {
+      const control = page.locator(pane === "choice" ? '[data-pane="board-choice"]' : '[data-pane="' + pane + '"]');
+      if (!(await control.count()) || pane === "choice" && (await control.textContent()) !== "Choice") throw Error("Unavailable in this version/viewpoint: " + pane);
+      await clickControl(page, control);
+    }
+    await page.waitForFunction(pane => (document.querySelector('[aria-label="Mobile game"]')?.dataset.mobilePane || document.querySelector('[data-pane][aria-pressed="true"]')?.dataset.pane || "board") === pane, pane, { timeout: 5000 });
     return;
   }
   if (kind === "script") {
