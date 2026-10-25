@@ -43,8 +43,13 @@ export function instrument(code, id) {
       "<div data-lab-card={card.id} data-lab-card-name={card.name} data-lab-selected={isSelected || undefined}\n      onClick={onClick}",
     );
   }
+  if (normalized.endsWith("/mobile/MobileCardInteraction.tsx")) {
+    return code.replace(/<button(?=\s)/,
+      '<button data-lab-card={card.id} data-lab-card-name={card.name} data-lab-selected={props["aria-pressed"] === true || undefined} data-lab-inspect-card={!onStage ? card.id : undefined}');
+  }
   if (normalized.endsWith("/mobile/MobileCardList.tsx")) {
     return code
+      .replace("className={styles.inspectShortcut}", "data-lab-inspect-card={card.id} className={styles.inspectShortcut}")
       .replace(
         '<button type="button" className={cardStyles.viewedSource} data-card-viewed={selectedId === card.id || undefined} aria-pressed={onSelect ? selectedId === card.id : undefined}',
         '<button data-lab-card={card.id} data-lab-card-name={card.name} data-lab-selected={selectedId === card.id || undefined} data-lab-inspect-card={!onSelect ? card.id : undefined} type="button" className={cardStyles.viewedSource} data-card-viewed={selectedId === card.id || undefined} aria-pressed={onSelect ? selectedId === card.id : undefined}',
@@ -129,15 +134,15 @@ export function instrument(code, id) {
         "data-lab-mobile-spells={hero.id} data-lab-mobile-spell-selection={card?.id} className={styles.castBrowser}",
       )
       .replace(
-        '<button type="button" key={spell.id}',
-        '<button data-lab-preview-spell={spell.id} type="button" key={spell.id}',
+        'key={spell.id}',
+        'data-lab-preview-spell={spell.id} key={spell.id}',
       )
       .replace(
-        '<button type="button" onClick={() => context?.inspect(card.id)}',
-        '<button data-lab-inspect-card={card.id} type="button" onClick={() => context?.inspect(card.id)}',
+        'aria-label={`Inspect ${card.name}`}',
+        'data-lab-inspect-card={card.id} aria-label={`Inspect ${card.name}`}',
       );
   }
-  if (normalized.endsWith("/mobile/MobileInspection.tsx")) {
+  if (normalized.endsWith("/mobile/MobileInspection.tsx") || normalized.endsWith("/mobile/MobileCardFocus.tsx")) {
     return code
       .replace(
         "<div ref={dialog}",

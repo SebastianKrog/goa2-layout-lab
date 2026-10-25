@@ -1,0 +1,13 @@
+import fs from 'node:fs/promises';import assert from 'node:assert/strict';
+const origin='http://127.0.0.1:6340';async function api(route,body){const r=await fetch(origin+'/api/'+route,{method:body===undefined?'GET':'POST',headers:{'content-type':'application/json'},body:body===undefined?undefined:JSON.stringify(body),signal:AbortSignal.timeout(600000)});const v=await r.json();if(!r.ok)throw Error(JSON.stringify(v));return v;}
+const status=await api('status');assert.ok(!status.reviewRun?.active,'Preserve existing review');
+const entries=[
+{situationId:'e81bc3bd5fff',viewpoint:'hero_arien',presentation:{pane:'hand',selectedCard:'noble_blade'},goal:'Portrait/landscape region placement, Card Focus, Board return and retained camera.'},
+{situationId:'7cc3ce17c3e7',viewpoint:'hero_brogan',presentation:{pane:'heroes'},goal:'History/discard source inspection shares one reader; inspected sheen remains separate from active glow.'},
+{situationId:'dbd50506df47',viewpoint:'hero_gydion',presentation:{pane:'hand',inspectionMobile:'cantrip'},goal:'Cantrip parent and bounded referenced spell; Back retains parent DOM, scroll and focus without casting.'},
+{situationId:'5949a8eccf40',viewpoint:'hero_wasp',presentation:{pane:'heroes',spellBrowserMobile:{heroId:'hero_gydion',selectedId:'shocking_grasp'}},goal:'Public nine-spell list stays in Action/Info; selected spell has the sole ordinary Card Focus.'},
+{situationId:'ad66cbbbda7e',viewpoint:'hero_gydion',presentation:{pane:'hand',selectedCard:'cantrip'},goal:'Available and unavailable known spell rows remain inspectable with rules/reminders; guarded child returns to parent.'}
+];
+const slots=[{source:'main',label:'R2 review fixes',profile:'portrait',render:'2d',uiMode:'mobile',seat:'hero_arien',autoSwitch:false},{source:'comparator',label:'R3 regions',profile:'portrait',render:'2d',uiMode:'mobile',seat:'hero_arien',autoSwitch:false}];
+await api('review-runs/start',{name:'Mobile box refactor — R3: Boxes, sole Card Focus and referenced spells',performedBy:'human',entries:entries.map(({goal,...e})=>e),slots});const ready=await api('status'),views=await api('views');assert.equal(ready.reviewRun.total,5);assert.equal(views[0].state.hash,views[1].state.hash);for(const w of ready.windows){assert.deepEqual(w.errors,[]);assert.deepEqual(w.assets,[]);assert.deepEqual(w.warnings,[]);}
+await fs.writeFile('.layout-lab/reviews/mobile-r3-handoff.json',JSON.stringify({origin,baseline:ready.references.main,candidate:ready.comparator,reviewRun:ready.reviewRun,entries,hashes:views.map(v=>v.state.hash),humanEvaluation:'deferred by user; not evaluated',display:'browser service; no window opened',stop:'POST '+origin+'/api/shutdown {}'},null,2));console.log(JSON.stringify({run:ready.reviewRun.id,total:5,origin}));

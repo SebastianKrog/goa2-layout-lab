@@ -1,0 +1,24 @@
+{
+  "id": "6432cc2d943d",
+  "name": "Ursafar: unlocked Ultimate and active resolved history",
+  "description": "Planning, round 5. Saved before the next game choice.",
+  "backend_revision": "301ee738b8cc238a64b7b518402f9bac4630437d",
+  "saved_at": 1792834461.2339432,
+  "provenance": {
+    "kind": "ui-fabrication"
+  },
+  "summary": {
+    "phase": "PLANNING",
+    "round": 5,
+    "decision": null,
+    "responder": null
+  },
+  "schema": 3,
+  "kind": "situation",
+  "decisionStateId": "24865a262fd1f29bea209a03c0f84903b54238b97c6b69b5cd9b60a09e627eeb",
+  "tags": [
+    "topic:cards",
+    "topic:history",
+    "topic:ultimate"
+  ]
+}

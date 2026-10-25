@@ -1,0 +1,24 @@
+{
+  "id": "ad66cbbbda7e",
+  "name": "Gydion: Cantrip references prepared and cast spells",
+  "description": "Planning, round 2. Saved before the next game choice.",
+  "backend_revision": "301ee738b8cc238a64b7b518402f9bac4630437d",
+  "saved_at": 1792834718.6941385,
+  "provenance": {
+    "kind": "ui-fabrication"
+  },
+  "summary": {
+    "phase": "PLANNING",
+    "round": 2,
+    "decision": null,
+    "responder": null
+  },
+  "schema": 3,
+  "kind": "situation",
+  "decisionStateId": "0ee3bbe743c55df106fc15c66cae0ff94de7f2dd4c4ec5bc673e7ac35ff2f41d",
+  "tags": [
+    "topic:cards",
+    "topic:inspection",
+    "topic:spells"
+  ]
+}
