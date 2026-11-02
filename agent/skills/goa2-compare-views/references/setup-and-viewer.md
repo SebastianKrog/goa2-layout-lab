@@ -35,7 +35,10 @@ npm start -- --base-ref=BASE_SHA --comparator-ref=COMPARE_SHA --script-ref=SCRIP
 
 Use --preset=desktop-3d for two desktop 3D defaults or --preset=mobile for the three migration defaults; explicit load slots below determine the actual views when --no-auto-load is used. Omit --script-ref for two views when no script ref was requested. Defaults still resolve the configured script SHA but no script is injected without Target. For automated static capture, add --headless --no-open --verification. These flags are not a live human viewer.
 
-Windows defaults to a Windows desk/browser and WSL services. Linux/macOS default to native services. Use the existing configured environment; do not run Linux/WSLg acceptance suites on this installation. To isolate an instance set all five GOA2*LAB*\*\_PORT variables in its process environment, for example DESK=3300, BASE=3301, COMPARATOR=3302, LIVE=3303, BACKEND=8300. Also use that desk port in every subsequent request. Do not kill occupied-port owners.
+Windows defaults to a Windows desk/browser and WSL services. Linux/macOS default to native services. Use the existing configured environment; do not run Linux/WSLg acceptance suites on this installation. For an owned instance, set all seven service ports plus DEVICE when used; see the
+[complete port configuration](../../../../docs/setup.md#isolate-an-acceptance-desk).
+The examples below use desk 3277, not device gateway port 3300. Use the same
+environment for requests/shutdown and do not kill occupied-port owners.
 
 For a detached Windows human viewer, set those environment variables and launch hidden with logs; the Electron app itself is the visible interface:
 
@@ -51,7 +54,7 @@ Ensure the log directory exists first. Add --script-ref when requested. Keep the
 Use the public local desk API, without extracting the private backend credential:
 
 ```javascript
-const origin = "http://127.0.0.1:3300";
+const origin = "http://127.0.0.1:3277";
 async function request(name, body) {
   const response = await fetch(origin + "/api/" + name, {
     method: body === undefined ? "GET" : "POST",
@@ -87,69 +90,75 @@ const slots = [
   },
 ];
 await request("load", { situationId: situation.id, slots });
-await request("synchronize", { mode: "none" });
+await request("synchronize", { mode: "api" });
 await request("cheats", { show: false });
 const status = await request("status"),
   views = await request("views");
 ```
 
-Loading retains the supplied View settings and applies the Situation's composed Presentation. Use `overrides` to pin an intentional Viewpoint, panel or camera, and record such overrides when judging parity.
+Loading retains the supplied View settings. Pass optional `presentation`, `presentationsByInterface` and `viewPresentations` separately; record intentional differences when judging parity.
 
-A two-phone comparison can use portrait/2d with desktop Base and a supported mobile Comparator. A third script view is {label:"A + userscript",source:"target",profile:"portrait",render:"2d",uiMode:"desktop",seat}. For three comparable phone columns set the other profiles to portrait too. Use render:"3d" and desktop layout/profile on both A and B for two desktop 3D views. The current slot validator accepts one, two or three entries, Base desktop shell, and Target desktop/2d. Two different commits with both native mobile shells are not currently expressible via Base/Comparator; report that limit if requested rather than passing both through the one Comparator source.
+A two-phone comparison can use portrait/2d with desktop Base and a supported mobile Comparator. A third script view is {label:"A + userscript",source:"target",profile:"portrait",render:"2d",uiMode:"desktop",seat}. For three comparable phone columns set the other profiles to portrait too. Use render:"3d" and desktop layout/profile on both A and B for two desktop 3D views. The current slot validator accepts one, two or three entries, Base desktop shell, and Target desktop/2d. For two committed native-mobile sources, pin Main with `--main-ref=A` and Comparator
+with `--comparator-ref=B`, then use `source:"main"` and `source:"comparator"`.
+Both revisions must support the requested shell; Main fallback warnings identify
+a desktop comparison at phone dimensions, not native-mobile parity.
 
-## Preserve saved presentation when changing the slot set
+## Choose separate inspection instructions
 
-A Situation contains one explicit Presentation. Distinct saved player/UI variants are separate Situations sharing a Decision State. To adapt a comparison, keep that Decision State, choose Views with the required sources/devices/interfaces, and set explicit Presentation overrides when needed. For example:
+A Situation contains only a named Decision State. Reuse it for player/UI inspections.
+Set source, renderer, profile and seat in `slots`; pass optional Presentation and
+separate `viewpoint` in the load request or Review entry. For example:
 
 ```js
-const slots = [
-  {
-    source: "base",
-    profile: "desktop",
-    render: "3d",
-    uiMode: "desktop",
-    seat,
-    overrides: {
-      viewpoint: seat,
-      sessionState: { render: "3d", pane: "board", camera: null },
+await request("load", {
+  situationId: situation.id,
+  slots: [
+    {
+      source: "base",
+      profile: "desktop",
+      render: "3d",
+      uiMode: "desktop",
+      seat,
     },
-  },
-  {
-    source: "comparator",
-    profile: "desktop",
-    render: "3d",
-    uiMode: "desktop",
-    seat,
-    overrides: {
-      viewpoint: seat,
-      sessionState: { render: "3d", pane: "board", camera: null },
+    {
+      source: "comparator",
+      profile: "desktop",
+      render: "3d",
+      uiMode: "desktop",
+      seat,
     },
-  },
-];
-await request("load", { situationId: situation.id, slots });
+  ],
+  viewpoint: seat,
+  presentation: { schema: 2, sessionState: { pane: "board" } },
+});
 ```
 
-Use Save Situation to capture a new moment; Save Layout stores View settings independently. Presentation templates can be applied without changing the game. There is no bundled legacy restore mode.
+Save Situation captures a new game moment; Save Layout stores View settings.
+Presentation presets apply small changes without replacing the game. They do not
+contain renderer/camera snapshots, preferences or Viewpoint. There is no bundled
+legacy restore mode. Preserve full captured UI separately when a handoff needs it.
 
 ## Synchronization
 
-POST /api/synchronize {mode:"none"|"api"|"api-clicks"}. Any interacted view can drive the others. API mode mirrors game actions using the actor's seat while UI stays independent. API + clicks also mirrors matching semantic UI controls without submitting the game action twice. Unmatched controls are skipped. Neither mode guarantees camera/drag/keyboard parity. Reset/load the same checkpoint before enabling sync if games diverged. Use None while arranging different UI states, API when matching game progression, and API + clicks when the human wants matching supported controls.
+POST /api/synchronize {mode:"none"|"api"|"api-clicks"}. Any interacted view can drive the others. API mode mirrors game actions using the actor's seat while UI stays independent. API + clicks also mirrors matching semantic UI controls without submitting the game action twice. Unmatched controls are skipped. Neither mode guarantees camera/drag/keyboard parity. Reset/load the same checkpoint before enabling sync if games diverged. API is the default and keeps matching game progression with independent UI states; use None only for intentionally different games, and API + clicks when the human wants matching supported controls.
 
-POST /api/reset {} resets all clones to the loaded checkpoint; {index:0} resets one and can leave it different from other windows. Save the intended checkpoint/presentation before exploring if exact restoration matters. Preserve each distinct window's game with POST /api/save {index,name}; one save contains that window's game plus all presentations, not every independently advanced game. Do not assume one save preserves several different live checkpoints.
+POST /api/reset {} resets all desk clones to their starting checkpoints; {index:0} resets one and can leave it different from other windows. Save the intended checkpoint/presentation before exploring if exact restoration matters. Preserve each distinct window's game with POST /api/save {index,name}; one save contains only that window's game, not every independently advanced game. Save Presentation separately when needed. Do not assume one save preserves several different live checkpoints. Desk Reset
+does not reset every physical-device share; review navigation explicitly updates
+all participating desk/device Views together.
 
 A human-ready handoff includes the active native app, desk URL, exact A/B/script SHAs, situation, slot intents, sync mode, any missing UI and instructions to reset. Leave the process running. Stop only its owned instance later with npm start -- --stop from an environment using the same desk port, or POST /api/shutdown. A report's static directory remains usable after shutdown; localhost desk/report URLs do not.
 
 ## Physical device views
 
-Use the desk's **Open on device** action to start an independent clone of any
-saved situation. It returns a LAN link and locally generated QR code, without
+Use the desk's **Open on device** action to display a separate browser clone of any
+saved situation. It joins matching current progress by default (`independent:true` starts a separate game) and returns a LAN link and locally generated QR code, without
 replacing comparison windows. The injected report userscript saves a screenshot,
 comment and resumable situation into the lab. See [device testing](../../../../docs/device-testing.md)
-for setup and limits. The private desk API exposes GET /api/device/options?situationId=ID,
+for setup and limits. The public loopback desk API exposes GET /api/device/options?situationId=ID,
 GET /api/device/views, POST /api/device-open {situationId,slot,bots?}, and
 POST /api/device-stop {id}. Keep returned capability links private. A stopped desk
 revokes all links. No frontend or production-backend edits are required.
 
 For a playable human hero with Random/Simple/ISMCTS opponents or teammates, use
 [goa2-play-bots](../../goa2-play-bots/SKILL.md). Its device clone can run alongside
-the comparison; automation belongs to that clone only.
+the comparison; one separate bot service supplies decisions for its game group.

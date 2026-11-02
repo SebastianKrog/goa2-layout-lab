@@ -1,0 +1,24 @@
+{
+  "id": "5f97f72cd768",
+  "name": "Dodger Weakness reduces Rogue Wave to zero Attack",
+  "description": "Dodger Weakness reduces Rogue Wave to zero Attack. Attack 0; defense needed 0. Waiting for Brogan; no defense submitted. Levels: Arien 2, Hanu 1, Brogan 1, Dodger 2",
+  "backend_revision": "c4750787e620388a093683cc5b8518b437f1c2a3",
+  "saved_at": 1792734793.4442823,
+  "provenance": {
+    "kind": "ui-fabrication"
+  },
+  "summary": {
+    "phase": "RESOLUTION",
+    "round": 1,
+    "decision": "SELECT_CARD_OR_PASS",
+    "responder": "hero_brogan"
+  },
+  "schema": 3,
+  "kind": "situation",
+  "decisionStateId": "865a0f99d9cce9d11395d90afe4f0636b61a3280c966acad797c1f5e79db78fd",
+  "tags": [
+    "topic:abilities-and-effects",
+    "topic:cards",
+    "topic:defense"
+  ]
+}

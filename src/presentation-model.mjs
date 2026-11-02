@@ -136,9 +136,8 @@ export function resolveView(config, situation, explicit) {
   const intended = resolvePresentation(
     defaults,
     config.presentationDefaults,
-    situation?.presentation,
-    explicit,
     config.overrides,
+    explicit,
   );
   if (
     intended.sessionState.render &&
@@ -149,6 +148,12 @@ export function resolveView(config, situation, explicit) {
       ...(intended.warnings || []),
       `Saved ${intended.sessionState.render} Session State has no ${config.render} adapter; opening Board.`,
     ];
+  if (
+    config.uiMode === "mobile" &&
+    explicit?.sessionState?.selectedCard &&
+    !Object.hasOwn(explicit.sessionState, "pane")
+  )
+    intended.sessionState.pane = "hand";
   const resolved = {
     ...config,
     presentationDefaults: config.presentationDefaults || defaults,

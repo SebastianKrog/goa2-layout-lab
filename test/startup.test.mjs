@@ -73,7 +73,7 @@ test("Stop desk is visible and usable on Compare while a load is busy", async ()
                       group: "",
                       summary: { phase: "PLANNING", round: 1 },
                       provenance: {},
-                      schema: 2,
+                      schema: 3,
                       kind: "situation",
                       presentation: {
                         schema: 2,
@@ -88,7 +88,7 @@ test("Stop desk is visible and usable on Compare while a load is busy", async ()
                       group: "",
                       summary: { phase: "PLANNING", round: 1 },
                       provenance: {},
-                      schema: 2,
+                      schema: 3,
                       kind: "situation",
                       presentation: {
                         schema: 2,
@@ -112,12 +112,18 @@ test("Stop desk is visible and usable on Compare while a load is busy", async ()
         ![
           "index.html",
           "desk.mjs",
+          "tags.mjs",
+          "tag-ui.mjs",
           "device-panel.mjs",
           "element-report-panel.mjs",
           "reviews-panel.mjs",
+          "reports-panel.mjs",
           "desk.css",
           "live.mjs",
           "native.mjs",
+          "view-windows.mjs",
+          "view-window.mjs",
+          "view.html",
         ].includes(file)
       )
         return route.abort();
@@ -148,6 +154,7 @@ test("Stop desk is visible and usable on Compare while a load is busy", async ()
     assert.deepEqual(posts, []);
     busy = false;
     await page.waitForFunction(() => !document.body.classList.contains("busy"));
+    await page.locator("#customStart").click();
     await page.locator("#workspaceTools").click();
     assert.equal(
       await page.locator("#restore").count(),

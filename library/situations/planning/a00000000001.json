@@ -1,19 +1,9 @@
 {
-  "schema": 2,
+  "schema": 3,
   "kind": "situation",
   "id": "a00000000001",
-  "name": "Planning - Arien and Hanu vs Brogan and Tigerclaw",
+  "name": "Planning: choose opening cards",
   "decisionStateId": "8cc3892b00250cf50a31aeec0aa3959d2a32b92941c3b9a9f79a926778570966",
-  "presentation": {
-    "schema": 2,
-    "sessionState": {
-      "pane": "board",
-      "selectedCard": null,
-      "inspectedCard": null
-    },
-    "userState": {},
-    "restoration": "defaulted; no historical Session State was saved"
-  },
   "summary": {
     "phase": "PLANNING",
     "round": 1,
@@ -22,12 +12,13 @@
   },
   "backend_revision": "740ec5bbfa1aaadcf05b0df06d93ab3187e5de9a",
   "saved_at": 1792272714.2971911,
-  "migration": {
-    "sourceId": "a00000000001",
-    "sourceSlot": "0"
-  },
   "provenance": {
     "kind": "starter",
     "timed": false
-  }
+  },
+  "tags": [
+    "hero:planning",
+    "topic:planning"
+  ],
+  "description": "Planning: choose opening cards. Load in any Layout to inspect the game state."
 }

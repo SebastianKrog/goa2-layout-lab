@@ -18,10 +18,9 @@ class SituationLibraryTests(unittest.TestCase):
         self.root = Path(self.temp.name)
         self.store = SituationStore(self.root / "shared", self.root / "data")
         self.draft = {
-            "schema": 2,
+            "schema": 3,
             "kind": "situation",
             "decisionStateId": decision_state({"state":{}})["id"],
-            "presentation": {"schema":2,"sessionState":{},"userState":{}},
             "id": "abc123",
             "name": "Choosing defense",
             "checkpoint": {"state": {}},

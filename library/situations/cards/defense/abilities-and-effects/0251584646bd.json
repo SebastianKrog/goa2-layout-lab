@@ -1,0 +1,24 @@
+{
+  "id": "0251584646bd",
+  "name": "Temporal Punch uses Initiative to defend",
+  "description": "Temporal Punch uses Initiative to defend. Attack 9; defense needed 9. Waiting for Brogan; no defense submitted. Levels: Emmitt 1, Hanu 1, Brogan 1, Tigerclaw 1",
+  "backend_revision": "c4750787e620388a093683cc5b8518b437f1c2a3",
+  "saved_at": 1792734809.0175314,
+  "provenance": {
+    "kind": "ui-fabrication"
+  },
+  "summary": {
+    "phase": "RESOLUTION",
+    "round": 1,
+    "decision": "SELECT_CARD_OR_PASS",
+    "responder": "hero_brogan"
+  },
+  "schema": 3,
+  "kind": "situation",
+  "decisionStateId": "62fb7692d9a25161c9a0aced991ab547fa7ec410706de94060096109da03b06f",
+  "tags": [
+    "topic:abilities-and-effects",
+    "topic:cards",
+    "topic:defense"
+  ]
+}

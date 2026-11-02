@@ -16571,5 +16571,15 @@
     "rollback_actor_id": "hero_arien",
     "hero_names": {},
     "replay_log": []
-  }
+  },
+  "tags": [
+    "decision:choose-action",
+    "hero:arien",
+    "hero:brogan",
+    "hero:hanu",
+    "hero:tigerclaw",
+    "phase:resolution",
+    "topic:actions",
+    "topic:cards"
+  ]
 }

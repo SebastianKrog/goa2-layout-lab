@@ -80,7 +80,7 @@ test("picker reports all views, captures CSS/HTML/checkpoints without overlays, 
         );
         html = html.replace(
           '<script type="module" src="/desk.mjs"></script>',
-          `<script type="module">import {initElementReportPanel} from '/element-report-panel.mjs';const read=async p=>(await fetch(p)).json();const call=async(n,b)=>{const r=await fetch('/api/'+n,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(b)});const v=await r.json();if(!r.ok)throw Error(v.error);return v;};document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>document.getElementById(b.dataset.close).close());initElementReportPanel({read,call,notify:()=>{}});</script>`,
+          `<script type="module">document.querySelector('#workspaceToolbar').hidden=false;import {initElementReportPanel} from '/element-report-panel.mjs';const read=async p=>(await fetch(p)).json();const call=async(n,b)=>{const r=await fetch('/api/'+n,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(b)});const v=await r.json();if(!r.ok)throw Error(v.error);return v;};document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>document.getElementById(b.dataset.close).close());initElementReportPanel({read,call,notify:()=>{}});</script>`,
         );
         res.setHeader("content-type", "text/html");
         res.end(html);

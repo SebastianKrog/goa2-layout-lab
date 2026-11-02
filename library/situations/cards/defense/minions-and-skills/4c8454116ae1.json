@@ -1,0 +1,25 @@
+{
+  "id": "4c8454116ae1",
+  "name": "Tigerclaw - Dodge against a ranged attack",
+  "description": "Attack 3; minion modifier -1; defense needed 4. Waiting for Tigerclaw; no defense submitted. Inspect dodge.",
+  "backend_revision": "c4750787e620388a093683cc5b8518b437f1c2a3",
+  "saved_at": 1792729762.6026344,
+  "provenance": {
+    "kind": "ui-fabrication"
+  },
+  "summary": {
+    "phase": "RESOLUTION",
+    "round": 1,
+    "decision": "SELECT_CARD_OR_PASS",
+    "responder": "hero_tigerclaw"
+  },
+  "schema": 3,
+  "kind": "situation",
+  "decisionStateId": "5fe826154349d472d48ea5339a4d190d101d97344cd2423fde33530eae3c3b9f",
+  "tags": [
+    "hero:tigerclaw",
+    "topic:cards",
+    "topic:defense",
+    "topic:minions-and-skills"
+  ]
+}

@@ -18,8 +18,10 @@
   "decisionStateId": "ebacd08e859bf47075acdf3827b66acb096e4b4b283437d712d484845e3589d9",
   "tags": [
     "hero:arien",
+    "hero:planning",
     "phase:planning",
     "topic:hand",
-    "topic:planning"
+    "topic:planning",
+    "topic:status"
   ]
 }

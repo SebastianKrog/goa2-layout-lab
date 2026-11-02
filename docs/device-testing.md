@@ -8,12 +8,15 @@ Choose a frontend, Interface preset and Viewpoint, then **Start device website**
 code using a phone or tablet on the same Wi-Fi, or open the displayed LAN link.
 The QR image is generated locally; no QR service receives the link.
 
-Each device view gets an independent playable clone. It cannot advance the
-original situation or any comparison window. Live working tree uses the current
+Each device View gets a playable clone. By default, a matching running game
+shares its current progress and synchronization group, so device actions also
+reach the desk Views. A new game starts its own group; saved Situations never
+change. API callers can set `independent:true` to start a separate device game. Live working tree uses the current
 frontend files with live updates. Current build uses the lab's configured
 comparator commit; Base and Userscript target retain their existing lab meaning.
-Native mobile stays explicitly selected. A supported saved presentation is
-restored, including safe planning selection and native camera. Unsupported
+Native mobile stays explicitly selected when supported by that source. A share
+can copy the current View UI snapshot, including safe planning selection and
+native camera; the Situation itself contains no UI state. Unsupported
 presentation details are listed in `window.__GOA2_DEVICE_RESTORE_WARNINGS__`.
 
 The lab injects the floating **Report** userscript itself. No browser extension,
@@ -25,36 +28,54 @@ move mode when supported. Its position is remembered. **Close** keeps the curren
 form; **Discard** clears it for a new capture. Save report stores:
 
 - `.layout-lab/situations/device-reports/<id>.json`: a validated, resumable lab
-  situation, with the reporting seat and captured presentation.
+  game-only Situation. The report stores the captured Presentation separately.
 - `.layout-lab/reports/device/<id>/`: `screenshot.png`, `report.json`, and a copy
   of `situation.json`.
 
-Refresh **Situations** to see the report. Load its captured Presentation to compare
-the reported moment, or use **Open on device** again. Canceling the form creates
+Refresh **Reports** to see the evidence. Load the saved Situation and reconstruct
+the desired sparse Presentation instructions from its captured UI evidence. Choose
+Viewpoint and display settings separately; a full report snapshot is not a preset. Canceling the form creates
 no catalog entry. Unsaved captures expire after one hour or a desk restart.
-Retrying a save keeps the same report ID. Reports stay on your PC and contain the
+Closing an empty report discards the unused capture. A report with a comment is kept when closed, resuming autoswitch while preserving its screenshot and comment across viewpoint changes and reloads in the same browser tab. An open form defers navigation; only screenshot capture pauses bots. Retrying a save keeps the same report ID. Reports stay on your PC and contain the
 full engine checkpoint, including private cards; share them deliberately.
 
 Use **Stop sharing** in the dialog to revoke a link and close its WebSockets.
 Closing the dialog leaves the website running; stopping the lab stops all device
 views. Opening another device link in the same browser profile replaces that
 profile's selected device view. Use another browser/profile for independent tabs.
+A player token owns one active game socket: opening the same player link in another
+browser can disconnect the phone. Create a separate device View for simultaneous
+clients; its clone has fresh tokens and can join the same synchronized group.
+
+## Quickstart a 2v2 game
+
+On the empty desk, choose **Desktop**, **Mobile portrait** or **Device** under
+Working tree quickstarts. Each starts the shared opening with two manual RED
+heroes, two ISMCTS BLUE bots and autoswitch between the human teammates. Device
+shows its link and QR immediately; it does not reserve a View in the main desk.
+The separate bot decision checkout below is required. Each start creates a fresh
+game group and leaves the Situation library unchanged.
+
+`POST /api/quickstart` accepts `{id:"desktop"}`, `{id:"portrait"}` or
+`{id:"device"}`. The response contains `comparison` or `device`, respectively.
 
 ## Play one hero with bots
 
-Bots also work in regular desk views. Select **Views: 1 view** or the **Play solo**
-setup for one board, or use two/three views. Under each view's **Edit view**, choose
+Bots also work in one to three regular desk Views. Start one View from
+**Other Layouts…**, or load a saved Layout and Situation. Use **Add view** for more. Under each view's **Edit view**, choose
 its human **Viewpoint**, expand **Controllers and auto switch**, and set
-**Other heroes** independently. Expand **Individual heroes** for mixed controllers. Apply changes to a
-loaded view keeps its current game moment. Reset uses that view's chosen bots;
-saved setups retain controller choices. Changing the viewpoint leaves bot assignments unchanged. Synchronization is disabled
-while any view has bots; independently driven clones may diverge.
+**Other heroes** for the game group. Expand **Individual heroes** for mixed controllers. Applying changes to a
+loaded View keeps its current game moment. Reset uses that view's chosen bots;
+saved setups retain controller choices. Changing viewpoint leaves assignments
+unchanged. API synchronization is the default and supports bots: one decision is
+computed and replayed across the group. Choose None explicitly for independent
+games and per-View controllers.
 
 The desk's `POST /api/load` accepts one to three `slots`, each with an optional
-`bots` mapping using the same hero IDs and policies as device shares. Use
-explicit `slot.overrides` when intentionally changing the Situation's saved
-slots. `POST /api/configure` with `{index,update:{bots:{...}}}` updates controllers
-on that existing clone; an empty mapping turns them off without rewinding moves.
+`bots` mapping using the same hero IDs and policies as device shares. Choose Viewpoint and display settings in `slots`; Situations have no saved
+View configuration. `POST /api/configure` with `{index,update:{bots:{...}}}` updates controllers
+for its synchronized game group (or that View in None mode); an empty mapping
+turns them off without rewinding moves.
 A single view supports Capture, Save and Reset; extraction still requires two.
 
 Regular desk views also offer **Auto switch after each action** in **Edit view**.
@@ -63,24 +84,26 @@ still eligible. It only changes the viewpoint, not the game or bot assignments,
 and can view a bot without taking control from it. It preserves the camera and
 drops the old player's card selection. Off keeps the viewpoint fixed. Saved
 setups and Reset retain the option (`autoSwitch:true` in a slot/configure update).
-Phone shares keep their selected seat.
+Phone shares can also set `autoSwitch:true` on their slot. Quickstarts use
+`autoSwitchManualOnly:true` to exclude bot-controlled heroes; ordinary autoswitch
+still permits viewing bot decisions. The same game continues when device
+credentials change. An unfinished device report defers switching.
 
-
-Use a backend checkout on the
-[`bots-upstream` branch](https://github.com/SebastianKrog/goa2-backend/tree/bots-upstream)
-of the backend fork. The folder name below is a local checkout convention; a
-separate `goa2-backend-bots` GitHub repository is not required. In the lab's ignored
-`.env.layout-lab`, select it with:
+Keep the regular game backend and the bot checkout separate:
 
 ```dotenv
-GOA2_LAB_BACKEND=../goa2-backend-bots
+GOA2_LAB_BACKEND=../goa2-backend
+GOA2_LAB_BOT_BACKEND=../goa2-backend-bots
+GOA2_LAB_BOTS_PORT=8110
 ```
 
-Restart the lab after changing the backend path. Preserve any ongoing human games
-before restarting; an already configured running desk can be reused directly.
-This is a lab configuration change; the backend and frontend repositories need
-no edits. Runtime startup omits development/training dependency
-groups, so it does not install neural-network packages.
+The bot checkout uses the maintained `bots-upstream` branch. One lab-only service
+starts when a bot needs a decision; it never hosts frontend games. It receives
+an isolated checkpoint and returns one command. The lab checks for stale state
+before applying it through the regular backend. Game clones have no autonomous
+bot workers. Each service uses its own cached Python environment; neither product
+repository needs edits and no neural/training packages are needed. Restart after
+changing checkout paths, preserving any ongoing human games first.
 
 Open any saved situation with **Open on device**. For current phone edits,
 choose **Live working tree** and **Mobile 2D**. Choose **Your hero**, then use
@@ -92,23 +115,25 @@ The lab leaves numerical search settings at backend defaults (currently 200
 iterations, a two-second decision limit, `bounded_continuation`, and horizon 2
 rounds). No model artifact or training dependency is loaded, and the lab accepts
 only the `ismcts` policy string, not custom search/learned configuration. Search
-may fall back to Simple on a timeout or failure under the backend's existing
-bounded runtime.
+falls back to Simple if the default search deadline is exceeded or its output
+is invalid. The fallback is recorded as a View warning.
 Configure both teammates and opponents when playing alone;
 a Manual hero can leave the game waiting for another human. Your chosen hero
 always remains human-controlled.
-Bots are unavailable when watching as Spectator. A backend without bot support
+Bots are unavailable when watching as Spectator. A missing bot checkout
 keeps the ordinary manual device flow and shows an availability message.
 
-Press **Start device website** and scan its QR code. Bots play the independent
-clone until a human decision is needed, including upgrades and rune choices.
+Press **Start device website** and scan its QR code. A synchronized share inherits
+its group's controllers and current progress. Otherwise it starts from the saved
+Situation. Bots answer their decisions, including upgrades and rune choices,
+and wait for human choices.
 Timed situations still need the human's Ready confirmation; bots ready themselves.
 The lab's usual frozen clocks remain in effect, so this does not verify production
 timeouts. A lab-only transport shim tolerates already-closed sockets during rapid
 device reconnects; backend source is unchanged.
 
-**Stop sharing** also stops that device game's bot workers while retaining its
-local recovery save. Reports record which bots were selected as provenance, and
+**Stop sharing** removes that device from the group and future bot decisions,
+while retaining its local recovery save. Other Views continue playing. Reports record which bots were selected as provenance, and
 the saved source situation itself stays unchanged. Reopening a report/saved
 situation does not automatically restart those bots; select controllers again.
 
@@ -124,10 +149,11 @@ These endpoints work alongside comparison windows and existing device sessions:
   and supported policies in `botKinds` (`random`, `heuristic`, `ismcts`, or empty if absent).
 - `GET /api/device/views` lists active shares; avoid creating duplicates when a
   suitable session is already running.
-- `POST /api/device-open` creates an independent clone and returns its link/QR
-  metadata. Use real situation and hero IDs from the selected situation.
+- `POST /api/device-open` creates a clone and returns its link/QR metadata. It
+  joins the matching current game group unless `independent:true` is supplied.
+  Omit `bots` to inherit controllers; conflicting policies are rejected.
 - `POST /api/device-stop` with `{"id":"<returned-device-id>"}` revokes a share
-  and cancels its bot workers.
+  and removes that View from future group commands.
 
 Example request body for a supported mobile frontend:
 
@@ -218,8 +244,8 @@ Evidence is saved under `.layout-lab/reviews/play-bots/`.
 
 The device integration was checked with Random and Simple committing the three other heroes,
 then advancing a real human card commit into resolution. The focused lab tests
-also cover human-seat exclusion, invalid controllers, unsupported backends, timed
-Ready handling, stopping workers while retaining recovery, and reconnects. This
+also cover human-seat exclusion, invalid controllers, missing bot checkouts, timed
+Ready handling, detaching Views while retaining recovery, and reconnects. This
 coverage does not establish full-match, every-hero or physical-phone acceptance.
 ISMCTS adapter tests verify default settings, heuristic-only policy/value, and
 search with neural/training imports blocked, including the valid timeout path.

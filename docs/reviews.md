@@ -1,12 +1,18 @@
 # Review a queue of situations
 
+Agents preparing a Run for a UI change should use
+[goa2-review-ui-change](../agent/skills/goa2-review-ui-change/SKILL.md) for
+library selection, coverage gaps and handoff.
+
 In **Situations**, tick the entries you want to inspect, optionally filter by
 folder or Library/Local drafts, search by name/hero/folder, and press **Start review**.
 Selecting entries reveals an optional name for the Review. The checkbox beside **Select filtered** selects every
 currently visible situation; clicking it again clears only those visible
 entries. Its mixed state means some visible entries are selected. Selections
 outside the filter are retained and counted. **Clear selection** clears all.
-The queue follows the situation list order (folder, name, ID), with up to 200 entries.
+The setup dialog follows list order (folder, name, ID). Choose an optional Presentation
+for each inspection, optionally expand **Specific card** for an exact ID, remove unwanted rows or **Add another inspection** of the same
+Situation. Starting uses the selected Layout, with up to 200 entries.
 
 The review bar above the views shows the current situation, position, Previous,
 Next, **Review reports** and **End review**. At either boundary the unavailable
@@ -14,10 +20,19 @@ arrow is disabled. Every step loads a fresh copy of that entry into every desk
 view and every currently shared device view. Previous restores the saved starting
 moment again; it does not retain gameplay performed on an earlier visit.
 
+## Archive and delete
+
+Use the archive filter, **Archive all**, or each Review's **Archive / Restore**
+action to organize saved history. **Delete** and **Delete archive** ask for
+confirmation and remove the selected Reviews, all their Runs and collected
+evidence. Active Reviews are protected. See [Reports and activity groups](reports.md)
+for the separate report archive and deletion rules.
+
 ## Agentic reviews
 
 Runs performed by an agent carry `performedBy: "agent"`. They are hidden from the
-Reviews list and its count by default. **Show agentic reviews** includes them; each such Run and its saved evidence page is clearly
+Reviews list and its count by default. **Show agentic reviews** includes them under
+the current archive filter; each such Run and its saved evidence page is clearly
 marked **Agentic review**. Existing unmarked Runs retain human-review behavior.
 A mixed Review shows only its human Runs until this option is selected.
 
@@ -39,12 +54,12 @@ review sessions do not resume automatically.
 **Run again** creates a new Run of the same Review revision. **Original saved snapshots** is the default input, even if the library changed. **Current library Situations**, under **Run details and options**, explicitly
 rereads the queue IDs from the library. Its non-default choice stays visible in
 the details summary.
-Current views define the frontend sources and layouts; when no views are running,
-the previous review's saved view configurations are used. Earlier reports and
+The previous Review's saved Layout is used unless explicit `slots` are supplied.
+Its synchronization policy is frozen with the Run and restored on rerun. Earlier reports and
 snapshots stay untouched, and the new collection records its parent Run ID.
 
 **Edit and run** opens a queue editor and creates a new immutable Review revision plus a Run. Keep or remove original entries, search the
-current library for additions, and give the new run a name. Retained entries use
+current library for additions, adjust each inspection's Presentation, and give the new run a name. Retained entries use
 their original snapshots; additions are snapshotted from the library when started.
 Retained entries keep their original order, followed by additions in library order.
 Cancel creates nothing. Starting requires at least one entry. End an active review
@@ -53,22 +68,19 @@ before starting another; its card offers **Continue review** to return to Compar
 
 ## What a step restores
 
-A **Review** is a reusable ordered queue with immutable revisions. Each execution
-creates a **Review Run** with frozen composed Situations, progress and reports.
-Situations include explicit Presentation (Viewpoint, Session State and User State).
-The Python adapter copies their exact Decision States at Run start so large engine
-integers do not pass through JavaScript for replay. Library entries are not rewritten.
-
-Current frontend sources/revisions, view count, device profiles, renderers and UI
-modes are retained. Restore each Situation's Presentation, with Layout defaults
-below it and explicit View overrides above it. Choose **Follow situation** to let
-the queue change Viewpoint. Unsupported controls or unavailable heroes produce
-warnings and effective-state evidence. Presentation templates are copied into
-Situations when selected; they are not associated by name or applied implicitly.
+A **Review** contains ordered **Review entries**: Situation references with optional
+session changes. A **Review Run** freezes the exact Decision States,
+entry instructions, Layout and source evidence. The library is never rewritten.
+Each step restores fresh Views from that Layout and that entry, preventing prior
+menus, selections or viewpoints from carrying forward. Common Presentation values
+can be refined by interface and by View. Unsupported intent produces warnings and
+actual-state evidence; desktop may satisfy Hand intent with inline cards.
 
 Review views use manual controllers and disable auto switch, so bots or automatic
-viewpoint changes cannot move away from the saved moment during inspection. API
-synchronization is off. You can still interact with each game and use reporting.
+viewpoint changes cannot move away from the saved moment during inspection.
+The selected synchronization mode is retained (API requests by default); game
+actions propagate within the Run-step group while menus remain independent.
+You can still interact with the games and use reporting.
 End the review before editing sources/view setups, adding/removing desk views,
 resetting or loading unrelated situations. Ending leaves the current games open.
 It does not restart prior bots or auto switch automatically.
@@ -126,13 +138,16 @@ collection and queue remain available in **Reviews** and as files.
 ## API and checks
 
 - `GET /api/review-runs/current` reads progress and the collection URL; `GET /api/status` includes the same progress in `reviewRun`.
-- `POST /api/review-runs/start {ids,name?,slots?}` snapshots and starts a queue. Existing
-  views define sources; `slots` applies when the desk has no running views.
+- `POST /api/review-runs/start {entries,name?,layoutId?,slots?}` snapshots and starts a queue.
+  Each entry has `{situationId,viewpoint?,presentation?,presentationsByInterface?,viewPresentations?}`.
+  Repeated Situation IDs are allowed and get distinct entry IDs. `{ids}` is shorthand
+  for default inspections. Explicit Layout/slots wins over running View settings.
 - `GET /api/reviews` lists Review definitions with their Runs; `GET /api/review-runs` lists Run statistics. `GET /api/review-runs/<id>`
   returns its queue metadata without checkpoints.
 - `POST /api/review-runs/rerun {id,name?,entries?,slots?,inputs?:"frozen"|"library"}` creates a fresh run. Omit
   `entries` to retain the entire queue, or supply ordered `{fromIndex}` items for
-  saved entries and `{situationId}` items for library additions.
+  saved entries and `{situationId}` items for library additions. Either may include
+  Presentation instructions. Omitted instructions retain the saved entry values.
 - `POST /api/review-runs/step {id,index,direction:-1|1}` moves all views.
 - `POST /api/review-runs/end {}` finishes without removing evidence or current games.
 - Device-only authenticated routes expose review status/navigation within that

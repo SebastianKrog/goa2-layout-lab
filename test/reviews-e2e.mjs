@@ -103,6 +103,7 @@ try {
   await desk.locator("#reviewSelectFiltered").check();
   await desk.locator("#reviewName").fill("QA review workflow");
   await desk.locator("#reviewStart").click();
+  await desk.locator("#reviewSetupForm [type=submit]").click();
   await until(async () => {
     const s = await api("status");
     return !s.busy && s.reviewRun?.active;

@@ -98,13 +98,15 @@ async function main() {
   for (const i of indexes) {
     const w = status.windows[i],
       v = views.find((v) => v.index === i);
-    if (w.closed || w.warnings?.length || w.errors?.length || w.assets?.length)
+    if (w.closed || w.errors?.length || w.assets?.length)
       throw Error(
         "View " +
           i +
-          " is closed or reports restore/render/asset problems: " +
+          " is closed or reports render/asset problems: " +
           JSON.stringify(w),
       );
+    for (const warning of w.warnings || [])
+      console.error(`View ${i} warning: ${warning}`);
     if (w.config.source === "live")
       throw Error(
         "Live working tree is enabled; select committed Comparator for commit-to-commit evidence.",

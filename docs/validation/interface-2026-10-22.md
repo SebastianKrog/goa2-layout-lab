@@ -6,14 +6,14 @@ its observed coverage; it does not establish visual parity between game frontend
 
 ## Changes
 
-| Area | Result |
-| --- | --- |
-| Compare | A compact toolbar keeps reporting, device sharing, Save and Capture available. Workspace tools consolidates Layout loading, synchronization, capture crops, HTML/CSS extraction, reset and closing. Closing tools cancels unapplied Layout changes. |
-| Views | Common settings are Situation, Source, Device, Interface and Viewpoint. Optional names, renderer/UI overrides and templates are under Advanced settings. Controllers and individual bot assignments expand on demand. Removal lives in View tools. |
-| Situations | Search matches name, hero or folder and composes with existing filters. Selection survives filtering. Rows keep Open visible; More holds secondary actions. Creation/import is grouped under New situation. |
-| Reviews | The latest Run is visible; Earlier runs expands history. Core statistics remain visible, with detailed evidence and rerun input choice under Run details and options. A current-library choice remains visible in the summary. |
-| Settings | Current build and Live updates come first. Frozen references and runtime/checkout metadata are collapsed. |
-| Responsive/native | Narrow windows scroll multiple Views within the workspace. Native surfaces clip to that area while expanded Views retain the full window. Stop remains available while loading. |
+| Area              | Result                                                                                                                                                                                                                                              |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Compare           | A compact toolbar keeps reporting, device sharing, Save and Capture available. Workspace tools consolidates Layout loading, synchronization, capture crops, HTML/CSS extraction, reset and closing. Closing tools cancels unapplied Layout changes. |
+| Views             | Common settings are Situation, Source, Device, Interface and Viewpoint. Optional names, renderer/UI overrides and templates are under Advanced settings. Controllers and individual bot assignments expand on demand. Removal lives in View tools.  |
+| Situations        | Search matches name, hero or folder and composes with existing filters. Selection survives filtering. Rows keep Open visible; More holds secondary actions. Creation/import is grouped under New situation.                                         |
+| Reviews           | The latest Run is visible; Earlier runs expands history. Core statistics remain visible, with detailed evidence and rerun input choice under Run details and options. A current-library choice remains visible in the summary.                      |
+| Settings          | Current build and Live updates come first. Frozen references and runtime/checkout metadata are collapsed.                                                                                                                                           |
+| Responsive/native | Narrow windows scroll multiple Views within the workspace. Native surfaces clip to that area while expanded Views retain the full window. Stop remains available while loading.                                                                     |
 
 Unneeded capture fields and the per-View selector for Layout saves are hidden.
 Element-focused CSS extraction is the default; it is enabled only with two Views

@@ -29,6 +29,7 @@ try {
   await desk
     .locator('#situation option[value="a00000000001"]')
     .waitFor({ state: "attached" });
+  await desk.locator("#customStart").click();
   await desk.locator("#situation").selectOption("a00000000001");
   await desk.locator("#openDevice").click();
   await desk.locator("#deviceBots").waitFor();

@@ -1,0 +1,24 @@
+{
+  "id": "537e8fabb644",
+  "name": "Min defending with Inner Strength and doubled items",
+  "description": "Min defending with Inner Strength and doubled items. Attack 4; defense needed 4. Waiting for Min; no defense submitted. Attack item: cluster_mine; Defense item: vanish; Levels: Arien 1, Hanu 1, Min 3, Tigerclaw 1",
+  "backend_revision": "c4750787e620388a093683cc5b8518b437f1c2a3",
+  "saved_at": 1792734805.8171213,
+  "provenance": {
+    "kind": "ui-fabrication"
+  },
+  "summary": {
+    "phase": "RESOLUTION",
+    "round": 1,
+    "decision": "SELECT_CARD_OR_PASS",
+    "responder": "hero_min"
+  },
+  "schema": 3,
+  "kind": "situation",
+  "decisionStateId": "d7d3c84560ba5bf696e658fca91443c02a52718c14bee3aeaf327bb2b0cdef0a",
+  "tags": [
+    "topic:abilities-and-effects",
+    "topic:cards",
+    "topic:defense"
+  ]
+}

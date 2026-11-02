@@ -1,0 +1,24 @@
+{
+  "id": "9b27d53430c5",
+  "name": "Brogan defending with a +1 Defense item",
+  "description": "Brogan defending with a +1 Defense item. Attack 4; defense needed 4. Waiting for Brogan; no defense submitted. Defense item: war_drummer; Levels: Arien 1, Hanu 1, Brogan 2, Tigerclaw 1",
+  "backend_revision": "c4750787e620388a093683cc5b8518b437f1c2a3",
+  "saved_at": 1792734791.9592695,
+  "provenance": {
+    "kind": "ui-fabrication"
+  },
+  "summary": {
+    "phase": "RESOLUTION",
+    "round": 1,
+    "decision": "SELECT_CARD_OR_PASS",
+    "responder": "hero_brogan"
+  },
+  "schema": 3,
+  "kind": "situation",
+  "decisionStateId": "ce1af475c7ca2f54c5280d44e822023fc11a1d00771f0b96d46718c4c84ad7d1",
+  "tags": [
+    "topic:abilities-and-effects",
+    "topic:cards",
+    "topic:defense"
+  ]
+}

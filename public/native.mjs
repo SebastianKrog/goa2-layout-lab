@@ -11,7 +11,7 @@ function schedule() {
 }
 function place() {
   if (!window.layoutLabDesktop) return;
-  const modal = !!document.querySelector("dialog[open]");
+  const modal = !!document.querySelector("dialog[open], .view-editor-frame");
   const items = [];
   for (const v of views.values()) {
     const host = v.host,
@@ -53,6 +53,7 @@ function place() {
       y;
     items.push({
       id: v.id,
+      index: v.index,
       x,
       y,
       width: Math.max(0, right - x),
@@ -76,6 +77,7 @@ new MutationObserver(schedule).observe(document.body, {
 export class NativeView {
   constructor(index, win, viewport) {
     this.id = win.nativeId;
+    this.index = index;
     this.viewport = viewport;
     this.fit = true;
     this.host = document.createElement("div");

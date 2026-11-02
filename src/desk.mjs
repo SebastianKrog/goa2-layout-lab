@@ -1,4 +1,11 @@
+import { BotRunner } from "./bot-runner.mjs";
+import { QUICKSTART_SITUATION, quickstartConfig } from "./quickstarts.mjs";
+import { sessionChange } from "./session-changes.mjs";
+import { PRIMARY_LAYOUTS } from "./config.mjs";
+import { EvidenceState } from "./evidence-state.mjs";
+import { Reports } from "./reports.mjs";
 import { Layouts, layoutSlots } from "./layouts.mjs";
+import { inspectionOptions, presentationFor } from "./inspection.mjs";
 import { toPresentation } from "./presentation-model.mjs";
 import { Reviews } from "./reviews.mjs";
 import http from "node:http";
@@ -18,6 +25,7 @@ import {
   validateSlots,
   STARTUP,
   BACKEND,
+  BOT_BACKEND,
   PATCH,
 } from "./config.mjs";
 import { Services, available, git, resolveComparator } from "./services.mjs";
@@ -49,14 +57,22 @@ export async function startDesk({
       .json()
       .catch(() => ({ detail: "Backend returned an invalid response" }));
     if (!response.ok)
-      throw new Error(
-        typeof value.detail === "string"
-          ? value.detail
-          : JSON.stringify(value.detail),
+      throw Object.assign(
+        new Error(
+          typeof value.detail === "string"
+            ? value.detail
+            : JSON.stringify(value.detail),
+        ),
+        { status: response.status },
       );
     return value;
   };
   const devices = new DeviceServer(services, api);
+  const evidenceState = new EvidenceState(
+    path.join(DATA, "reports", "_state.json"),
+  );
+  await evidenceState.startSession();
+  const reportHistory = new Reports(path.join(DATA, "reports"), evidenceState);
   if (!["embedded", "browser", "windows"].includes(STARTUP.display))
     throw new Error("Choose --display=embedded, browser or windows.");
   const comparison = new Comparison(services, api, {
@@ -66,6 +82,8 @@ export async function startDesk({
     native: STARTUP.display === "embedded" && !flags.has("--headless"),
     headless: flags.has("--headless") || STARTUP.display === "browser",
   });
+  comparison.reportSession = () => evidenceState.currentSession;
+  devices.reportSession = () => evidenceState.currentSession;
   let queue = Promise.resolve(),
     busy = false,
     lastError = null,
@@ -91,8 +109,13 @@ export async function startDesk({
     },
   });
   comparison.reporter = elementReports;
+  const situationMappingFile = path.join(DATA, "situation-id-mapping.json");
+  const situationMappings = existsSync(situationMappingFile)
+    ? JSON.parse(await fs.readFile(situationMappingFile, "utf8"))
+    : {};
   reviews = new Reviews(comparison, devices, {
     performedBy: flags.has("--verification") ? "agent" : "human",
+    situationMappings,
     guard: () => {
       if (elementReports.draft || elementReports.active)
         throw Error(
@@ -127,6 +150,18 @@ export async function startDesk({
     queue = work.catch(() => {});
     return work;
   };
+  comparison.sync.external = () => [...devices.sessions.values()];
+  devices.synchronizer = comparison.sync;
+  devices.botCapabilities = comparison.botCapabilities;
+  const botRunner = new BotRunner(comparison, {
+    busy: () =>
+      busy ||
+      closing ||
+      !!elementReports.active ||
+      !!elementReports.draft ||
+      [...devices.sessions.values()].some((s) => s.reportPending),
+  });
+  botRunner.start();
   let following = false;
   const followTimer = setInterval(() => {
     if (
@@ -135,7 +170,8 @@ export async function startDesk({
       following ||
       busy ||
       closing ||
-      !comparison.windows.some((w) => w.config.autoSwitch)
+      (!comparison.windows.some((w) => w.config.autoSwitch) &&
+        ![...devices.sessions.values()].some((s) => s.config.autoSwitch))
     )
       return;
     following = true;
@@ -159,6 +195,7 @@ export async function startDesk({
           await streams.resume();
         }
       });
+      await devices.followDecisions();
     });
     queue = work.catch((error) => {
       lastError = error.message;
@@ -171,9 +208,20 @@ export async function startDesk({
   comparison.sync.busy = () => busy || closing;
   let presets = { ...PRESETS };
   const presentationFile = path.join(DATA, "presentation-templates.json");
-  const presentations = existsSync(presentationFile)
+  const localPresentations = existsSync(presentationFile)
     ? JSON.parse(await fs.readFile(presentationFile, "utf8"))
     : [];
+  const sharedPresentationFile = path.join(
+    TOOL,
+    "library",
+    "presentations.json",
+  );
+  const presentations = [
+    ...(existsSync(sharedPresentationFile)
+      ? JSON.parse(await fs.readFile(sharedPresentationFile, "utf8"))
+      : []),
+    ...localPresentations,
+  ];
   const layouts = await new Layouts(
     DATA,
     path.join(TOOL, "library/layouts"),
@@ -187,6 +235,7 @@ export async function startDesk({
     closing = true;
     closePromise = (async () => {
       clearInterval(followTimer);
+      botRunner.close();
       console.log("Stopping layout-lab windows and owned services...");
       await devices.close().catch(console.error);
       await streams.close().catch(console.error);
@@ -221,9 +270,23 @@ export async function startDesk({
         return send({ error: "Use the local comparison desk origin." }, 403);
       if (req.method === "GET" && url.pathname === "/api/element-report/status")
         return send(elementReports.status());
+      if (req.method === "GET" && url.pathname === "/api/reports") {
+        await reviews.list();
+        return send({
+          ...(await reportHistory.list([...reviews.records.values()])),
+          currentSession: evidenceState.currentSession,
+        });
+      }
       if (req.method === "GET" && url.pathname === "/api/reviews") {
         const { reviews: definitions, warnings } = await reviews.list();
-        return send({ reviews: definitions, warnings });
+        const flags = await evidenceState.read();
+        return send({
+          reviews: definitions.map((group) => ({
+            ...group,
+            archived: flags.archivedReviews.includes(group.id),
+          })),
+          warnings,
+        });
       }
       if (req.method === "GET" && url.pathname === "/api/review-runs") {
         const { runs, warnings } = await reviews.list();
@@ -320,6 +383,7 @@ export async function startDesk({
         return send({
           situations,
           decisionStates: await api("/decision-states", undefined, "GET"),
+          primaryLayouts: PRIMARY_LAYOUTS,
           presets,
           layouts: layouts.records,
           presentations,
@@ -330,6 +394,7 @@ export async function startDesk({
             ...STARTUP,
             frontend: ROOT,
             backend: BACKEND,
+            botBackend: BOT_BACKEND,
             patch: PATCH,
           },
         });
@@ -361,6 +426,7 @@ export async function startDesk({
             if (
               reviews.status()?.active &&
               [
+                "/api/quickstart",
                 "/api/load",
                 "/api/clear",
                 "/api/views/add",
@@ -376,6 +442,17 @@ export async function startDesk({
                 "End the review before changing view setup or loading another situation.",
               );
             switch (url.pathname) {
+              case "/api/reports/manage":
+                await reviews.list();
+                return await reportHistory.manage(
+                  body,
+                  [...reviews.records.values()],
+                  reviews,
+                );
+              case "/api/reviews/manage":
+                return await reviews.manage(body, evidenceState);
+              case "/api/report-sessions/start":
+                return await evidenceState.startSession(body.name);
               case "/api/element-report/mode":
                 return await elementReports.setEnabled(body.enabled === true);
               case "/api/element-report/send":
@@ -385,7 +462,16 @@ export async function startDesk({
               case "/api/review-runs/rerun":
                 return await reviews.rerun(body);
               case "/api/review-runs/start":
-                return await reviews.start(body);
+                return await reviews.start({
+                  ...body,
+                  ...(body.layoutId
+                    ? {
+                        slots: layoutSlots(layouts.find(body.layoutId)),
+                        synchronization: layouts.find(body.layoutId)
+                          .synchronization,
+                      }
+                    : {}),
+                });
               case "/api/review-runs/step":
                 return await reviews.step(body);
               case "/api/review-runs/end":
@@ -394,6 +480,30 @@ export async function startDesk({
                 return await devices.open(reviews.deviceBody(body));
               case "/api/device-stop":
                 return devices.stop(body.id);
+              case "/api/quickstart": {
+                const capabilities = await comparison.botCapabilities();
+                const situation = await api(
+                  `/situations/${QUICKSTART_SITUATION}`,
+                  undefined,
+                  "GET",
+                );
+                const config = quickstartConfig(
+                  body.id,
+                  situation,
+                  capabilities,
+                );
+                if (body.id === "device")
+                  return {
+                    device: await devices.open({
+                      situationId: situation.id,
+                      independent: true,
+                      slot: config,
+                      bots: config.bots,
+                    }),
+                  };
+                await comparison.load(situation.id, [config], {}, situation);
+                return { comparison: comparison.status() };
+              }
               case "/api/load": {
                 const situation = await api(
                   `/situations/${encodeURIComponent(body.situationId || "")}`,
@@ -407,7 +517,20 @@ export async function startDesk({
                 const slots = chosenLayout
                   ? layoutSlots(chosenLayout)
                   : body.slots;
-                await comparison.load(situation.id, slots, {}, situation);
+                const configs =
+                  slots || comparison.windows.map((w) => w.config);
+                const instructions = inspectionOptions(body);
+                await comparison.load(
+                  situation.id,
+                  configs,
+                  Object.fromEntries(
+                    configs.map((config, i) => [
+                      i,
+                      presentationFor(instructions, config, i),
+                    ]),
+                  ),
+                  situation,
+                );
                 if (chosenLayout)
                   await comparison.sync.setMode(chosenLayout.synchronization);
                 return comparison.status();
@@ -456,35 +579,56 @@ export async function startDesk({
                   throw new Error(
                     "Enter a presentation name (up to 80 characters).",
                   );
-                const win = comparison.window(body.index ?? 0);
-                const { capturePresentation } = await import(
-                  "./presentation.mjs"
+                let change = body.change;
+                if (!change) {
+                  const field = body.field || "pane";
+                  const fields = {
+                    publicSpells: { publicSpells: true },
+                    gold: { selectedCard: { role: "gold" } },
+                    upgradeA: {
+                      inspectedCard: { role: "upgrade", tier: 2, branch: "A" },
+                    },
+                    upgradeB: {
+                      inspectedCard: { role: "upgrade", tier: 2, branch: "B" },
+                    },
+                  };
+                  if (field === "pane") {
+                    const win = comparison.window(body.index ?? 0);
+                    const { capturePresentation } = await import(
+                      "./presentation.mjs"
+                    );
+                    change = {
+                      pane: (
+                        await capturePresentation(win.page, win.config.render)
+                      ).pane,
+                    };
+                  } else {
+                    change = fields[field];
+                    if (!change) throw Error("Choose a session change.");
+                  }
+                }
+                const state = sessionChange(change, { reusable: true });
+                const existing = presentations.find(
+                  (p) => JSON.stringify(p.state) === JSON.stringify(state),
                 );
+                if (existing) return existing;
                 const item = {
                   id: randomBytes(12).toString("hex"),
                   name,
-                  render: win.config.render,
                   schema: 2,
-                  state: toPresentation(
-                    await capturePresentation(win.page, win.config.render),
-                    win.config.seat,
-                  ),
+                  state,
                 };
                 presentations.push(item);
+                localPresentations.push(item);
                 await fs.writeFile(
                   presentationFile,
-                  JSON.stringify(presentations, null, 2),
+                  JSON.stringify(localPresentations, null, 2),
                 );
                 return item;
               }
               case "/api/presentation/apply": {
-                const win = comparison.window(body.index);
                 const item = presentations.find((p) => p.id === body.id);
-                if (!item) throw new Error("Presentation not found.");
-                if (item.render !== win.config.render)
-                  throw new Error(
-                    "Choose a presentation with the same renderer.",
-                  );
+                if (!item) throw Error("Presentation not found.");
                 return await comparison.applyPresentation(
                   body.index,
                   item.state,
@@ -495,15 +639,54 @@ export async function startDesk({
                   body.index ?? 0,
                   body.name,
                   body.kind,
+                  body.tags,
                 );
               case "/api/situation/compose":
                 return await api("/situations/compose", body);
               case "/api/starter":
                 return await api("/starter", body);
+              case "/api/tags":
+                if (body.kind === "layout") {
+                  const record = layouts.find(body.id);
+                  const saved = await layouts.save(
+                    record.name,
+                    layouts.slotsByName()[record.name],
+                    record.synchronization,
+                    body.tags,
+                  );
+                  presets = layouts.slotsByName();
+                  return saved;
+                }
+                return await api("/tags", body);
               case "/api/organize":
                 return await api("/organize", body);
-              case "/api/import":
-                return await api("/import", body);
+              case "/api/import": {
+                const content =
+                  typeof body.content === "string"
+                    ? JSON.parse(body.content)
+                    : body.content;
+                const candidates = content?.presentationPresets || [];
+                if (!Array.isArray(candidates) || candidates.length > 200)
+                  throw Error("Invalid Presentation presets.");
+                const incoming = candidates.map((p) => ({
+                  id: p.id || randomBytes(12).toString("hex"),
+                  name: String(p.name || "Imported Presentation").slice(0, 160),
+                  schema: 2,
+                  state: sessionChange(p.state, { reusable: true }),
+                }));
+                const result = await api("/import", body);
+                for (const p of incoming)
+                  if (!presentations.some((saved) => saved.id === p.id)) {
+                    presentations.push(p);
+                    localPresentations.push(p);
+                  }
+                if (incoming.length)
+                  await fs.writeFile(
+                    presentationFile,
+                    JSON.stringify(localPresentations, null, 2),
+                  );
+                return result;
+              }
               case "/api/camera":
                 return await comparison.cameraCopy(body.from, body.indexes);
               case "/api/pane":
@@ -599,6 +782,7 @@ export async function startDesk({
                   body.name,
                   body.slots,
                   body.synchronization ?? comparison.sync.mode,
+                  body.tags,
                 );
                 presets = layouts.slotsByName();
                 return { layout: saved, layouts: layouts.records, presets };
@@ -622,12 +806,24 @@ export async function startDesk({
         let filename;
         if (url.pathname === "/")
           filename = path.join(TOOL, "public/index.html");
+        else if (url.pathname === "/tag-ui.mjs")
+          filename = path.join(TOOL, "public/tag-ui.mjs");
+        else if (url.pathname === "/tags.mjs")
+          filename = path.join(TOOL, "public/tags.mjs");
+        else if (
+          ["/view.html", "/view-window.mjs", "/view-windows.mjs"].includes(
+            url.pathname,
+          )
+        )
+          filename = path.join(TOOL, "public", url.pathname.slice(1));
         else if (url.pathname === "/native.mjs")
           filename = path.join(TOOL, "public/native.mjs");
         else if (url.pathname === "/live.mjs")
           filename = path.join(TOOL, "public/live.mjs");
         else if (url.pathname === "/element-report-panel.mjs")
           filename = path.join(TOOL, "public/element-report-panel.mjs");
+        else if (url.pathname === "/reports-panel.mjs")
+          filename = path.join(TOOL, "public/reports-panel.mjs");
         else if (url.pathname === "/reviews-panel.mjs")
           filename = path.join(TOOL, "public/reviews-panel.mjs");
         else if (url.pathname === "/device-panel.mjs")
@@ -726,5 +922,5 @@ export async function startDesk({
     await close();
     throw error;
   }
-  return { comparison, services, server, devices, reviews, close };
+  return { comparison, services, server, devices, reviews, botRunner, close };
 }

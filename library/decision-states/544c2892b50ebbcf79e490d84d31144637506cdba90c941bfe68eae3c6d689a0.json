@@ -12702,5 +12702,15 @@
     "rollback_actor_id": null,
     "hero_names": {},
     "replay_log": []
-  }
+  },
+  "tags": [
+    "decision:select-card-or-pass",
+    "hero:arien",
+    "hero:brogan",
+    "hero:hanu",
+    "hero:tigerclaw",
+    "phase:resolution",
+    "topic:cards",
+    "topic:defense"
+  ]
 }

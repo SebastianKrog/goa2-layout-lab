@@ -100,6 +100,7 @@ export async function deskFixture(context, { views = 0, files = {} } = {}) {
     url: "/reports/fixture/index.html",
   }));
   const requests = [];
+  const reads = [];
   await context.addInitScript(() => {
     window.WebSocket = class {
       static OPEN = 1;
@@ -114,6 +115,7 @@ export async function deskFixture(context, { views = 0, files = {} } = {}) {
     const req = route.request(),
       u = new URL(req.url());
     if (u.pathname.startsWith("/api/")) {
+      if (req.method() === "GET") reads.push(u.pathname);
       let value = {};
       if (req.method() === "POST") {
         const body = req.postDataJSON();
@@ -124,10 +126,22 @@ export async function deskFixture(context, { views = 0, files = {} } = {}) {
           state.synchronization.cheats = body.show;
         if (u.pathname === "/api/configure")
           Object.assign(state.windows[body.index || 0].config, body.update);
+        if (u.pathname === "/api/tags") {
+          const list =
+            body.kind === "situation"
+              ? catalog.situations
+              : body.kind === "decision-state"
+                ? catalog.decisionStates
+                : catalog.layouts;
+          const record = list.find((r) => r.id === body.id);
+          if (record) record.tags = body.tags;
+        }
         if (u.pathname === "/api/clear") state.windows = [];
         value = state;
       } else if (u.pathname === "/api/catalog") value = catalog;
       else if (u.pathname === "/api/status") value = state;
+      else if (u.pathname === "/api/reports")
+        value = { reports: [], warnings: [] };
       else if (u.pathname === "/api/reviews")
         value = {
           reviews: [{ runs: runs.slice(0, 2) }, { runs: runs.slice(2) }],
@@ -174,5 +188,5 @@ export async function deskFixture(context, { views = 0, files = {} } = {}) {
           : "text/html",
     });
   });
-  return { state, catalog, requests };
+  return { state, catalog, requests, reads };
 }

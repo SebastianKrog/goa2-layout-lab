@@ -19,7 +19,8 @@ before using Previous/Next.
 
 ## What is captured
 
-Selection captures all configured views, regardless of the Capture checkboxes.
+Selection captures all configured desk Views, including separate windows, regardless
+of the Capture checkboxes. Physical-device shares use their own reporting bubble.
 The report keeps the click-time capture while you write; sending does not take
 a newer screenshot. Each view contributes:
 
@@ -27,15 +28,15 @@ a newer screenshot. Each view contributes:
   cursor style. Clipping and viewport dimensions are recorded.
 - The div's outer HTML as inert text, computed CSS, matched authored CSS, and
   detailed matched/inherited/pseudo rules with cascade and condition metadata.
-- A resumable game situation and its presentation, including the reporting seat,
-  layout, renderer, device profile, camera and selected UI state.
+- A resumable game-only Situation plus separate captured UI state and View settings:
+  Viewpoint, Layout, renderer, device profile, camera and selection.
 - Frontend commit identity, source, configuration, restore/render/asset warnings,
   and game-state hash. Userscript targets record their script revision and
   activation. Live views record HEAD and working-tree status and are labelled
   mutable; a commit ID alone does not reproduce uncommitted edits.
 
 The report also records the comment, selected view/div, source situation ID,
-capture time, and configured backend/lab/frontend revisions. One situation from
+capture time, and configured backend/lab/frontend revisions and bot-service provenance. One situation from
 the selected view is added to **Situations**, with **View report**. Every view's
 own situation JSON is retained in the report, including divergent game states.
 
@@ -49,7 +50,8 @@ the existing source inspector.
 Picking intercepts game clicks/keys before the game and synchronization bridge.
 It does not submit game actions or change bot assignments. Autoswitch pauses
 while picking/capturing so it cannot replace a viewpoint under the selector.
-Bots can still advance the underlying game: each view is sampled separately,
+The lab bot coordinator defers automation during picking and pending drafts. Other
+clients or an already applying command can still change state. Views are sampled separately,
 and game or geometry changes during capture are marked. Image, CSS and checkpoint
 capture are not an atomic engine/browser transaction.
 

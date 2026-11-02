@@ -1,3 +1,8 @@
+import {
+  sessionChange,
+  resolveCardTarget,
+  publicSpellHero,
+} from "./session-changes.mjs";
 import { mobileRestorationPlan } from "./presentation-plan.mjs";
 import {
   adapterPresentation,
@@ -221,7 +226,12 @@ export async function showPane(page, pane, config) {
   throw new Error(`Unavailable in this version: ${pane} panel`);
 }
 
-export async function restorePresentation(page, value, config) {
+export async function restorePresentation(
+  page,
+  value,
+  config,
+  { partial = false } = {},
+) {
   if (!value) return [];
   const warnings = [...(value.warnings || [])];
   value = adapterPresentation(value, config.render);
@@ -232,10 +242,80 @@ export async function restorePresentation(page, value, config) {
       warnings.push(`${name}: ${e.message}`);
     }
   };
-  await attempt("Pane", () =>
-    showPane(page, value.pane || (value.deckOpen ? "deck" : "board"), config),
-  );
-  if (value.altHeld) await page.keyboard.down("Alt");
+  if (!partial || value.pane !== undefined)
+    await attempt("Pane", () =>
+      showPane(page, value.pane || (value.deckOpen ? "deck" : "board"), config),
+    );
+  for (const key of ["selectedCard", "inspectedCard"]) {
+    if (!value[key] || typeof value[key] === "string") continue;
+    const target = value[key];
+    value[key] = null;
+    await attempt(
+      key === "selectedCard" ? "Select card" : "Inspect card",
+      async () => {
+        if (key === "selectedCard") await showPane(page, "hand", config);
+        else if (target.role === "upgrade")
+          await showPane(page, "deck", config);
+        await page
+          .locator("[data-lab-card]:visible")
+          .first()
+          .waitFor({ state: "visible", timeout: 2000 });
+        const input = await page.evaluate(() => ({
+          view: window.__GOA2_LAB_STATE__?.view,
+          ids: [...document.querySelectorAll("[data-lab-card]")]
+            .filter((e) => e.getClientRects().length)
+            .map((e) => e.dataset.labCard),
+        }));
+        value[key] = resolveCardTarget(
+          target,
+          input.view,
+          config.seat,
+          input.ids,
+        );
+      },
+    );
+  }
+  if (value.publicSpells)
+    await attempt("Public spells", async () => {
+      const view = await page.evaluate(() => window.__GOA2_LAB_STATE__?.view);
+      const heroId = publicSpellHero(view, config.seat, value.publicSpells);
+      await showPane(page, "heroes", config);
+      if (config.uiMode === "mobile") {
+        const button = page
+          .locator(`[data-lab-open-spells=${JSON.stringify(heroId)}]:visible`)
+          .first();
+        await button.waitFor({ state: "visible", timeout: 2000 });
+        await clickControl(page, button);
+        await page
+          .locator(`[data-lab-mobile-spells=${JSON.stringify(heroId)}]`)
+          .waitFor({ state: "visible", timeout: 2000 });
+      } else if (config.source === "target") {
+        await page.evaluate((heroId) => {
+          if (!window.GOA2Mobile2D?.__labInspection)
+            throw Error("Public spells are unavailable");
+          window.GOA2Mobile2D.__labInspection.set({
+            selectedHeroCard: { heroId, spells: true },
+          });
+        }, heroId);
+      } else {
+        const hero = Object.values(view.teams)
+          .flatMap((t) => t.heroes)
+          .find((h) => h.id === heroId);
+        const ids = (hero.cast_spells || []).map((c) => c.id);
+        if (!ids.length)
+          throw Error("No public spells are visible in this interface.");
+        const card = page
+          .locator(
+            ids.map((id) => `[data-lab-card=${JSON.stringify(id)}]`).join(","),
+          )
+          .first();
+        if (!(await card.count()))
+          throw Error("Public spells are unavailable in this interface.");
+        await card.scrollIntoViewIfNeeded();
+      }
+    });
+  if (value.altHeld)
+    await attempt("Alt inspection", () => page.keyboard.down("Alt"));
   if (value.inspectionScript && config.source === "target")
     await attempt("Userscript inspection", () =>
       page.evaluate((v) => {
@@ -303,6 +383,17 @@ export async function restorePresentation(page, value, config) {
         )
         .first();
       if (!(await card.count())) throw new Error("Unavailable in this version");
+      if (config.uiMode === "mobile") {
+        const preview = page
+          .locator(
+            `[data-lab-inspect-card=${JSON.stringify(value.inspectedCard)}]:visible`,
+          )
+          .first();
+        if (!(await preview.count()))
+          throw Error("A safe card-preview control is unavailable.");
+        await clickControl(page, preview);
+        return;
+      }
       if (page.__labNative)
         await card.evaluate((e) => {
           document
@@ -347,21 +438,23 @@ export async function restorePresentation(page, value, config) {
           .first()
           .waitFor({ state: "visible", timeout: 5000 });
     });
-  await page.evaluate((v) => {
-    for (const s of v.scroll || []) {
-      const e = s.id
-        ? document.getElementById(s.id)
-        : [...document.querySelectorAll("*")].find(
-            (e) =>
-              typeof e.className === "string" && e.className === s.className,
-          );
-      if (e) {
-        e.scrollTop = s.top;
-        e.scrollLeft = s.left;
+  await attempt("Scroll", () =>
+    page.evaluate((v) => {
+      for (const s of v.scroll || []) {
+        const e = s.id
+          ? document.getElementById(s.id)
+          : [...document.querySelectorAll("*")].find(
+              (e) =>
+                typeof e.className === "string" && e.className === s.className,
+            );
+        if (e) {
+          e.scrollTop = s.top;
+          e.scrollLeft = s.left;
+        }
       }
-    }
-    if (v.windowScroll) window.scrollTo(v.windowScroll.x, v.windowScroll.y);
-  }, value);
+      if (v.windowScroll) window.scrollTo(v.windowScroll.x, v.windowScroll.y);
+    }, value),
+  );
   await delay(150);
   return warnings;
 }
@@ -422,4 +515,14 @@ export async function setCamera(page, camera, render) {
     throw new Error(
       "Camera restore did not settle at the requested viewpoint (possibly clamped).",
     );
+}
+
+export async function applySessionChange(page, change, config) {
+  try {
+    return await restorePresentation(page, sessionChange(change), config, {
+      partial: true,
+    });
+  } catch (error) {
+    return [`Presentation: ${error.message}`];
+  }
 }

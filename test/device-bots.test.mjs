@@ -16,7 +16,7 @@ const slot = {
   render: "2d",
 };
 
-test("device clones scope bots to other heroes and stop their workers", async () => {
+test("device controllers stay in the lab and are never sent to game clones", async () => {
   const calls = [];
   const situation = {
     id: "fixture",
@@ -25,6 +25,8 @@ test("device clones scope bots to other heroes and stop their workers", async ()
   };
   const api = async (route, body) => {
     calls.push({ route, body });
+    if (route.endsWith("?metadata=true"))
+      return { seats, botKinds: ["random", "heuristic", "ismcts"] };
     if (route.startsWith("/situations/")) return situation;
     if (route === "/health")
       return { bot_kinds: ["random", "heuristic", "ismcts"] };
@@ -43,6 +45,12 @@ test("device clones scope bots to other heroes and stop their workers", async ()
       "heuristic",
       "ismcts",
     ]);
+    assert.equal(
+      calls.filter((call) => call.route === "/health").length,
+      0,
+      "Roster lookup must not fetch a checkpoint or make a second health request",
+    );
+    assert.equal(calls[0].route, "/situations/fixture?metadata=true");
     for (const bots of [
       { hero_arien: "random" },
       { unknown: "random" },
@@ -65,16 +73,14 @@ test("device clones scope bots to other heroes and stop their workers", async ()
     const view = await devices.open({ situationId: "fixture", slot, bots });
     assert.deepEqual(calls.find((c) => c.route === "/clone").body, {
       situation_id: "fixture",
-      human_seat: "hero_arien",
-      bots,
     });
     assert.deepEqual(view.bots, bots);
     assert.ok(view.qr.startsWith("data:image/png;base64,"));
     await devices.stop(view.id);
-    assert.deepEqual(calls.at(-1), {
-      route: "/device/stop",
-      body: { game_id: "game" },
-    });
+    assert.equal(
+      calls.some((c) => c.route === "/device/stop"),
+      false,
+    );
     assert.equal((await fetch(view.urls[0])).status, 410);
   } finally {
     await devices.close();
@@ -94,6 +100,7 @@ test("device dialog assigns Random, Simple, ISMCTS and mixed controls and preser
       '<script type="module" src="/desk.mjs"></script>',
       `<script type="module">
       import {initDevicePanel} from "/device-panel.mjs";
+      document.querySelector("#workspaceToolbar").hidden = false;
       window.posts = []; window.messages = [];
       window.fixture = {seats: ${JSON.stringify([...seats, { id: "spectator", name: "Spectator" }])}, botKinds: ["random", "heuristic", "ismcts"]};
       initDevicePanel({selectedSituation: () => ({id: "fixture"}), task: async (_,fn) => fn(), read: async path => path.includes("options") ? window.fixture : [], notify: m => window.messages.push(m), call: async (name, body) => { window.posts.push({name,body}); return {id: "view", name: "Bots", bots: body.bots, config: body.slot, urls: ["http://device.test"], qr: ""}; }});

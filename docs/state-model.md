@@ -1,113 +1,134 @@
 # State storage and contracts
 
-Use [terminology and desk flow](terminology.md) for the vocabulary and user-facing
-behavior. This document owns persistence, Presentation adapters and offline porting.
+See [terminology](terminology.md) for ownership and [Reviews](reviews.md) for frozen Runs.
 
 ## Records and ownership
 
-Situations, Presentations, Layouts, Reviews and Review Runs use schema 2. Decision
-States have their own schema 1; this is a separate record type.
+Situations use schema **3**. Presentations, Layouts, Reviews and Review Runs use schema 2. Decision States and Review entries use their own schema 1.
 
 ```text
-library/situations/<folder>/<situation-id>.json
-  schema: 2, kind: situation
-  decisionStateId: <SHA-256 of exact checkpoint>
-  presentation: {schema: 2, viewpoint?, sessionState: {}, userState: {}}
+library/situations/<folder>/<id>.json
+  schema: 3, kind: situation, id, name, description?, tags?, decisionStateId
 library/decision-states/<hash>.json
   schema: 1, kind: decision-state, id: <hash>, checkpoint: {...}
-library/layouts/<layout-id>.json
+library/presentations.json
+  [{schema: 2, id, name, state: {schema: 2, sessionState: {pane: "hand"}}}]
+library/layouts/<id>.json
   schema: 2, kind: layout, views: [...], synchronization: none|api|api-clicks
 ```
 
-Local records use corresponding folders inside ignored `.layout-lab/`. Local
-Situations may reference local or shared Decision States. Shared Situations may
-reference only shared Decision States. Promotion copies the checkpoint into the
-shared store and removes machine-specific provenance. Python owns lossless
-checkpoint serialization, including large integers.
+Local Situations and Decision States use corresponding `.layout-lab/` directories.
+Local Presentation presets use `.layout-lab/presentation-templates.json`. Layout
+customizations use `.layout-lab/layouts.json` and `.layout-lab/layouts/`.
+Shared Situations reference only shared Decision States. Promotion copies exact state
+and removes machine-specific metadata. Python owns serialization and checkpoint
+hashing of durable Decision State records, including large integers. Bot-state
+transport carries `checkpoint_json` and `result_json` as opaque strings through
+Node, parsed only in Python. Device joins forward `checkpoint_json` to cloning;
+current-state desk copies clone the exact stored Decision State reference.
+Tags remain outside checkpoints; Decision State identity does not change when tagged.
 
-Game-only save names live in the Decision State store's `labels.json`; labels do
-not change checkpoint identity. Presentation templates live in
-`.layout-lab/presentation-templates.json`. Shared `library/layouts/` and local `.layout-lab/layouts/` files supply
-Layouts; `.layout-lab/layouts.json` stores local overrides loaded last. Editing a
-file-backed Layout retains its identity and persists only the override.
+A Review definition stores ordered `entries`:
 
-See [Review storage and evidence](reviews.md#evidence-collection) for immutable
-Review revisions, frozen Run inputs and report attribution.
+```json
+{
+  "schema": 1,
+  "kind": "review-entry",
+  "id": "abcdefabcdefabcdefabcdef",
+  "situationId": "e81bc3bd5fff",
+  "viewpoint": "hero_arien",
+  "presentation": {
+    "schema": 2,
+    "sessionState": { "inspectedCard": "noble_blade" }
+  }
+}
+```
 
-## Presentation contracts and restoration
+Reusable presets contain no Viewpoint, preferences, renderer, camera snapshot or game URL.
+Card fields accept roles, e.g. `{role:"gold"}` and `{role:"upgrade",tier:2,branch:"A",color:"RED"}`.
+Review entries and ad hoc requests may instead use an exact card ID. `publicSpells:true`
+opens the current/sole caster's public-spell display. Unsupported or ambiguous changes
+return View warnings, not a failed game load. Applying a preset preserves the existing
+page, context and game. Reports keep full effective UI snapshots separately.
 
-`src/state-contract.json` defines supported User State keys and temporary Session State
-storage prefixes. Python and JavaScript normalize the same fixtures in
-`test/presentation-contract.json`. Canonical envelopes reject obsolete versions,
-invalid state/value types and storage keys outside those boundaries, including
-renderer-specific Session States.
+Presentation fields are optional. `presentationsByInterface` accepts `desktop` and
+`mobile` keys; `viewPresentations` accepts slot indexes `0`–`2`. Each contains partial
+Presentation values. Resolution merges common → interface → View instructions after
+configured defaults/overrides. Reports retain requested and effective results.
+Repeated Situation IDs are valid when using explicit entries; entry IDs are unique.
 
-Clone the exact Decision State, resolve the effective Viewpoint, seed supported
-preferences before frontend startup, then restore Session State through semantic
-controls. Desktop and device transports share `src/presentation-plan.mjs` for ordered
-spell-browser and nested inspection restoration. Unsupported controls produce
-warnings; restoration must not submit game actions.
+## API and CLI
 
-Device settings are scoped to the session and review revision. Reloading one step
-retains edits; changing steps starts with that Situation's settings and application
-defaults. Personal preferences remain separate. Reports share
-`presentationResolution` evidence with intended/effective Presentation, explicit
-overrides and restoration warnings.
+- `POST /api/load {situationId,layoutId?,slots?,viewpoint?,presentation?,presentationsByInterface?,viewPresentations?}`.
+  Omit Layout/slots to reuse running Views; an empty desk needs explicit configuration.
+  Selecting a Situation never selects sources.
+- `POST /api/save {index,name,kind?,tags?}` saves game state only.
+- `POST /api/situation/compose {decisionStateId,name,tags?}` creates a named game moment.
+- `POST /api/presentation/save {name,index?,field?,change?}` stores one explicit session change.
+  `field` is `pane` (capture only the current panel), `gold`, `upgradeA`, `upgradeB` or `publicSpells`.
+  `change` can supply role targets directly; `/api/presentation/apply {index,id}`
+  applies one without resetting the game.
+- `POST /api/layout/save {name,slots,synchronization?,tags?}` stores an arrangement.
+- `GET /api/catalog` lists Situations, Decision States, Presentations, Layouts and primary Layout names.
+- `POST /api/review-runs/start {entries,name?,layoutId?,slots?}` starts explicit inspections.
+  `{ids}` remains a convenience for one default inspection per Situation.
 
-Factory scripts use `portable_situation()` with an explicit canonical
-`presentation`, optional `additionalPresentations`, and a separate `suggestedLayout`
-from `make_layout()`. Portable exports include one inline Decision State and
-optional `additionalSituations` referencing it. The importer persists these in
-separate stores. Factories do not assemble legacy per-view bundles.
+```sh
+node scripts/compare.mjs --situation=e81bc3bd5fff --layout="Desktop · Main vs working tree" --pane=hand --viewpoint=hero_arien --capture
+```
 
-For Windows Live views, the lab serves existing checkout assets directly to avoid
-WSL file-transport overhead. The bounded cache observes file changes, coalesces
-concurrent reads and accounts for cached bytes once.
+`--presentation=file.json` supplies the common/interface/per-View instruction envelope.
+Omit `--layout` to retain current Views. The command uses an already running local lab.
+
+## Runtime identities and controllers
+
+`syncGroup` links game clones, independently of saved Situation IDs. New comparison
+loads and quickstarts get new groups. Add View copies the current group; a matching
+device share joins it unless `independent:true` is requested. Review navigation
+assigns desk and device Views the same Run-step group. These identities are not
+portable library records or reporting Lab sessions.
+
+Synchronization defaults to `api`. Bot policies saved in View settings are shared
+across the group while synchronized; conflicts are rejected. In `none`, each View
+has its own policy. The separate bot service computes one command per group decision;
+the coordinator checks current group, policy and checkpoint hash before applying it.
+It discards stale results and pauses automation during report picking/drafts.
+The regular game backend does not run autonomous bot workers. See
+[device and bot contracts](device-testing.md).
 
 ## Porting older situations
 
-The running lab accepts composed Situations only. Older bundles are handled by
-`src/migrate_state.py` and its offline `src/state_migration_legacy.py` converter. Run with
-the configured backend's Python environment; for example:
+Runtime accepts schema-3 Situations only. Stop the lab before offline porting.
+For the previous schema-2 library:
 
-```powershell
-& ../goa2-backend-bots/.venv/Scripts/python.exe src/migrate_state.py
-& ../goa2-backend-bots/.venv/Scripts/python.exe src/migrate_state.py --apply
-& ../goa2-backend-bots/.venv/Scripts/python.exe src/migrate_state.py --rollback <transaction-id>
+```sh
+python scripts/port-independent-situations.py           # dry run
+python scripts/port-independent-situations.py --apply
 ```
 
-The default inventory is read-only. Use `--shared <situations-directory>` and
-`--data <lab-data-directory>` for an isolated copy. Close the lab before applying
-or rolling back, and avoid concurrent library edits.
+The port preserves exact Decision State files, consolidates equal-checkpoint Situation
+variants, combines game tags, and extracts UI state into independent Presentation
+presets. It removes generated game-specific suggested Layouts in favor of curated
+primary Layouts. It does not create Reviews or Review entries. Historical Review definitions and report evidence are left untouched.
+A separate local ID map supports explicit current-library reruns after consolidation.
+Backups and the old-to-current ID mapping live under `.layout-lab/migrations/independent-*`.
+Shared library references in agent commands should use the mapped Situation IDs.
 
-The converter preserves exact checkpoints, original IDs on primary variants,
-folders and provenance. Distinct saved Presentations become deterministic Situation
-variants sharing a Decision State; executable settings become suggested Layouts.
-Game-only entries use documented Board defaults without inventing historical UI
-state. Unsupported settings and ambiguous variants are reported. Current records
-use the runtime Decision State resolver during validation.
-
-Apply validates and stages outputs, backs up changed records, journals hashes,
-and publishes Decision States before atomic Situation replacements. Failed applies
-roll back completed writes. An interrupted prepared journal blocks another apply
-until rolled back. Rollback refuses to overwrite later edits; repeat apply is
-idempotent. Backups and mappings live under `.layout-lab/migrations/`.
-
-The completed cutover ported the existing curated library and local drafts.
-Report/review history was cleared rather than migrated; no historical report reader
-is maintained. See the [dated validation record](validation/state-model-2026-10-22.md)
-for results and local evidence locations.
+The older `src/migrate_state.py` tool still supports offline import of pre-split
+bundles, with dry run, `--apply` and `--rollback <transaction-id>`. It now emits one
+independent Situation and separate Presentation presets rather than UI variants.
+Factory helpers produce the same independent records through `portable_situation()`;
+optional `presentationPresets` and `suggestedLayout` are import-envelope data only.
 
 ## Verification
 
-- `python -m unittest test.state_model_test test.situations_test test.backend_test`
-- `npm test` — includes storage contracts, shared mobile restoration and report fixtures.
-- `node test/view-workspace-e2e.mjs` — Start/Add/Edit/Cancel, copies and Reset.
-- `node test/reviews-e2e.mjs` — desk/device navigation, drafts and all report types.
-- `node test/review-history-e2e.mjs` — history UI, frozen reruns and edited revisions.
-- `node test/state-model-e2e.mjs` — composed Presentations, 3D and phone preferences.
+`node --test test/inspection.test.mjs test/reviews.test.mjs test/desk-interface.test.mjs`
+checks instruction precedence, repeated Situation inspections, frozen entries, clean
+navigation and the Layout-first controls. `python -m pytest test -q` checks exact
+checkpoint storage, porting/private-preset boundaries, imports and report persistence.
 
-Acceptance scripts own and close their services. Use distinct `GOA2_LAB_*_PORT`
-values and the configured Windows browser/WSL service workflow on this installation.
-See [the testing guide](testing.md) for other runners and
-[recorded coverage and gaps](validation/state-model-2026-10-22.md#final-results).
+`node test/independent-comparison-e2e.mjs` uses an owned verification desk and real
+frontends/backend to check desktop/mobile Hand intent, clean default reload and
+Main vs working tree. Set distinct `GOA2_LAB_*_PORT` values and
+`GOA2_LAB_DISPLAY=browser`; it closes its own services. Its desk screenshot is
+`.layout-lab/independent-live-desktop.png`.

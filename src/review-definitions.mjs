@@ -1,3 +1,4 @@
+import { reviewEntry } from "./inspection.mjs";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { randomBytes } from "node:crypto";
@@ -39,10 +40,13 @@ export class ReviewDefinitions {
       id,
       revision,
       name,
-      entries: entries.map((entry, index) => ({
-        id: entry.entryId || randomBytes(12).toString("hex"),
-        situationId: entry.situation.id,
-      })),
+      entries: entries.map((entry) =>
+        reviewEntry({
+          ...entry,
+          id: entry.entryId,
+          situationId: entry.situation.id,
+        }),
+      ),
     };
     const file = this.path(id, revision);
     try {

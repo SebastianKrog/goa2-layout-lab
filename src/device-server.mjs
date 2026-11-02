@@ -1,3 +1,6 @@
+import { installBridge, ACTIONS } from "./synchronize.mjs";
+import { respondingSeat } from "./quickstarts.mjs";
+import { inspectionOptions, presentationFor } from "./inspection.mjs";
 import { presentationEvidence } from "./presentation-model.mjs";
 import {
   resolveView,
@@ -66,6 +69,9 @@ export class DeviceServer {
     );
     server.on("connection", (socket) => {
       this.sockets.add(socket);
+      // Phone network changes can reset a socket before HTTP/WS upgrade has
+      // installed its proxy handlers. A reset must never terminate the desk.
+      socket.on("error", () => socket.destroy());
       socket.on("close", () => this.sockets.delete(socket));
     });
     await new Promise((resolve, reject) => {
@@ -76,23 +82,48 @@ export class DeviceServer {
     this.port = server.address().port;
   }
   async options(situationId, savedSituation = null) {
-    const situation =
-      savedSituation ||
-      (await this.api(
-        `/situations/${encodeURIComponent(situationId)}`,
+    const parent =
+      this.synchronizer?.mode !== "none"
+        ? this.synchronizer
+            ?.participants()
+            .find((w) => (w.situation?.id || w.situationId) === situationId)
+        : null;
+    const controllers = parent
+      ? {
+          bots: parent.config.bots || parent.bots || {},
+          preferredSeat: parent.config.seat,
+        }
+      : {};
+    if (!savedSituation) {
+      const metadata = await this.api(
+        `/situations/${encodeURIComponent(situationId)}?metadata=true`,
         undefined,
         "GET",
-      ));
-    const health = await this.api("/health", undefined, "GET");
+      );
+      return {
+        ...controllers,
+        botKinds: this.botCapabilities
+          ? (await this.botCapabilities()).botKinds
+          : metadata.botKinds || [],
+        seats: [...metadata.seats, { id: "spectator", name: "Spectator" }],
+      };
+    }
+    const capabilities = this.botCapabilities
+      ? await this.botCapabilities()
+      : await this.api("/capabilities", undefined, "GET");
     return {
-      botKinds: health.bot_kinds || [],
+      botKinds: capabilities.botKinds || [],
       seats: [
-        ...Object.values(situation.checkpoint.state.teams).flatMap((t) =>
-          t.heroes.map((h) => ({
-            id: h.id,
-            name: situation.checkpoint.hero_names?.[h.id] || h.name || h.id,
-            team: t.color || h.team || "",
-          })),
+        ...Object.values(savedSituation.checkpoint.state.teams).flatMap(
+          (team) =>
+            team.heroes.map((hero) => ({
+              id: hero.id,
+              name:
+                savedSituation.checkpoint.hero_names?.[hero.id] ||
+                hero.name ||
+                hero.id,
+              team: team.color || hero.team || "",
+            })),
         ),
         { id: "spectator", name: "Spectator" },
       ],
@@ -101,7 +132,7 @@ export class DeviceServer {
   async open(body) {
     if (this.sessions.size >= 8)
       throw Error("Stop a device view before opening another (maximum eight).");
-    const situation = await this.api(
+    let situation = await this.api(
       body.reviewSnapshot
         ? `/review/snapshot?${new URLSearchParams(body.reviewSnapshot)}`
         : `/situations/${encodeURIComponent(body.situationId)}`,
@@ -109,9 +140,27 @@ export class DeviceServer {
       "GET",
     );
     const [slot] = validateSlots([body.slot, body.slot]);
-    const resolvedView = resolveView(slot, situation, body.presentation);
+    const resolvedView = resolveView(
+      slot,
+      situation,
+      presentationFor(inspectionOptions(body), slot),
+    );
     const [config] = slotsForSituation([resolvedView.config], situation);
-    const bots = body.bots ?? {};
+    const parent =
+      !body.independent && this.synchronizer?.mode !== "none"
+        ? this.synchronizer
+            ?.participants()
+            .find((w) => (w.situation?.id || w.situationId) === situation.id)
+        : null;
+    const bots = body.bots ?? parent?.config.bots ?? {};
+    if (
+      parent &&
+      JSON.stringify(Object.entries(bots).sort()) !==
+        JSON.stringify(
+          Object.entries(parent.config.bots || parent.bots || {}).sort(),
+        )
+    )
+      throw Error("Use the same bot policies for a synchronized device View.");
     const heroes = Object.values(situation.checkpoint.state.teams).flatMap(
       (t) => t.heroes.map((h) => h.id),
     );
@@ -128,6 +177,18 @@ export class DeviceServer {
       (Object.keys(bots).length && !heroes.includes(config.seat))
     )
       throw Error("Choose Random, Simple or ISMCTS for other heroes only.");
+    if (Object.keys(bots).length && this.botCapabilities)
+      await this.botCapabilities();
+    config.bots = structuredClone(bots);
+    let checkpointJSON;
+    if (parent) {
+      const snapshot = await this.api(
+        `/games/${parent.clone.game_id}/bot-state`,
+        undefined,
+        "GET",
+      );
+      checkpointJSON = snapshot.checkpoint_json;
+    }
     const presentation = resolvedView.presentation;
     const port = await this.services.frontend(config.source);
     const targetScript =
@@ -138,12 +199,12 @@ export class DeviceServer {
     const clone = await this.api("/clone", {
       situation_id: situation.id,
       ...(body.reviewSnapshot ? { review_snapshot: body.reviewSnapshot } : {}),
-      human_seat: config.seat,
-      bots,
+      ...(parent ? { checkpoint_json: checkpointJSON } : {}),
     });
     const secret = randomBytes(32).toString("hex");
     const session = {
       secret,
+      syncGroup: parent?.syncGroup || randomBytes(16).toString("hex"),
       id: randomBytes(8).toString("hex"),
       reviewId: body.reviewId || null,
       revision: 0,
@@ -194,8 +255,6 @@ export class DeviceServer {
           ...(situation.review_snapshot
             ? { review_snapshot: situation.review_snapshot }
             : { situation }),
-          human_seat: next.config.seat,
-          bots,
         });
         prepared.push({
           session,
@@ -246,11 +305,39 @@ export class DeviceServer {
   async retireReview(plans) {
     await Promise.allSettled(
       plans.map(async (p) => {
-        if (Object.keys(p.oldBots || {}).length)
-          await this.api("/device/stop", { game_id: p.oldClone.game_id });
         await this.api(`/games/${p.oldClone.game_id}`, undefined, "DELETE");
       }),
     );
+  }
+  async followDecisions() {
+    for (const session of this.sessions.values()) {
+      if (!session.config.autoSwitch || session.reportPending) continue;
+      try {
+        const { players } = await this.api(
+          `/games/${session.clone.game_id}/responders`,
+          undefined,
+          "GET",
+        );
+        // A report may have opened while the responder request was in flight.
+        if (session.reportPending || !this.sessions.has(session.secret))
+          continue;
+        const seat = respondingSeat(
+          players,
+          session.config,
+          session.clone.seats,
+          session.bots,
+        );
+        if (!seat) continue;
+        session.config.seat = seat;
+        // Do not carry the previous hero's private inspection into the next seat.
+        session.presentation = {};
+        session.intendedPresentation = null;
+        session.revision++;
+      } catch (error) {
+        session.config.autoSwitch = false;
+        session.autoSwitchWarning = "Auto switch stopped: " + error.message;
+      }
+    }
   }
   reviewStatus(session) {
     const review = this.review?.status();
@@ -259,6 +346,12 @@ export class DeviceServer {
       reviewRun:
         review?.active && session.reviewId === review.id ? review : null,
       revision: session.revision,
+      synchronization: this.synchronizer?.mode || "none",
+      warning:
+        session.botError ||
+        session.autoSwitchWarning ||
+        session.botWarning ||
+        null,
       url: game.pathname + game.search,
     };
   }
@@ -286,8 +379,6 @@ export class DeviceServer {
     if (!session) throw Error("Device view not found.");
     this.sessions.delete(session.secret);
     for (const socket of session.sockets) socket.destroy();
-    if (Object.keys(session.bots).length)
-      await this.api("/device/stop", { game_id: session.clone.game_id });
     return { ok: true };
   }
   session(req) {
@@ -363,6 +454,27 @@ export class DeviceServer {
         });
         return res.end();
       }
+      if (
+        req.method === "GET" &&
+        url.pathname === `/game/${session.clone.game_id}`
+      ) {
+        const current = new URL(
+          this.reviewStatus(session).url,
+          "http://device.local",
+        );
+        if (
+          ["token"].some(
+            (key) =>
+              url.searchParams.get(key) !== current.searchParams.get(key),
+          )
+        ) {
+          res.writeHead(302, {
+            Location: current.pathname + current.search,
+            "Cache-Control": "no-store",
+          });
+          return res.end();
+        }
+      }
       if (url.pathname === "/__device/review" && req.method === "GET")
         return send(200, this.reviewStatus(session));
       if (!this.allowed(session, url.pathname))
@@ -384,7 +496,12 @@ export class DeviceServer {
             (await fs.readFile(
               path.join(TOOL, "public/device-bootstrap.js"),
               "utf8",
-            )),
+            )) +
+            (this.synchronizer
+              ? `
+window.__labSyncEvent=async event=>{const r=await fetch('/__device/action',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({...event,actor:window.__GOA2_DEVICE__.config.seat})});const v=await r.json();if(!r.ok)throw Error(v.error);return v;};
+(${installBridge.toString()})(${JSON.stringify({ mode: this.synchronizer?.mode || "none", cheats: false, actions: ACTIONS })});`
+              : ""),
           "text/javascript",
         );
       }
@@ -401,6 +518,7 @@ export class DeviceServer {
       const files = {
         "/__device/report.js": "public/device-report.mjs",
         "/__device/presentation-plan.js": "src/presentation-plan.mjs",
+        "/__device/session-changes.js": "src/session-changes.mjs",
         "/__device/html-to-image.js":
           "node_modules/html-to-image/dist/html-to-image.js",
       };
@@ -426,6 +544,24 @@ export class DeviceServer {
           chunks.push(chunk);
         }
         const body = JSON.parse(Buffer.concat(chunks).toString());
+        if (url.pathname === "/__device/action") {
+          if (
+            !this.synchronizer ||
+            body.actor !== session.config.seat ||
+            !session.clone.seats[body.actor]
+          )
+            throw Error(
+              "Device viewpoint changed. Wait for the current View to load.",
+            );
+          if (!ACTIONS.includes(body.message?.type))
+            throw Error("Unsupported device game action.");
+          await this.synchronizer.receive(session, {
+            ...body,
+            kind: "action",
+            independent: true,
+          });
+          return send(200, { ok: true });
+        }
         if (url.pathname === "/__device/review-step") {
           await this.navigateReview(body);
           return send(200, this.reviewStatus(session));
@@ -453,6 +589,7 @@ export class DeviceServer {
             presentation: body.presentation,
             viewport: body.viewport,
             provenance: {
+              session: this.reportSession?.() || null,
               review: review?.id === session.reviewId ? review : null,
               source_situation: session.situationId,
               sourceEvidence: (await this.services.provenance?.()) || null,
@@ -469,7 +606,9 @@ export class DeviceServer {
                   ? "live working tree"
                   : session.config.source === "comparator"
                     ? this.services.comparator
-                    : this.services.references.base,
+                    : session.config.source === "main"
+                      ? this.services.references.main
+                      : this.services.references.base,
             },
           });
           session.captures.add(captured.id);
@@ -591,8 +730,17 @@ export class DeviceServer {
       headers,
     });
     session.sockets.add(socket);
-    socket.on("close", () => session.sockets.delete(socket));
+    socket.on("close", () => {
+      session.sockets.delete(socket);
+      request.destroy();
+    });
+    socket.on("error", () => request.destroy());
     request.on("upgrade", (response, upstream, upstreamHead) => {
+      upstream.on("error", () => socket.destroy());
+      upstream.on("close", () => socket.destroy());
+      socket.on("error", () => upstream.destroy());
+      socket.on("close", () => upstream.destroy());
+      if (socket.destroyed) return upstream.destroy();
       socket.write(
         `HTTP/1.1 101 Switching Protocols\r\n${Object.entries(response.headers)
           .map(([k, v]) => `${k}: ${v}`)
@@ -602,11 +750,11 @@ export class DeviceServer {
       if (upstreamHead.length) socket.write(upstreamHead);
       upstream.pipe(socket);
       socket.pipe(upstream);
-      upstream.on("error", () => socket.destroy());
-      socket.on("error", () => upstream.destroy());
-      socket.on("close", () => upstream.destroy());
     });
-    request.on("response", () => socket.destroy());
+    request.on("response", (response) => {
+      response.resume();
+      socket.destroy();
+    });
     request.on("error", () => socket.destroy());
     request.end();
   }

@@ -1,24 +1,9 @@
 {
-  "schema": 2,
+  "schema": 3,
   "kind": "situation",
   "id": "d296bd2e5d3d",
-  "name": "Arien - six pending upgrades for item history",
+  "name": "Arien: six pending upgrades",
   "decisionStateId": "b8dfb0b29c427127941aca770750d1ab3c9ae192eae93a07944975d0db5563b0",
-  "presentation": {
-    "schema": 2,
-    "sessionState": {
-      "pane": "board",
-      "selectedCard": null,
-      "inspectedCard": null
-    },
-    "userState": {},
-    "viewpoint": "hero_arien",
-    "restoration": "defaulted; no historical Session State was saved",
-    "adapter": {
-      "uiMode": "desktop",
-      "render": "2d"
-    }
-  },
   "summary": {
     "phase": "LEVEL_UP",
     "round": 1,
@@ -27,11 +12,13 @@
   },
   "backend_revision": "c2f9c79ae81f8a2d9101a97e46dff80f401f961b",
   "saved_at": 1792575617.371872,
-  "migration": {
-    "sourceId": "d296bd2e5d3d",
-    "sourceSlot": "0"
-  },
   "provenance": {
     "kind": "ui-fabrication"
-  }
+  },
+  "tags": [
+    "hero:arien",
+    "topic:batches",
+    "topic:cards"
+  ],
+  "description": "Arien: six pending upgrades. Waiting for simultaneous."
 }

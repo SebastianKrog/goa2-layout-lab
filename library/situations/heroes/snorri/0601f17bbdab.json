@@ -1,24 +1,9 @@
 {
-  "schema": 2,
+  "schema": 3,
   "kind": "situation",
   "id": "0601f17bbdab",
-  "name": "Snorri - choose the first inscription rune",
+  "name": "Snorri: first inscription rune",
   "decisionStateId": "ef84dd55ed2d4658f43f6025a377a30059b848665286c343f9bc9eb5161339ff",
-  "presentation": {
-    "schema": 2,
-    "sessionState": {
-      "pane": "board",
-      "selectedCard": null,
-      "inspectedCard": null
-    },
-    "userState": {},
-    "viewpoint": "hero_snorri",
-    "restoration": "defaulted; no historical Session State was saved",
-    "adapter": {
-      "uiMode": "desktop",
-      "render": "2d"
-    }
-  },
   "summary": {
     "phase": "RESOLUTION",
     "round": 1,
@@ -27,10 +12,6 @@
   },
   "backend_revision": "740ec5bbfa1aaadcf05b0df06d93ab3187e5de9a",
   "saved_at": 1792348469.2315016,
-  "migration": {
-    "sourceId": "0601f17bbdab",
-    "sourceSlot": "0"
-  },
   "provenance": {
     "kind": "ui-fabrication",
     "fixture": {
@@ -44,5 +25,10 @@
         "responder": "hero_snorri"
       }
     }
-  }
+  },
+  "tags": [
+    "hero:snorri",
+    "topic:heroes"
+  ],
+  "description": "Snorri: first inscription rune. Waiting for hero_snorri."
 }

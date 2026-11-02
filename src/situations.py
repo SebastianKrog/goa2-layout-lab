@@ -9,7 +9,7 @@ import uuid
 import threading
 from pathlib import Path
 
-from state_model import (SITUATION_SCHEMA, current_record, decision_state, identifier, validate_situation)
+from state_model import (roster_tags, SITUATION_SCHEMA, current_record, decision_state, identifier, validate_situation, normalize_tags)
 
 
 class SituationStore:
@@ -102,25 +102,33 @@ class SituationStore:
             entries = [self._hydrate(entry, metadata=metadata) for entry in entries]
             return copy.deepcopy(entries)
 
-    def read(self, identifier):
+    def read(self, identifier, *, metadata=False):
         self._target(False, "", identifier)
         with self._lock:
             for entry in self._scan():
                 if entry["id"] == identifier:
                     # Restore/organize callers may mutate their copy; never leak
                     # the cached checkpoint into a live game or another clone.
-                    return self._hydrate(entry)
+                    return self._hydrate(entry, metadata=metadata)
         raise KeyError("Situation not found")
 
-    def save_decision_state(self, checkpoint, *, shared=False, name=None):
+    def save_decision_state(self, checkpoint, *, shared=False, name=None, tags=None):
         record = decision_state(checkpoint)
         root = self.shared_decisions if shared else self.local_decisions
         path = root / (record["id"] + ".json")
+        if not shared and not path.exists() and tags is None:
+            shared_path = self.shared_decisions / (record["id"] + ".json")
+            if shared_path.is_file():
+                record["tags"] = normalize_tags(self._decision_record({"decisionStateId": record["id"], "origin": "library"}, metadata=True).get("tags"))
         if path.exists():
             existing = json.loads(path.read_text(encoding="utf-8"))
-            if existing != record:
+            if existing.get("schema") != 1 or existing.get("kind") != "decision-state" or existing.get("checkpoint") != record["checkpoint"] or existing.get("id") != record["id"]:
                 raise ValueError("Decision State content hash collision or corrupt file")
-        else:
+            normalize_tags(existing.get("tags"))
+            record = existing
+        if tags is not None:
+            record["tags"] = normalize_tags(tags)
+        if not path.exists() or tags is not None:
             self._write(path, record)
         if name:
             labels_file = root / "labels.json"
@@ -138,13 +146,12 @@ class SituationStore:
                 if path.name == "labels.json":
                     continue
                 identity = identifier(path.stem, decision=True)
-                saved = self._decision({"decisionStateId":identity,"origin":origin})
-                state = saved["state"]
+                saved = self._decision_record({"decisionStateId":identity,"origin":origin}, metadata=True)
                 entries[identity] = {"id":identity,"name":labels.get(identity,"Decision State " + identity[:12]),
-                    "origin":origin,"summary":{"phase":state.get("phase"),"round":state.get("round")}}
+                    "origin":origin,"tags":saved["tags"],"summary":saved["summary"]}
         return sorted(entries.values(),key=lambda e:(e["name"].lower(),e["id"]))
 
-    def _decision(self, entry):
+    def _decision_record(self, entry, *, metadata=False):
         identity = identifier(entry["decisionStateId"], decision=True)
         # Never let a shared fixture depend on an ignored local checkpoint.
         roots = [self.shared_decisions] if entry.get("origin") == "library" else [self.local_decisions, self.shared_decisions]
@@ -162,19 +169,36 @@ class SituationStore:
                     raise ValueError("Corrupt Decision State: " + identity)
                 cached = (stamp, value)
                 self._decision_cache[path] = cached
-            return copy.deepcopy(cached[1]["checkpoint"])
+            normalize_tags(cached[1].get("tags"))
+            if metadata:
+                state = cached[1]["checkpoint"]["state"]
+                return {"tags": normalize_tags([*cached[1].get("tags", []), *roster_tags(state)]),
+                        "summary": {"phase": state.get("phase"), "round": state.get("round")},
+                        "seats": [{"id": hero["id"], "name": cached[1]["checkpoint"].get("hero_names", {}).get(hero["id"]) or hero.get("name") or hero["id"],
+                                   "team": team.get("color") or hero.get("team") or ""}
+                                  for team in state.get("teams", {}).values() for hero in team.get("heroes", [])]}
+            return copy.deepcopy(cached[1])
         raise ValueError("Missing Decision State: " + identity)
+
+    def _decision(self, entry):
+        return self._decision_record(entry)["checkpoint"]
 
     def _hydrate(self, entry, metadata=False):
         result = current_record(entry, None if metadata else self._decision(entry))
+        details = self._decision_record(entry, metadata=True)
+        result["decisionStateTags"] = normalize_tags(details.get("tags"))
         if metadata:
+            result["seats"] = details["seats"]
             result.pop("checkpoint", None)
         return result
 
     @staticmethod
     def _persist_value(value):
         validate_situation(value)
-        return {k: v for k, v in value.items() if k not in {"checkpoint", "origin", "group"}}
+        saved = {k: v for k, v in value.items() if k not in {"checkpoint", "origin", "group", "decisionStateTags", "seats", "botKinds", "decisionState", "presentationPresets", "suggestedLayout", "additionalSituations"}}
+        if "tags" in saved:
+            saved["tags"] = normalize_tags(saved["tags"])
+        return saved
 
     def save(self, value, group=""):
         # Ordinary saves always create local drafts, never overwrite shared fixtures.
@@ -219,11 +243,11 @@ class SituationStore:
                 if k in provenance
             }
         if value.get("schema") == SITUATION_SCHEMA and promotion:
-            self.save_decision_state(value["checkpoint"], shared=True)
+            self.save_decision_state(value["checkpoint"], shared=True, tags=self._decision_record({**value, "origin": "local"}).get("tags", []))
             # A shared copy must not leak local runtime metadata.
             value = {k: v for k, v in value.items() if k in {
-                "schema", "kind", "id", "name", "decisionStateId", "presentation",
-                "summary", "backend_revision", "saved_at", "checkpoint", "provenance"}}
+                "schema", "kind", "id", "name", "description", "decisionStateId",
+                "summary", "backend_revision", "saved_at", "checkpoint", "provenance", "tags"}}
 
         target = self._target(shared, group, value["id"])
         if target != old and target.exists():
@@ -236,6 +260,32 @@ class SituationStore:
             "origin": "library" if shared else "local",
             "group": self.group(group),
         }
+
+    def set_tags(self, kind, identity, tags, origin=None):
+        tags = normalize_tags(tags)
+        if origin not in (None, "library", "local"):
+            raise ValueError("Unknown tag origin")
+        with self._lock:
+            if kind == "situation":
+                entry = self.read(identity)
+                if origin is not None and origin != entry["origin"]:
+                    raise ValueError("Situation origin changed; refresh and retry")
+                path = self._find(identity, entry["origin"] == "library")
+                value = self._persist_value(entry)
+            elif kind == "decision-state":
+                identifier(identity, decision=True)
+                if origin is None:
+                    origin = "local" if (self.local_decisions / (identity + ".json")).is_file() else "library"
+                value = self._decision_record({"decisionStateId": identity, "origin": origin})
+                root = self.shared_decisions if origin == "library" else self.local_decisions
+                path = root / (identity + ".json")
+                if not path.is_file():
+                    raise ValueError("Decision State not found in this store")
+            else:
+                raise ValueError("Choose Situation or Decision State tags")
+            value["tags"] = tags
+            self._write(path, value)
+            return {"id": identity, "tags": tags, "origin": origin or entry["origin"]}
 
     def _find(self, identifier, shared):
         root = self.shared if shared else self.local

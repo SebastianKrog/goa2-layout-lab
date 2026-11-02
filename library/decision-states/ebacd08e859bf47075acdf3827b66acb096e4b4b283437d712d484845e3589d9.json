@@ -11780,5 +11780,14 @@
     "hero_names": {},
     "replay_log": []
   },
-  "tags": []
+  "tags": [
+    "hero:arien",
+    "hero:brogan",
+    "hero:hanu",
+    "hero:tigerclaw",
+    "phase:planning",
+    "topic:hand",
+    "topic:planning",
+    "topic:status"
+  ]
 }

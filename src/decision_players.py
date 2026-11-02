@@ -8,7 +8,7 @@ def decision_players(game):
     state = game.session.state
     heroes = [h for team in state.teams.values() for h in team.heroes]
     ids = [str(h.id) for h in heroes]
-    if game.removed or state.phase == GamePhase.GAME_OVER:
+    if getattr(game, "removed", False) or state.phase == GamePhase.GAME_OVER:
         return []
     clock = state.clock
     if clock and clock.status.value == "WAITING_FOR_PLAYERS":

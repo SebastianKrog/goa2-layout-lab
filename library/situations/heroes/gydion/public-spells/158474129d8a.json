@@ -1,24 +1,9 @@
 {
-  "schema": 2,
+  "schema": 3,
   "kind": "situation",
   "id": "158474129d8a",
-  "name": "M3 presentation - gydion-public-spells-1",
+  "name": "Gydion: 1 public spell",
   "decisionStateId": "e4b2bf23e799eccfad53b20936d897eb74afe34ef1537788fd1ac651a8accd34",
-  "presentation": {
-    "schema": 2,
-    "sessionState": {
-      "pane": "board",
-      "selectedCard": null,
-      "inspectedCard": null
-    },
-    "userState": {},
-    "viewpoint": "hero_gydion",
-    "restoration": "defaulted; no historical Session State was saved",
-    "adapter": {
-      "uiMode": "mobile",
-      "render": "2d"
-    }
-  },
   "summary": {
     "phase": "PLANNING",
     "round": 1,
@@ -27,16 +12,13 @@
   },
   "backend_revision": "740ec5bbfa1aaadcf05b0df06d93ab3187e5de9a",
   "saved_at": 1792361694.4889717,
-  "migration": {
-    "sourceId": "158474129d8a",
-    "sourceSlot": "0"
-  },
   "provenance": {
-    "kind": "ui-fabrication",
-    "references": {
-      "factory": "scripts/create-mobile-presentation-situations.py",
-      "case": "gydion-public-spells-1",
-      "seed": 20261019
-    }
-  }
+    "kind": "ui-fabrication"
+  },
+  "tags": [
+    "hero:gydion",
+    "topic:heroes",
+    "topic:public-spells"
+  ],
+  "description": "Gydion: 1 public spell. Load in any Layout to inspect the game state."
 }

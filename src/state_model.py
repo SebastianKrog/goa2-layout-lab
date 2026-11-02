@@ -7,11 +7,27 @@ import json
 import re
 from pathlib import Path
 
-SITUATION_SCHEMA = 2
+SITUATION_SCHEMA = 3
 PRESENTATION_SCHEMA = 2
 _CONTRACT = json.loads((Path(__file__).parent / "state-contract.json").read_text(encoding="utf-8"))
 USER_STATE_KEYS = frozenset(_CONTRACT["userStateKeys"])
 SESSION_STORAGE_PREFIXES = tuple(_CONTRACT["sessionStoragePrefixes"])
+
+
+def normalize_tags(value=None):
+    if value is None:
+        return []
+    if not isinstance(value, list) or any(not isinstance(tag, str) for tag in value):
+        raise ValueError("Tags must be a list of names")
+    tags = sorted({re.sub(r"\s+", "-", tag.strip().lower()) for tag in value} - {""})
+    if len(tags) > 32 or any(len(tag) > 48 or not re.fullmatch(r"[a-z0-9][a-z0-9:_-]*", tag) for tag in tags):
+        raise ValueError("Use up to 32 tags, each up to 48 letters, numbers, colons, dashes or underscores")
+    return tags
+
+
+def roster_tags(state):
+    return sorted({"hero:" + str(hero["id"]).removeprefix("hero_").replace("_", "-")
+                   for team in state.get("teams", {}).values() for hero in team.get("heroes", []) if hero.get("id")})
 
 
 def digest(value):
@@ -94,9 +110,11 @@ def validate_situation(value):
     identifier(value.get("decisionStateId"), decision=True)
     if not isinstance(value.get("name"), str):
         raise ValueError("Situation name is required")
-    if not isinstance(value.get("presentation"), dict) or value["presentation"].get("schema") != PRESENTATION_SCHEMA:
-        raise ValueError("Situation requires a schema 2 Presentation")
-    presentation(value["presentation"])
+    if any(key in value for key in ("presentation", "presentations", "additionalPresentations", "additionalSituations", "layout", "slots")):
+        raise ValueError("Situations contain game state only; pass Presentation separately")
+    normalize_tags(value.get("tags"))
+    if "description" in value and (not isinstance(value["description"], str) or len(value["description"]) > 800):
+        raise ValueError("Situation description must be text up to 800 characters")
     return value
 
 
@@ -116,39 +134,66 @@ def make_layout(configs, name="Suggested layout"):
             raise ValueError("Use uiMode in Layout views")
         if "seat" in view:
             view.setdefault("presentationDefaults", {})["viewpoint"] = view.pop("seat")
+        if "tags" in view:
+            view["tags"] = normalize_tags(view["tags"])
         views.append(view)
     return {"schema": 2, "kind": "layout", "id": digest([name, views])[:24],
             "name": name, "views": views, "synchronization": "none"}
 
 
+def session_alteration(value, checkpoint=None):
+    """Reduce factory snapshots to reusable session intent, never player/preferences."""
+    normalized = presentation(value)
+    saved = normalized["sessionState"]
+    change = {}
+    if saved.get("pane") and saved["pane"] != "board":
+        change["pane"] = saved["pane"]
+    heroes = [hero for team in (checkpoint or {}).get("state", {}).get("teams", {}).values() for hero in team.get("heroes", [])]
+    cards = [card for hero in heroes for key in ("hand", "deck", "discard_pile", "played_cards", "spells")
+             for card in (hero.get(key) if isinstance(hero.get(key), list) else []) if isinstance(card, dict)]
+    for key in ("selectedCard", "inspectedCard"):
+        target = saved.get(key)
+        if not target or (key == "inspectedCard" and target == saved.get("selectedCard")):
+            continue
+        if isinstance(target, dict):
+            change[key] = copy.deepcopy(target)
+            continue
+        card = next((c for c in cards if c.get("id") == target), None)
+        if card:
+            if card.get("color") == "GOLD":
+                change[key] = {"role": "gold"}
+            elif card.get("color") and card.get("tier") in ("I", "II", "III"):
+                change[key] = {"role": "upgrade" if card["tier"] in ("II", "III") else "color",
+                               "color": card["color"], "tier": {"I": 1, "II": 2, "III": 3}[card["tier"]]}
+                image = card.get("image_id", "")
+                if image.endswith(("A", "B")):
+                    change[key]["branch"] = image[-1]
+    if saved.get("publicSpells") or saved.get("spellBrowserMobile") or ((saved.get("inspectionScript") or {}).get("selectedHeroCard") or {}).get("spells"):
+        change["publicSpells"] = True
+    return {"schema": 2, "sessionState": change}
+
+
 def portable_situation(value):
-    """Build portable composed records from explicit canonical factory inputs."""
+    """Portable game moment; optional factory Presentations stay separate."""
     original = copy.deepcopy(value)
-    if ("schema" in original and original["schema"] != 2) or "presentations" in original or "slots" in original.get("provenance", {}):
-        raise ValueError("Factory output requires canonical Presentation and separate Layout")
+    if "presentations" in original or "slots" in original.get("provenance", {}) or ("schema" in original and original["schema"] != SITUATION_SCHEMA):
+        raise ValueError("Port old bundles offline; use independent Situations and Presentation presets")
     if original.get("kind") == "situation":
         validate_situation(original)
         return original
     state = decision_state(original.pop("checkpoint"))
-    primary_id = original.pop("id", digest([original.get("name"), state["id"]])[:12])
-    presentations = [original.pop("presentation"), *original.pop("additionalPresentations", [])]
+    presets = [original.pop("presentation", None), *original.pop("additionalPresentations", [])]
     suggested = original.pop("suggestedLayout", None)
-    records = []
-    for index, saved in enumerate(presentations):
-        if not isinstance(saved, dict) or saved.get("schema") != 2:
-            raise ValueError("Factory output requires a schema 2 Presentation")
-        composed = presentation(saved)
-        record = {**original, "schema": 2, "kind": "situation",
-                  "id": primary_id if index == 0 else digest([primary_id, index, composed])[:24],
-                  "decisionStateId": state["id"], "presentation": composed}
-        if index:
-            record["name"] += " (variant " + str(index + 1) + ")"
-        validate_situation(record)
-        records.append(record)
-    primary = records[0]
-    primary["decisionState"] = state
-    if len(records) > 1:
-        primary["additionalSituations"] = records[1:]
+    original.pop("schema", None)
+    record = {**original, "schema": SITUATION_SCHEMA, "kind": "situation",
+              "id": original.get("id", digest([original.get("name"), state["id"]])[:12]),
+              "decisionStateId": state["id"]}
+    validate_situation(record)
+    record["decisionState"] = state
+    changes = [session_alteration(p, state["checkpoint"]) for p in presets if p is not None]
+    record["presentationPresets"] = [{"schema": 2, "id": digest(p)[:24],
+        "name": original.get("name", "Presentation") + " — " + str(i + 1), "state": p}
+        for i, p in enumerate(changes) if p["sessionState"]]
     if suggested:
-        primary["suggestedLayout"] = suggested
-    return primary
+        record["suggestedLayout"] = suggested
+    return record

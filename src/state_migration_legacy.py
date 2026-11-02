@@ -31,6 +31,14 @@ def compose_legacy(value):
             if extra:
                 record["metadata"] = extra
         return None, [record], None, []
+    if value.get("schema") == 2:
+        record = copy.deepcopy(value)
+        saved = record.pop("presentation", None)
+        record["schema"] = SITUATION_SCHEMA
+        validate_situation(record)
+        if saved is not None:
+            record["presentationPresets"] = [{"schema":2,"id":digest(saved)[:24],"name":record["name"],"state":presentation(saved)}]
+        return None, [record], None, []
     if value.get("schema", 1) != 1:
         raise ValueError("Unsupported legacy Situation schema")
     old_id = identifier(value.get("id"))
@@ -69,10 +77,13 @@ def compose_legacy(value):
                   "provenance": {k: copy.deepcopy(v) for k,v in value.get("provenance",{}).items() if k != "slots"},
                   "metadata": {k: copy.deepcopy(v) for k,v in legacy.items() if k not in {"id","name","schema","summary","backend_revision","saved_at","provenance","presentations"}},
                   "migration": {"sourceId": old_id, "sourceSlot": key}}
+        record.pop("presentation")
+        record["presentationPresets"] = [{"schema":2,"id":signature[:24],"name":value.get("name", "Imported") + " — " + key,"state":composed}]
         validate_situation(record)
         variants.append(record)
         warnings.extend(composed.get("warnings", []))
-    if len(variants) > 1:
-        warnings.append("Bundled views expanded into " + str(len(variants)) + " Situations; the original ID selects slot " + variants[0]["migration"]["sourceSlot"] + ".")
+    primary = variants[0]
+    primary["presentationPresets"] = [preset for variant in variants for preset in variant["presentationPresets"]]
+    variants = [primary]
     suggested = layout(slots, value.get("name", "Imported") + " - suggested layout", digest([old_id, "layout"])[:24]) if slots else None
     return state, variants, suggested, warnings

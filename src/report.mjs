@@ -1,3 +1,4 @@
+import { writeReportSummary } from "./reports.mjs";
 import { presentationEvidence } from "./presentation-model.mjs";
 import fs from "node:fs/promises";
 import path from "node:path";
@@ -170,6 +171,7 @@ export async function captureReport(comparison, indexes, options = {}) {
   const metadata = {
     id,
     review: reviewAttribution(collection),
+    session: comparison.reportSession?.() || null,
     capturedAt: new Date().toISOString(),
     sourceEvidence: (await comparison.services?.provenance?.()) || null,
     ...comparison.status(),
@@ -307,6 +309,7 @@ export async function captureReport(comparison, indexes, options = {}) {
     path.join(dir, "report.json"),
     JSON.stringify(metadata, null, 2),
   );
+  await writeReportSummary(dir, metadata);
   await fs.writeFile(path.join(dir, "index.html"), reportHTML(metadata));
   return {
     id,

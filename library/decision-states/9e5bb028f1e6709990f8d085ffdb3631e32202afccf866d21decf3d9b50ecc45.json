@@ -15010,5 +15010,12 @@
     "rollback_actor_id": "hero_gydion",
     "hero_names": {},
     "replay_log": []
-  }
+  },
+  "tags": [
+    "decision:select-card",
+    "hero:gydion",
+    "hero:wasp",
+    "phase:resolution",
+    "topic:heroes"
+  ]
 }

@@ -1,3 +1,4 @@
+import { normalizeTags } from "../public/tags.mjs";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { randomBytes } from "node:crypto";
@@ -6,7 +7,7 @@ import { validateSlots } from "./config.mjs";
 export function makeLayout(
   name,
   configs,
-  synchronization = "none",
+  synchronization = "api",
   id = randomBytes(12).toString("hex"),
 ) {
   if (!name?.trim() || name.length > 80)
@@ -59,7 +60,7 @@ export class Layouts {
   }
   async init(presets) {
     this.records = Object.entries(presets).map(([name, views]) =>
-      makeLayout(name, views, "none", "builtin-" + name),
+      makeLayout(name, views, "api", "builtin-" + name),
     );
     for (const root of [this.shared, path.join(this.data, "layouts")]) {
       let names;
@@ -86,7 +87,10 @@ export class Layouts {
       (record, i, all) =>
         all.findLastIndex((r) => r.name === record.name) === i,
     );
-    for (const record of this.records) layoutSlots(record);
+    for (const record of this.records) {
+      layoutSlots(record);
+      record.tags = normalizeTags(record.tags);
+    }
     return this;
   }
   slotsByName() {
@@ -99,7 +103,7 @@ export class Layouts {
     if (!value) throw Error("Layout not found.");
     return value;
   }
-  async save(name, configs, synchronization) {
+  async save(name, configs, synchronization, tags) {
     name = name?.trim();
     const value = makeLayout(
       name,
@@ -107,6 +111,9 @@ export class Layouts {
       synchronization,
       this.records.find((r) => r.name === name && !r.id.startsWith("builtin-"))
         ?.id || undefined,
+    );
+    value.tags = normalizeTags(
+      tags ?? this.records.find((r) => r.name === name)?.tags,
     );
     const next = [...this.records.filter((r) => r.name !== name), value];
     const saved = [...this.saved.filter((r) => r.name !== name), value];

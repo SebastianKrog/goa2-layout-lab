@@ -17,8 +17,11 @@
   "kind": "situation",
   "decisionStateId": "0ee3bbe743c55df106fc15c66cae0ff94de7f2dd4c4ec5bc673e7ac35ff2f41d",
   "tags": [
+    "hero:gydion",
     "topic:cards",
+    "topic:heroes",
     "topic:inspection",
+    "topic:references",
     "topic:spells"
   ]
 }

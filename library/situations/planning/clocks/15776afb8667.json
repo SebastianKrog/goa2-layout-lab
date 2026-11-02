@@ -1,24 +1,9 @@
 {
-  "schema": 2,
+  "schema": 3,
   "kind": "situation",
   "id": "15776afb8667",
-  "name": "M3 presentation - shell-suspended_for_inactivity",
+  "name": "Clock: suspended for inactivity",
   "decisionStateId": "64d75d9c77e114e14118b20a868aab41a59d82765abf0f76660430aa981dda67",
-  "presentation": {
-    "schema": 2,
-    "sessionState": {
-      "pane": "board",
-      "selectedCard": null,
-      "inspectedCard": null
-    },
-    "userState": {},
-    "viewpoint": "hero_arien",
-    "restoration": "defaulted; no historical Session State was saved",
-    "adapter": {
-      "uiMode": "desktop",
-      "render": "2d"
-    }
-  },
   "summary": {
     "phase": "PLANNING",
     "round": 1,
@@ -27,10 +12,6 @@
   },
   "backend_revision": "740ec5bbfa1aaadcf05b0df06d93ab3187e5de9a",
   "saved_at": 1792477608.2527907,
-  "migration": {
-    "sourceId": "15776afb8667",
-    "sourceSlot": "0"
-  },
   "provenance": {
     "kind": "ui-fabrication",
     "fixture": {
@@ -39,5 +20,11 @@
       "seed": 20261019,
       "purpose": "UI display comparison; not a game-rule test"
     }
-  }
+  },
+  "tags": [
+    "hero:clock",
+    "topic:clocks",
+    "topic:planning"
+  ],
+  "description": "Clock: suspended for inactivity. Load in any Layout to inspect the game state."
 }

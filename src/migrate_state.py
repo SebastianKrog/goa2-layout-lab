@@ -12,7 +12,7 @@ import json
 from pathlib import Path
 import uuid
 
-from state_model import presentation
+from state_model import presentation, session_alteration, digest
 from state_migration_legacy import compose_legacy, layout
 from situations import SituationStore
 
@@ -32,6 +32,7 @@ class StateMigration:
 
     def inventory(self):
         outputs, sources, mappings, warnings, errors = {}, {}, [], [], []
+        presentation_sets = {}
         resolver = SituationStore(self.shared, self.data, create=False)
         def output(path, value):
             payload = encoded(value)
@@ -61,6 +62,19 @@ class StateMigration:
                     SituationStore.group(path.parent.relative_to(root).as_posix() if path.parent != root else "")
                     state, variants, suggested, notes = compose_legacy(old)
                     warnings.extend({"path": str(path), "message": note} for note in notes)
+                    target_presets = self.shared.parent / "presentations.json" if origin == "library" else self.data / "presentation-templates.json"
+                    incoming = [p for variant in variants for p in variant.pop("presentationPresets", [])]
+                    if incoming:
+                        exact = state["checkpoint"] if state else resolver._decision({**old, "origin": origin})
+                        incoming = [{**p, "state": session_alteration(p["state"], exact)} for p in incoming]
+                        incoming = [{**p, "id": digest(p["state"])[:24]} for p in incoming if p["state"]["sessionState"]]
+                    if incoming:
+                        if target_presets not in presentation_sets:
+                            presentation_sets[target_presets] = json.loads(target_presets.read_text(encoding="utf-8")) if target_presets.exists() else []
+                            if target_presets.exists(): sources[target_presets] = file_hash(target_presets.read_bytes())
+                        known = {p["id"] for p in presentation_sets[target_presets]}
+                        presentation_sets[target_presets].extend(p for p in incoming if p["id"] not in known)
+
                     if state is None:
                         resolver._decision({**old, "origin": origin})
                         output(path, variants[0])
@@ -76,6 +90,9 @@ class StateMigration:
                     mappings.append({"origin": origin, "sourceId": old["id"], "situationIds": [v["id"] for v in variants], "decisionStateId": state["id"], "primarySlot": variants[0]["migration"]["sourceSlot"], "suggestedLayoutId": suggested["id"] if suggested else None})
                 except (ValueError, KeyError, TypeError, OSError) as error:
                     errors.append({"path": str(path), "message": str(error)})
+
+        for path, values in presentation_sets.items():
+            output(path, values)
 
         # Duplicate IDs are invalid even if records live in different origins/folders.
         owners = {}
@@ -109,7 +126,7 @@ class StateMigration:
     def _templates(values):
         if not isinstance(values, list):
             raise ValueError("Presentation templates must be a list")
-        return [{**copy.deepcopy(v), "schema": 2, "state": presentation(v.get("state"))} for v in values]
+        return [{**copy.deepcopy(v), "schema": 2, "state": session_alteration(v.get("state"))} for v in values]
 
     @staticmethod
     def _presets(values):
@@ -183,7 +200,7 @@ class StateMigration:
         changes = []
         for operation in manifest["operations"]:
             target = Path(operation["path"]).resolve()
-            if not any(target.is_relative_to(r) for r in roots):
+            if target != self.shared.parent / "presentations.json" and not any(target.is_relative_to(r) for r in roots):
                 raise ValueError("Rollback path escapes migration roots")
             current = file_hash(target.read_bytes()) if target.exists() else None
             if current == operation["before"]:

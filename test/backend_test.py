@@ -57,6 +57,37 @@ class SituationTests(unittest.TestCase):
         cls.client.__enter__()
         cls.headers = {"x-lab-token": "test-lab-secret"}
 
+    def test_tags_roundtrip_through_capture_export_and_import_without_changing_checkpoint(self):
+        original = self.client.get("/__lab/situations/e81bc3bd5fff", headers=self.headers).json()
+        imported = self.client.post("/__lab/import", headers=self.headers, json={"content": original}).json()
+        result = self.client.post("/__lab/tags", headers=self.headers, json={
+            "kind":"situation", "id":imported["id"], "tags":["QA", "custom moment"]})
+        self.assertEqual(result.status_code, 200, result.text)
+        result = self.client.post("/__lab/tags", headers=self.headers, json={
+            "kind":"decision-state", "id":imported["decisionStateId"], "origin":"local", "tags":["Phase:Planning"]})
+        self.assertEqual(result.status_code, 200, result.text)
+        exported = self.client.get("/__lab/situations/" + imported["id"], headers=self.headers).json()
+        self.assertEqual(exported["tags"], ["custom-moment","qa"])
+        self.assertEqual(exported["decisionStateTags"], ["hero:arien", "hero:brogan", "hero:hanu", "hero:tigerclaw", "phase:planning"])
+        self.assertEqual(exported["checkpoint"], original["checkpoint"])
+        again = self.client.post("/__lab/import", headers=self.headers, json={"content":exported}).json()
+        self.assertEqual(again["tags"], exported["tags"])
+        self.assertEqual(again["decisionStateTags"], exported["decisionStateTags"])
+        self.assertEqual(again["decisionStateId"], exported["decisionStateId"])
+        self.assertEqual(again["description"], exported["description"])
+        invalid = self.client.post("/__lab/tags", headers=self.headers, json={"kind":"situation","id":again["id"],"tags":["../bad"]})
+        self.assertEqual(invalid.status_code, 422)
+
+    def test_roster_metadata_is_small_and_excludes_checkpoint(self):
+        response = self.client.get("/__lab/situations/a00000000001?metadata=true", headers=self.headers)
+        self.assertEqual(response.status_code, 200, response.text)
+        value = response.json()
+        self.assertNotIn("checkpoint", value)
+        self.assertLess(len(response.content), 4096)
+        self.assertEqual({seat["id"] for seat in value["seats"]}, {"hero_arien", "hero_hanu", "hero_brogan", "hero_tigerclaw"})
+        self.assertIn("botKinds", value)
+        self.assertIn("botKinds", self.client.get("/__lab/capabilities", headers=self.headers).json())
+
     def test_read_frozen_review_snapshot_never_recreates_missing_input(self):
         spec = {"reviewId": "f" * 24, "index": 0}
         response = self.client.post("/__lab/review/snapshot", headers=self.headers,
@@ -72,15 +103,17 @@ class SituationTests(unittest.TestCase):
     def test_composed_situations_share_exact_decision_state_and_keep_presentations_separate(self):
         original = self.client.get("/__lab/situations/e81bc3bd5fff", headers=self.headers).json()
         one = self.client.post("/__lab/import", headers=self.headers, json={"content": original, "name":"Composed source"}).json()
-        self.assertEqual(one["schema"], 2)
+        self.assertEqual(one["schema"], 3)
         state_id = one["decisionStateId"]
         moment = {"schema":2,"viewpoint":"spectator","sessionState":{"pane":"heroes","selectedCard":None},"userState":{"goa2:board-brightness":"0.4"}}
-        response = self.client.post("/__lab/situations/compose",headers=self.headers,json={"name":"Same decision, different presentation","decisionStateId":state_id,"presentation":moment})
+        response = self.client.post("/__lab/situations/compose",headers=self.headers,json={"name":"Same decision","decisionStateId":state_id})
         self.assertEqual(response.status_code,200,response.text)
         two = response.json()
         self.assertNotEqual(two["id"],one["id"])
         self.assertEqual(two["decisionStateId"],one["decisionStateId"])
-        self.assertEqual(two["presentation"],moment)
+        self.assertNotIn("presentation",two)
+        rejected = self.client.post("/__lab/situations/compose",headers=self.headers,json={"name":"UI belongs to inspection","decisionStateId":state_id,"presentation":moment})
+        self.assertEqual(rejected.status_code,422)
         clone = self.client.post("/__lab/clone",headers=self.headers,json={"decision_state_id":state_id}).json()
         checkpoint = self.client.get("/__lab/games/"+clone["game_id"]+"/checkpoint",headers=self.headers).json()
         self.assertEqual(json.loads(checkpoint["checkpoint_json"]),checkpoint["situation"]["checkpoint"])
@@ -95,7 +128,7 @@ class SituationTests(unittest.TestCase):
         original=self.client.get("/__lab/situations/2b928b7b0ab4",headers=self.headers).json()
         ids=[]
         for pane in ["hand","heroes"]:
-            response=self.client.post("/__lab/situations/compose",headers=self.headers,json={"name":"Defense "+pane,"decisionStateId":original["decisionStateId"],"presentation":{"schema":2,"viewpoint":"hero_brogan","sessionState":{"pane":pane},"userState":{}}})
+            response=self.client.post("/__lab/situations/compose",headers=self.headers,json={"name":"Defense "+pane,"decisionStateId":original["decisionStateId"]})
             self.assertEqual(response.status_code,200,response.text)
             created=response.json()
             self.assertEqual(created["decisionStateId"],original["decisionStateId"])
@@ -147,7 +180,7 @@ class SituationTests(unittest.TestCase):
         full = self.client.get("/__lab/situations", headers=self.headers).json()
         light = self.client.get("/__lab/situations?metadata=true", headers=self.headers).json()
         self.assertEqual(len(full), len(light))
-        self.assertEqual(light, [{k: v for k, v in entry.items() if k != "checkpoint"} for entry in full])
+        self.assertEqual([{k:v for k,v in entry.items() if k != "seats"} for entry in light], [{k: v for k, v in entry.items() if k != "checkpoint"} for entry in full])
         self.assertTrue(all("checkpoint" in entry for entry in full))
         self.assertLess(len(json.dumps(light)), len(json.dumps(full)) // 5)
 
@@ -337,52 +370,7 @@ class SituationTests(unittest.TestCase):
         )
 
 
-    def test_device_bot_clone_drives_other_heroes_and_keeps_the_human_manual(self):
-        from device_bots import bot_kinds
-        if not bot_kinds():
-            self.skipTest("Bots checkout not selected")
-        source = self.post("/starter", {"name": "Bot planning test"})
-        original = source["checkpoint"]
-        for kind in ("random", "heuristic", "ismcts"):
-            specs = {hero: kind for hero in ("hero_hanu", "hero_brogan", "hero_tigerclaw")}
-            clone = self.post("/clone", {"situation_id": source["id"], "human_seat": "hero_arien", "bots": specs})
-            game = self.client.app.state.registry.get(clone["game_id"])
-            deadline = time.monotonic() + 10
-            while not set(specs).issubset(game.session.state.pending_inputs):
-                self.assertLess(time.monotonic(), deadline, "Other heroes did not commit")
-                time.sleep(0.02)
-            self.assertNotIn("hero_arien", game.session.state.pending_inputs)
-            self.assertEqual({h: spec.kind for h, spec in game.bot_specs.items()}, specs)
-            save = Path(os.environ["GOA2_SAVE_DIR"]) / f"{game.game_id}.json"
-            self.post("/device/stop", {"game_id": game.game_id})
-            self.assertTrue(game.removed)
-            self.assertTrue(game.bot_task is None or game.bot_task.done())
-            self.assertTrue(save.exists(), "Stopping keeps recovery saves")
-        unchanged = self.client.get(f"/__lab/situations/{source['id']}", headers=self.headers).json()
-        self.assertEqual(unchanged["checkpoint"], original)
 
-    def test_device_bot_choices_reject_human_unknown_heroes_and_learned_config(self):
-        source = self.post("/starter", {"name": "Bot validation test"})
-        for values in ({"hero_arien": "random"}, {"missing": "random"}, {"hero_hanu": "learned"}, {"hero_hanu": {"kind": "ismcts", "search": {"policy_source": "learned"}}}, []):
-            response = self.client.post("/__lab/clone", headers=self.headers, json={"situation_id": source["id"], "human_seat": "hero_arien", "bots": values})
-            self.assertEqual(response.status_code, 422, response.text)
-        with patch("device_bots.bot_kinds", return_value=[]):
-            response = self.client.post("/__lab/clone", headers=self.headers, json={"situation_id": source["id"], "human_seat": "hero_arien", "bots": {"hero_hanu": "random"}})
-            self.assertEqual(response.status_code, 422)
-            self.post("/clone", {"situation_id": source["id"]})
-
-    def test_timed_device_clone_readies_bots_and_waits_for_the_human(self):
-        from device_bots import bot_kinds
-        if not bot_kinds():
-            self.skipTest("Bots checkout not selected")
-        source = self.post("/starter", {"name": "Timed bots", "timed": True})
-        specs = {hero: "random" for hero in ("hero_hanu", "hero_brogan", "hero_tigerclaw")}
-        clone = self.post("/clone", {"situation_id": source["id"], "human_seat": "hero_arien", "bots": specs})
-        game = self.client.app.state.registry.get(clone["game_id"])
-        self.assertEqual(set(game.session.state.clock.ready_hero_ids), set(specs))
-        self.assertEqual(game.session.state.clock.status.value, "WAITING_FOR_PLAYERS")
-        self.assertFalse(game.session.state.pending_inputs)
-        self.post("/device/stop", {"game_id": game.game_id})
 
 
     def test_reconnect_gets_initial_state_when_previous_transport_already_closed(self):
@@ -403,50 +391,6 @@ class SituationTests(unittest.TestCase):
             self.assertIsNot(game.ws_connections[token], previous)
 
 
-    def test_live_controller_changes_keep_game_and_other_clones_untouched(self):
-        from device_bots import bot_kinds
-        if not bot_kinds():
-            self.skipTest("requires bot-capable backend")
-        source = self.post("/starter", {"name": "Per-view controllers"})
-        clone = self.post("/clone", {"situation_id": source["id"]})
-        untouched = self.post("/clone", {"situation_id": source["id"]})
-        registry = self.client.app.state.registry
-        game = registry.get(clone["game_id"])
-        # Keep runtime worker mutations separate from this controller-switch test.
-        with patch("device_bots.start_clone_bots") as start:
-            start.return_value = None
-            for kind in ("random", "heuristic", "ismcts"):
-                self.post("/bots", {"game_id": game.game_id, "human_seat": "hero_arien", "bots": {"hero_hanu": kind}})
-                self.assertEqual(game.bot_specs["hero_hanu"].kind, kind)
-                self.assertEqual(self.module.canonical_hash(game.session.state.model_dump(mode="json")), clone["hash"])
-                self.assertFalse(registry.get(untouched["game_id"]).bot_specs)
-            response = self.client.post("/__lab/bots", json={"game_id": game.game_id, "human_seat": "hero_arien", "bots": {"hero_arien": "random"}}, headers=self.headers)
-            self.assertEqual(response.status_code, 422)
-            self.assertEqual(game.bot_specs["hero_hanu"].kind, "ismcts")
-            self.post("/bots", {"game_id": game.game_id, "human_seat": "hero_arien", "bots": {}})
-        self.assertFalse(game.bot_specs)
-        self.assertFalse(game.removed)
-        self.assertEqual(self.client.post("/__lab/bots", json={"game_id": game.game_id, "bots": {}}).status_code, 403)
-
-
-    def test_live_bots_can_be_stopped_and_reassigned_without_reset(self):
-        from device_bots import bot_kinds
-        if not bot_kinds():
-            self.skipTest("requires bot-capable backend")
-        source = self.post("/starter", {})
-        clone = self.post("/clone", {"situation_id": source["id"]})
-        game = self.client.app.state.registry.get(clone["game_id"])
-        for kind in ("random", "heuristic", "ismcts"):
-            self.post("/bots", {"game_id": game.game_id, "human_seat": "hero_arien", "bots": {"hero_hanu": kind}})
-            deadline = time.monotonic() + 10
-            while "hero_hanu" not in game.session.state.pending_inputs:
-                self.assertLess(time.monotonic(), deadline)
-                time.sleep(0.02)
-            self.post("/bots", {"game_id": game.game_id, "human_seat": "hero_arien", "bots": {}})
-            self.assertIn("hero_hanu", game.session.state.pending_inputs)
-            self.assertNotIn("hero_arien", game.session.state.pending_inputs)
-            self.assertTrue(game.bot_task is None or game.bot_task.done())
-            self.assertFalse(game.removed)
 
 
     def test_autoswitch_responders_follow_real_commits_and_request_owners(self):
@@ -479,53 +423,52 @@ class SituationTests(unittest.TestCase):
         game.last_result = saved_result
         self.assertEqual(self.client.get(route).status_code, 403)
 
-    def test_autoswitch_tracks_readiness_without_changing_controllers(self):
-        from device_bots import bot_kinds
-        if not bot_kinds():
-            self.skipTest("requires bot-capable backend")
-        source = self.post("/starter", {"timed": True})
-        clone = self.post("/clone", {"situation_id": source["id"], "human_seat": "hero_arien", "bots": {"hero_hanu": "random", "hero_brogan": "heuristic"}})
-        route = f"/__lab/games/{clone['game_id']}/responders"
-        self.assertEqual(set(self.client.get(route, headers=self.headers).json()["players"]), {"hero_arien", "hero_tigerclaw"})
-        self.post("/device/stop", {"game_id": clone["game_id"]})
-        self.assertEqual(self.client.get(route, headers=self.headers).json()["players"], [])
 
 
-    def test_ismcts_uses_default_search_with_heuristics_and_no_neural_imports(self):
-        from device_bots import bot_kinds, clone_bot_specs
-        if "ismcts" not in bot_kinds():
-            self.skipTest("requires bot-capable backend")
-        from goa2.server.bot_factory import agent_for_spec
-        from goa2.server.bot_models import SearchSettings
-        from automata.agents.ismcts_agent import ISMCTSAgent
-        import builtins
+    def test_game_backend_never_accepts_autonomous_bot_configuration(self):
+        source = self.post("/starter", {})
+        response = self.client.post("/__lab/clone", headers=self.headers, json={"situation_id":source["id"],"bots":{"hero_hanu":"random"}})
+        self.assertEqual(response.status_code,422)
+        clone=self.post("/clone",{"situation_id":source["id"]})
+        game=self.client.app.state.registry.get(clone["game_id"])
+        self.assertFalse(getattr(game,"bot_specs",{}))
+        self.assertIsNone(getattr(game,"bot_task",None))
+        self.assertEqual(self.client.get("/__lab/capabilities",headers=self.headers).json()["botKinds"],[])
+
+    def test_bot_state_is_transient_and_stale_decisions_do_not_mutate_games(self):
+        source=self.post("/starter",{})
+        clones=[self.post("/clone",{"situation_id":source["id"]}) for _ in range(2)]
+        games=[self.client.app.state.registry.get(c["game_id"]) for c in clones]
+        state_files=list(Path(os.environ["GOA2_LAB_DATA"]).rglob("decision-states/*.json"))
+        snapshot=self.client.get(f"/__lab/games/{clones[0]['game_id']}/bot-state",headers=self.headers).json()
+        self.assertEqual(snapshot["hash"],clones[0]["hash"])
+        self.assertEqual(list(Path(os.environ["GOA2_LAB_DATA"]).rglob("decision-states/*.json")),state_files)
+        hero=games[0].session.state.get_hero("hero_arien")
+        command={"games":[c["game_id"] for c in clones],"source":clones[0]["game_id"],"actor":"hero_arien","expectedHash":snapshot["hash"],"message":{"type":"COMMIT_CARD","card_id":hero.hand[0].id}}
+        self.post("/synchronize",command)
+        hashes=[self.module.canonical_hash(g.session.state.model_dump(mode="json")) for g in games]
+        self.assertEqual(hashes[0],hashes[1])
+        rejected=self.client.post("/__lab/synchronize",headers=self.headers,json=command)
+        self.assertEqual(rejected.status_code,409)
+        self.assertIn("stale",rejected.text)
+        self.assertEqual(hashes,[self.module.canonical_hash(g.session.state.model_dump(mode="json")) for g in games])
+        # The same command route works with a single independent/device game.
+        other=self.post("/clone",{"situation_id":source["id"]})
+        command.update(games=[other["game_id"]],source=other["game_id"])
+        self.post("/synchronize",command)
+
+    def test_device_clone_from_opaque_checkpoint_preserves_large_engine_integers(self):
         source = self.post("/starter", {})
         clone = self.post("/clone", {"situation_id": source["id"]})
         game = self.client.app.state.registry.get(clone["game_id"])
-        original_import = builtins.__import__
-        def no_neural(name, *args, **kwargs):
-            if name == "torch" or name.startswith(("torch.", "automata.models.shared_encoder", "automata.training")):
-                raise AssertionError("Neural/training import: " + name)
-            return original_import(name, *args, **kwargs)
-        with patch("builtins.__import__", new=no_neural):
-            spec = clone_bot_specs({"human_seat": "hero_arien", "bots": {"hero_hanu": "ismcts"}}, game.session.state)["hero_hanu"]
-            self.assertEqual(spec.search, SearchSettings())
-            self.assertEqual(spec.search.policy_source, "heuristic")
-            self.assertEqual(spec.search.value_source, "heuristic")
-            self.assertIsNone(spec.search.artifact)
-            agent = agent_for_spec(spec, state=game.session.state)
-            self.assertIsInstance(agent, ISMCTSAgent)
-            hero = game.session.state.get_hero("hero_hanu")
-            from automata.search.ismcts.engine import SearchDeadlineExceeded
-            try:
-                choice = agent.choose_planning(game.session.state, hero)
-            except SearchDeadlineExceeded:
-                # With default budgets a search may finish no rollout in time;
-                # the existing server coordinator handles this with Simple.
-                pass
-            else:
-                self.assertIsNotNone(choice)
-
+        game.session.state.rng_seed = 2**64 - 1
+        snapshot = self.client.get(f"/__lab/games/{clone['game_id']}/bot-state", headers=self.headers).json()
+        self.assertNotIn("checkpoint", snapshot)
+        self.assertEqual(json.loads(snapshot["checkpoint_json"])["state"]["rng_seed"], 2**64 - 1)
+        # Node forwards string contents unchanged even though its parsed metadata can be rounded.
+        copied = self.post("/clone", {"situation_id": source["id"], "checkpoint_json": snapshot["checkpoint_json"]})
+        self.assertEqual(copied["hash"], snapshot["hash"])
+        self.assertEqual(self.client.app.state.registry.get(copied["game_id"]).session.state.rng_seed, 2**64 - 1)
 
     def test_element_report_checkpoint_is_read_only_resumable_and_has_no_credentials(self):
         source = self.post("/starter", {})
@@ -589,7 +532,7 @@ class SituationTests(unittest.TestCase):
         review_id = "a" * 24
         review = {"id": review_id, "index": 1, "situationId": "e81bc3bd5fff"}
         captured = self.post("/device/capture", {
-            "game_id": clone["game_id"], "provenance": {"review": review},
+            "game_id": clone["game_id"], "provenance": {"review": review, "session": {"id": "b" * 24, "name": "Phone review", "startedAt": "2026-10-22T10:00:00Z"}},
             "presentation": {"pane": "heroes"}, "viewport": {"width": 378, "height": 781},
         })
         png = "data:image/png;base64," + base64.b64encode(b"\x89PNG\r\n\x1a\nfixture").decode()
@@ -600,6 +543,9 @@ class SituationTests(unittest.TestCase):
         folder = Path(self.temp.name) / "reports" / relative
         report = json.loads((folder / "report.json").read_text(encoding="utf-8"))
         self.assertEqual(report["review"], review)
+        self.assertEqual(report["session"]["name"], "Phone review")
+        self.assertIn("T", report["capturedAt"])
+        self.assertIn("report-captured-time", (folder / "index.html").read_text(encoding="utf-8"))
         self.assertIn("&lt;script&gt;", (folder / "index.html").read_text(encoding="utf-8"))
         situation = json.loads((folder / "situation.json").read_text(encoding="utf-8"))
         self.assertEqual(situation["provenance"]["report"], relative)

@@ -1,0 +1,2118 @@
+{
+  "scope": "24 defense situations; level, upgrade eligibility, paired items, exclusive card zones, turn slots, source-effect timing, initiative order, restoration and pending defender checked. Positions remain fabricated UI setups, not full-match replays.",
+  "situations": [
+    {
+      "key": "item-attack",
+      "file": ".layout-lab/situation-recipes/defense-abilities/item-attack.json",
+      "name": "Noble Blade with a +1 Attack item",
+      "description": "Noble Blade with a +1 Attack item. Attack 5; defense needed 5. Waiting for Brogan; no defense submitted. Attack item: slippery_ground; Levels: Arien 2, Hanu 1, Brogan 1, Tigerclaw 1",
+      "seat": "hero_brogan",
+      "selected": null,
+      "attack": 5,
+      "needed": 5,
+      "options": [
+        {
+          "id": "bulwark",
+          "text": "Bulwark (Def: 4)",
+          "metadata": {
+            "defense_value": 4,
+            "base_defense": 4
+          }
+        },
+        {
+          "id": "onslaught",
+          "text": "Onslaught (Def: 3)",
+          "metadata": {
+            "defense_value": 3,
+            "base_defense": 3
+          }
+        },
+        {
+          "id": "brutal_jab",
+          "text": "Brutal Jab (Def: 5)",
+          "metadata": {
+            "defense_value": 5,
+            "base_defense": 5
+          }
+        },
+        {
+          "id": "mad_dash",
+          "text": "Mad Dash (Def: 7)",
+          "metadata": {
+            "defense_value": 7,
+            "base_defense": 7
+          }
+        },
+        {
+          "id": "PASS",
+          "text": "PASS",
+          "metadata": {}
+        }
+      ],
+      "situationId": "baa455559b80",
+      "group": "cards/defense/abilities-and-effects",
+      "upgrades": {
+        "hero_arien": [
+          {
+            "level": 2,
+            "chosen": "expert_duelist",
+            "item": "slippery_ground"
+          }
+        ]
+      },
+      "timeline": {
+        "round": 2,
+        "turn": 1,
+        "current_order": [
+          {
+            "hero": "hero_arien",
+            "card": "noble_blade",
+            "initiative": 11,
+            "slot": 1,
+            "status": "acting"
+          },
+          {
+            "hero": "hero_brogan",
+            "card": "brogan_shield",
+            "initiative": 6,
+            "slot": 1,
+            "status": "unresolved"
+          },
+          {
+            "hero": "hero_hanu",
+            "card": "monkey_trick",
+            "initiative": 2,
+            "slot": 1,
+            "status": "unresolved"
+          },
+          {
+            "hero": "hero_tigerclaw",
+            "card": "light_fingered",
+            "initiative": 2,
+            "slot": 1,
+            "status": "unresolved"
+          }
+        ],
+        "prior_turn_actions": []
+      }
+    },
+    {
+      "key": "item-defense",
+      "file": ".layout-lab/situation-recipes/defense-abilities/item-defense.json",
+      "name": "Brogan defending with a +1 Defense item",
+      "description": "Brogan defending with a +1 Defense item. Attack 4; defense needed 4. Waiting for Brogan; no defense submitted. Defense item: war_drummer; Levels: Arien 1, Hanu 1, Brogan 2, Tigerclaw 1",
+      "seat": "hero_brogan",
+      "selected": null,
+      "attack": 4,
+      "needed": 4,
+      "options": [
+        {
+          "id": "bulwark",
+          "text": "Bulwark (Def: 5)",
+          "metadata": {
+            "defense_value": 5,
+            "base_defense": 4
+          }
+        },
+        {
+          "id": "onslaught",
+          "text": "Onslaught (Def: 4)",
+          "metadata": {
+            "defense_value": 4,
+            "base_defense": 3
+          }
+        },
+        {
+          "id": "brutal_jab",
+          "text": "Brutal Jab (Def: 6)",
+          "metadata": {
+            "defense_value": 6,
+            "base_defense": 5
+          }
+        },
+        {
+          "id": "mad_dash",
+          "text": "Mad Dash (Def: 8)",
+          "metadata": {
+            "defense_value": 8,
+            "base_defense": 7
+          }
+        },
+        {
+          "id": "PASS",
+          "text": "PASS",
+          "metadata": {}
+        }
+      ],
+      "situationId": "9b27d53430c5",
+      "group": "cards/defense/abilities-and-effects",
+      "upgrades": {
+        "hero_brogan": [
+          {
+            "level": 2,
+            "chosen": "bolster",
+            "item": "war_drummer"
+          }
+        ]
+      },
+      "timeline": {
+        "round": 2,
+        "turn": 1,
+        "current_order": [
+          {
+            "hero": "hero_arien",
+            "card": "noble_blade",
+            "initiative": 11,
+            "slot": 1,
+            "status": "acting"
+          },
+          {
+            "hero": "hero_brogan",
+            "card": "bolster",
+            "initiative": 5,
+            "slot": 1,
+            "status": "unresolved"
+          },
+          {
+            "hero": "hero_hanu",
+            "card": "monkey_trick",
+            "initiative": 2,
+            "slot": 1,
+            "status": "unresolved"
+          },
+          {
+            "hero": "hero_tigerclaw",
+            "card": "light_fingered",
+            "initiative": 2,
+            "slot": 1,
+            "status": "unresolved"
+          }
+        ],
+        "prior_turn_actions": []
+      }
+    },
+    {
+      "key": "weakness",
+      "file": ".layout-lab/situation-recipes/defense-abilities/weakness.json",
+      "name": "Dodger Weakness reduces Rogue Wave to zero Attack",
+      "description": "Dodger Weakness reduces Rogue Wave to zero Attack. Attack 0; defense needed 0. Waiting for Brogan; no defense submitted. Levels: Arien 2, Hanu 1, Brogan 1, Dodger 2",
+      "seat": "hero_brogan",
+      "selected": null,
+      "attack": 0,
+      "needed": 0,
+      "options": [
+        {
+          "id": "bulwark",
+          "text": "Bulwark (Def: 4)",
+          "metadata": {
+            "defense_value": 4,
+            "base_defense": 4
+          }
+        },
+        {
+          "id": "onslaught",
+          "text": "Onslaught (Def: 3)",
+          "metadata": {
+            "defense_value": 3,
+            "base_defense": 3
+          }
+        },
+        {
+          "id": "brutal_jab",
+          "text": "Brutal Jab (Def: 5)",
+          "metadata": {
+            "defense_value": 5,
+            "base_defense": 5
+          }
+        },
+        {
+          "id": "mad_dash",
+          "text": "Mad Dash (Def: 7)",
+          "metadata": {
+            "defense_value": 7,
+            "base_defense": 7
+          }
+        },
+        {
+          "id": "PASS",
+          "text": "PASS",
+          "metadata": {}
+        }
+      ],
+      "situationId": "5f97f72cd768",
+      "group": "cards/defense/abilities-and-effects",
+      "upgrades": {
+        "hero_dodger": [
+          {
+            "level": 2,
+            "chosen": "weakness",
+            "item": "vampiric_shield"
+          }
+        ],
+        "hero_arien": [
+          {
+            "level": 2,
+            "chosen": "rogue_wave",
+            "item": "raging_stream"
+          }
+        ]
+      },
+      "timeline": {
+        "round": 2,
+        "turn": 1,
+        "current_order": [
+          {
+            "hero": "hero_dodger",
+            "card": "weakness",
+            "initiative": 11,
+            "slot": 1,
+            "status": "resolved"
+          },
+          {
+            "hero": "hero_arien",
+            "card": "rogue_wave",
+            "initiative": 9,
+            "slot": 1,
+            "status": "acting"
+          },
+          {
+            "hero": "hero_brogan",
+            "card": "brogan_shield",
+            "initiative": 6,
+            "slot": 1,
+            "status": "unresolved"
+          },
+          {
+            "hero": "hero_hanu",
+            "card": "monkey_trick",
+            "initiative": 2,
+            "slot": 1,
+            "status": "unresolved"
+          }
+        ],
+        "prior_turn_actions": []
+      }
+    },
+    {
+      "key": "no-primary-defense",
+      "file": ".layout-lab/situation-recipes/defense-abilities/no-primary-defense.json",
+      "name": "Flanking Ballista prevents primary defense actions",
+      "description": "Flanking Ballista prevents primary defense actions. Attack 7; defense needed 7. Waiting for Emmitt; no defense submitted. Levels: Tigerclaw 5, Hanu 1, Emmitt 1, Brogan 1",
+      "seat": "hero_emmitt",
+      "selected": null,
+      "attack": 7,
+      "needed": 7,
+      "options": [
+        {
+          "id": "time_snare",
+          "text": "Time Snare (Def: 3)",
+          "metadata": {
+            "defense_value": 3,
+            "base_defense": 3
+          }
+        },
+        {
+          "id": "temporal_punch",
+          "text": "Temporal Punch (Def: 7)",
+          "metadata": {
+            "defense_value": 7,
+            "base_defense": 7
+          }
+        },
+        {
+          "id": "reverse_time",
+          "text": "Reverse Time (Def: 2)",
+          "metadata": {
+            "defense_value": 2,
+            "base_defense": 2
+          }
+        },
+        {
+          "id": "PASS",
+          "text": "PASS",
+          "metadata": {}
+        }
+      ],
+      "situationId": "8cba5dd05cc6",
+      "group": "cards/defense/abilities-and-effects",
+      "upgrades": {
+        "hero_tigerclaw": [
+          {
+            "level": 2,
+            "chosen": "sidestep",
+            "item": "parry"
+          },
+          {
+            "level": 3,
+            "chosen": "pick_pocket",
+            "item": "poisoned_dagger"
+          },
+          {
+            "level": 4,
+            "chosen": "backstab",
+            "item": "combat_reflexes"
+          },
+          {
+            "level": 5,
+            "chosen": "backstab_with_a_ballista",
+            "item": "leaping_strike"
+          }
+        ]
+      },
+      "timeline": {
+        "round": 2,
+        "turn": 1,
+        "current_order": [
+          {
+            "hero": "hero_tigerclaw",
+            "card": "backstab_with_a_ballista",
+            "initiative": 12,
+            "slot": 1,
+            "status": "acting"
+          },
+          {
+            "hero": "hero_emmitt",
+            "card": "time_walk",
+            "initiative": 6,
+            "slot": 1,
+            "status": "unresolved"
+          },
+          {
+            "hero": "hero_brogan",
+            "card": "brogan_shield",
+            "initiative": 6,
+            "slot": 1,
+            "status": "unresolved"
+          },
+          {
+            "hero": "hero_hanu",
+            "card": "monkey_trick",
+            "initiative": 2,
+            "slot": 1,
+            "status": "unresolved"
+          }
+        ],
+        "prior_turn_actions": []
+      }
+    },
+    {
+      "key": "misa-defense",
+      "file": ".layout-lab/situation-recipes/defense-abilities/misa-defense.json",
+      "name": "Misa defending with Matter of Honor active",
+      "description": "Misa defending with Matter of Honor active. Attack 6; defense needed 6. Waiting for Misa; no defense submitted. Levels: Arien 1, Hanu 1, Misa 2, Tigerclaw 1; Matter of Honor +3 Defense plus the mandatory paired Power Shot +1 Defense item; attack resolves at Initiative 8 after Misa at 9.",
+      "seat": "hero_misa",
+      "selected": null,
+      "attack": 6,
+      "needed": 6,
+      "options": [
+        {
+          "id": "swoop_in",
+          "text": "Swoop In (Def: 7)",
+          "metadata": {
+            "defense_value": 7,
+            "base_defense": 3
+          }
+        },
+        {
+          "id": "watch_how_i_soar",
+          "text": "Watch How I Soar (Def: 6)",
+          "metadata": {
+            "defense_value": 6,
+            "base_defense": 2
+          }
+        },
+        {
+          "id": "sudden_breeze",
+          "text": "Sudden Breeze (Def: 9)",
+          "metadata": {
+            "defense_value": 9,
+            "base_defense": 5
+          }
+        },
+        {
+          "id": "focus",
+          "text": "Focus (Def: 7)",
+          "metadata": {
+            "defense_value": 7,
+            "base_defense": 3
+          }
+        },
+        {
+          "id": "PASS",
+          "text": "PASS",
+          "metadata": {}
+        }
+      ],
+      "situationId": "69fc0d04c54f",
+      "group": "cards/defense/abilities-and-effects",
+      "upgrades": {
+        "hero_misa": [
+          {
+            "level": 2,
+            "chosen": "matter_of_honor",
+            "item": "power_shot"
+          }
+        ]
+      },
+      "timeline": {
+        "round": 2,
+        "turn": 1,
+        "current_order": [
+          {
+            "hero": "hero_misa",
+            "card": "matter_of_honor",
+            "initiative": 9,
+            "slot": 1,
+            "status": "resolved"
+          },
+          {
+            "hero": "hero_arien",
+            "card": "dangerous_current",
+            "initiative": 8,
+            "slot": 1,
+            "status": "acting"
+          },
+          {
+            "hero": "hero_hanu",
+            "card": "monkey_trick",
+            "initiative": 2,
+            "slot": 1,
+            "status": "unresolved"
+          },
+          {
+            "hero": "hero_tigerclaw",
+            "card": "light_fingered",
+            "initiative": 2,
+            "slot": 1,
+            "status": "unresolved"
+          }
+        ],
+        "prior_turn_actions": []
+      }
+    },
+    {
+      "key": "poison-defense",
+      "file": ".layout-lab/situation-recipes/defense-abilities/poison-defense.json",
+      "name": "Poison marker reduces Brogan Defense by two",
+      "description": "Poison marker reduces Brogan Defense by two. Attack 4; defense needed 4. Waiting for Brogan; no defense submitted. Poisoned Dart marker -2 on Brogan; Levels: Arien 1, Hanu 1, Brogan 1, Tigerclaw 5",
+      "seat": "hero_brogan",
+      "selected": null,
+      "attack": 4,
+      "needed": 4,
+      "options": [
+        {
+          "id": "bulwark",
+          "text": "Bulwark (Def: 2)",
+          "metadata": {
+            "defense_value": 2,
+            "base_defense": 4
+          }
+        },
+        {
+          "id": "brutal_jab",
+          "text": "Brutal Jab (Def: 3)",
+          "metadata": {
+            "defense_value": 3,
+            "base_defense": 5
+          }
+        },
+        {
+          "id": "mad_dash",
+          "text": "Mad Dash (Def: 5)",
+          "metadata": {
+            "defense_value": 5,
+            "base_defense": 7
+          }
+        },
+        {
+          "id": "PASS",
+          "text": "PASS",
+          "metadata": {}
+        }
+      ],
+      "situationId": "939e43a3593b",
+      "group": "cards/defense/abilities-and-effects",
+      "upgrades": {
+        "hero_tigerclaw": [
+          {
+            "level": 2,
+            "chosen": "combat_reflexes",
+            "item": "backstab"
+          },
+          {
+            "level": 3,
+            "chosen": "sidestep",
+            "item": "parry"
+          },
+          {
+            "level": 4,
+            "chosen": "poisoned_dagger",
+            "item": "pick_pocket"
+          },
+          {
+            "level": 5,
+            "chosen": "poisoned_dart",
+            "item": "master_thief"
+          }
+        ]
+      },
+      "timeline": {
+        "round": 2,
+        "turn": 2,
+        "current_order": [
+          {
+            "hero": "hero_arien",
+            "card": "noble_blade",
+            "initiative": 11,
+            "slot": 2,
+            "status": "acting"
+          },
+          {
+            "hero": "hero_tigerclaw",
+            "card": "blend_into_shadows",
+            "initiative": 6,
+            "slot": 2,
+            "status": "unresolved"
+          },
+          {
+            "hero": "hero_brogan",
+            "card": "brogan_shield",
+            "initiative": 4,
+            "slot": 2,
+            "status": "unresolved"
+          },
+          {
+            "hero": "hero_hanu",
+            "card": "monkey_trick",
+            "initiative": 2,
+            "slot": 2,
+            "status": "unresolved"
+          }
+        ],
+        "prior_turn_actions": [
+          {
+            "hero": "hero_arien",
+            "card": "aspiring_duelist",
+            "action": "secondary Movement",
+            "slot": 1
+          },
+          {
+            "hero": "hero_hanu",
+            "card": "fight_and_flight",
+            "action": "secondary Movement",
+            "slot": 1
+          },
+          {
+            "hero": "hero_brogan",
+            "card": "onslaught",
+            "action": "secondary Movement",
+            "slot": 1
+          },
+          {
+            "hero": "hero_tigerclaw",
+            "card": "poisoned_dart",
+            "action": "source primary action",
+            "slot": 1
+          }
+        ]
+      }
+    },
+    {
+      "key": "poison-attack",
+      "file": ".layout-lab/situation-recipes/defense-abilities/poison-attack.json",
+      "name": "Poison marker reduces Noble Blade Attack by two",
+      "description": "Poison marker reduces Noble Blade Attack by two. Attack 2; defense needed 2. Waiting for Brogan; no defense submitted. Poisoned Dart marker -2 on Arien; Levels: Arien 1, Hanu 1, Brogan 1, Tigerclaw 5",
+      "seat": "hero_brogan",
+      "selected": null,
+      "attack": 2,
+      "needed": 2,
+      "options": [
+        {
+          "id": "bulwark",
+          "text": "Bulwark (Def: 4)",
+          "metadata": {
+            "defense_value": 4,
+            "base_defense": 4
+          }
+        },
+        {
+          "id": "brutal_jab",
+          "text": "Brutal Jab (Def: 5)",
+          "metadata": {
+            "defense_value": 5,
+            "base_defense": 5
+          }
+        },
+        {
+          "id": "mad_dash",
+          "text": "Mad Dash (Def: 7)",
+          "metadata": {
+            "defense_value": 7,
+            "base_defense": 7
+          }
+        },
+        {
+          "id": "PASS",
+          "text": "PASS",
+          "metadata": {}
+        }
+      ],
+      "situationId": "f1a4454d8dcc",
+      "group": "cards/defense/abilities-and-effects",
+      "upgrades": {
+        "hero_tigerclaw": [
+          {
+            "level": 2,
+            "chosen": "combat_reflexes",
+            "item": "backstab"
+          },
+          {
+            "level": 3,
+            "chosen": "sidestep",
+            "item": "parry"
+          },
+          {
+            "level": 4,
+            "chosen": "poisoned_dagger",
+            "item": "pick_pocket"
+          },
+          {
+            "level": 5,
+            "chosen": "poisoned_dart",
+            "item": "master_thief"
+          }
+        ]
+      },
+      "timeline": {
+        "round": 2,
+        "turn": 2,
+        "current_order": [
+          {
+            "hero": "hero_arien",
+            "card": "noble_blade",
+            "initiative": 9,
+            "slot": 2,
+            "status": "acting"
+          },
+          {
+            "hero": "hero_brogan",
+            "card": "brogan_shield",
+            "initiative": 6,
+            "slot": 2,
+            "status": "unresolved"
+          },
+          {
+            "hero": "hero_tigerclaw",
+            "card": "blend_into_shadows",
+            "initiative": 6,
+            "slot": 2,
+            "status": "unresolved"
+          },
+          {
+            "hero": "hero_hanu",
+            "card": "monkey_trick",
+            "initiative": 2,
+            "slot": 2,
+            "status": "unresolved"
+          }
+        ],
+        "prior_turn_actions": [
+          {
+            "hero": "hero_arien",
+            "card": "aspiring_duelist",
+            "action": "secondary Movement",
+            "slot": 1
+          },
+          {
+            "hero": "hero_hanu",
+            "card": "fight_and_flight",
+            "action": "secondary Movement",
+            "slot": 1
+          },
+          {
+            "hero": "hero_brogan",
+            "card": "onslaught",
+            "action": "secondary Movement",
+            "slot": 1
+          },
+          {
+            "hero": "hero_tigerclaw",
+            "card": "poisoned_dart",
+            "action": "source primary action",
+            "slot": 1
+          }
+        ]
+      }
+    },
+    {
+      "key": "barrier-one",
+      "file": ".layout-lab/situation-recipes/defense-abilities/barrier-one.json",
+      "name": "Brogan adjacent to one friendly Barrier token",
+      "description": "Brogan adjacent to one friendly Barrier token. Attack 4; defense needed 4. Waiting for Brogan; no defense submitted. 1 adjacent friendly barrier aura(s) from real card placement; Levels: Arien 1, Hanu 1, Brogan 1, Trinkets 2",
+      "seat": "hero_brogan",
+      "selected": null,
+      "attack": 4,
+      "needed": 4,
+      "options": [
+        {
+          "id": "bulwark",
+          "text": "Bulwark (Def: 5)",
+          "metadata": {
+            "defense_value": 5,
+            "base_defense": 4
+          }
+        },
+        {
+          "id": "brutal_jab",
+          "text": "Brutal Jab (Def: 6)",
+          "metadata": {
+            "defense_value": 6,
+            "base_defense": 5
+          }
+        },
+        {
+          "id": "mad_dash",
+          "text": "Mad Dash (Def: 8)",
+          "metadata": {
+            "defense_value": 8,
+            "base_defense": 7
+          }
+        },
+        {
+          "id": "PASS",
+          "text": "PASS",
+          "metadata": {}
+        }
+      ],
+      "situationId": "f3ef37781f36",
+      "group": "cards/defense/abilities-and-effects",
+      "upgrades": {
+        "hero_trinkets": [
+          {
+            "level": 2,
+            "chosen": "deployable_barrier",
+            "item": "disruptor_pulse"
+          }
+        ]
+      },
+      "timeline": {
+        "round": 2,
+        "turn": 2,
+        "current_order": [
+          {
+            "hero": "hero_arien",
+            "card": "noble_blade",
+            "initiative": 11,
+            "slot": 2,
+            "status": "acting"
+          },
+          {
+            "hero": "hero_brogan",
+            "card": "brogan_shield",
+            "initiative": 6,
+            "slot": 2,
+            "status": "unresolved"
+          },
+          {
+            "hero": "hero_trinkets",
+            "card": "early_prototype",
+            "initiative": 3,
+            "slot": 2,
+            "status": "unresolved"
+          },
+          {
+            "hero": "hero_hanu",
+            "card": "monkey_trick",
+            "initiative": 2,
+            "slot": 2,
+            "status": "unresolved"
+          }
+        ],
+        "prior_turn_actions": [
+          {
+            "hero": "hero_arien",
+            "card": "aspiring_duelist",
+            "action": "secondary Movement",
+            "slot": 1
+          },
+          {
+            "hero": "hero_hanu",
+            "card": "fight_and_flight",
+            "action": "secondary Movement",
+            "slot": 1
+          },
+          {
+            "hero": "hero_brogan",
+            "card": "onslaught",
+            "action": "secondary Movement",
+            "slot": 1
+          },
+          {
+            "hero": "hero_trinkets",
+            "card": "deployable_barrier",
+            "action": "source primary action",
+            "slot": 1
+          }
+        ]
+      }
+    },
+    {
+      "key": "barrier-two",
+      "file": ".layout-lab/situation-recipes/defense-abilities/barrier-two.json",
+      "name": "Brogan adjacent to two friendly Barrier tokens",
+      "description": "Brogan adjacent to two friendly Barrier tokens. Attack 4; defense needed 4. Waiting for Brogan; no defense submitted. 2 adjacent friendly barrier aura(s) from real card placement; Levels: Arien 1, Hanu 1, Brogan 1, Trinkets 2",
+      "seat": "hero_brogan",
+      "selected": null,
+      "attack": 4,
+      "needed": 4,
+      "options": [
+        {
+          "id": "bulwark",
+          "text": "Bulwark (Def: 6)",
+          "metadata": {
+            "defense_value": 6,
+            "base_defense": 4
+          }
+        },
+        {
+          "id": "brutal_jab",
+          "text": "Brutal Jab (Def: 7)",
+          "metadata": {
+            "defense_value": 7,
+            "base_defense": 5
+          }
+        },
+        {
+          "id": "mad_dash",
+          "text": "Mad Dash (Def: 9)",
+          "metadata": {
+            "defense_value": 9,
+            "base_defense": 7
+          }
+        },
+        {
+          "id": "PASS",
+          "text": "PASS",
+          "metadata": {}
+        }
+      ],
+      "situationId": "357745484765",
+      "group": "cards/defense/abilities-and-effects",
+      "upgrades": {
+        "hero_trinkets": [
+          {
+            "level": 2,
+            "chosen": "deployable_barrier",
+            "item": "disruptor_pulse"
+          }
+        ]
+      },
+      "timeline": {
+        "round": 2,
+        "turn": 2,
+        "current_order": [
+          {
+            "hero": "hero_arien",
+            "card": "noble_blade",
+            "initiative": 11,
+            "slot": 2,
+            "status": "acting"
+          },
+          {
+            "hero": "hero_brogan",
+            "card": "brogan_shield",
+            "initiative": 6,
+            "slot": 2,
+            "status": "unresolved"
+          },
+          {
+            "hero": "hero_trinkets",
+            "card": "early_prototype",
+            "initiative": 3,
+            "slot": 2,
+            "status": "unresolved"
+          },
+          {
+            "hero": "hero_hanu",
+            "card": "monkey_trick",
+            "initiative": 2,
+            "slot": 2,
+            "status": "unresolved"
+          }
+        ],
+        "prior_turn_actions": [
+          {
+            "hero": "hero_arien",
+            "card": "aspiring_duelist",
+            "action": "secondary Movement",
+            "slot": 1
+          },
+          {
+            "hero": "hero_hanu",
+            "card": "fight_and_flight",
+            "action": "secondary Movement",
+            "slot": 1
+          },
+          {
+            "hero": "hero_brogan",
+            "card": "onslaught",
+            "action": "secondary Movement",
+            "slot": 1
+          },
+          {
+            "hero": "hero_trinkets",
+            "card": "deployable_barrier",
+            "action": "source primary action",
+            "slot": 1
+          }
+        ]
+      }
+    },
+    {
+      "key": "min-attack",
+      "file": ".layout-lab/situation-recipes/defense-abilities/min-attack.json",
+      "name": "Min attacking with Inner Strength and doubled items",
+      "description": "Min attacking with Inner Strength and doubled items. Attack 4; defense needed 4. Waiting for Brogan; no defense submitted. Attack item: cluster_mine; Defense item: vanish; Levels: Min 3, Hanu 1, Brogan 1, Tigerclaw 1",
+      "seat": "hero_brogan",
+      "selected": null,
+      "attack": 4,
+      "needed": 4,
+      "options": [
+        {
+          "id": "bulwark",
+          "text": "Bulwark (Def: 4)",
+          "metadata": {
+            "defense_value": 4,
+            "base_defense": 4
+          }
+        },
+        {
+          "id": "brutal_jab",
+          "text": "Brutal Jab (Def: 5)",
+          "metadata": {
+            "defense_value": 5,
+            "base_defense": 5
+          }
+        },
+        {
+          "id": "mad_dash",
+          "text": "Mad Dash (Def: 7)",
+          "metadata": {
+            "defense_value": 7,
+            "base_defense": 7
+          }
+        },
+        {
+          "id": "PASS",
+          "text": "PASS",
+          "metadata": {}
+        }
+      ],
+      "situationId": "dca380995b59",
+      "group": "cards/defense/abilities-and-effects",
+      "upgrades": {
+        "hero_min": [
+          {
+            "level": 2,
+            "chosen": "inner_strength",
+            "item": "vanish"
+          },
+          {
+            "level": 3,
+            "chosen": "death_grenade",
+            "item": "cluster_mine"
+          }
+        ]
+      },
+      "timeline": {
+        "round": 2,
+        "turn": 2,
+        "current_order": [
+          {
+            "hero": "hero_min",
+            "card": "fast_as_lightning",
+            "initiative": 13,
+            "slot": 2,
+            "status": "acting"
+          },
+          {
+            "hero": "hero_brogan",
+            "card": "brogan_shield",
+            "initiative": 6,
+            "slot": 2,
+            "status": "unresolved"
+          },
+          {
+            "hero": "hero_hanu",
+            "card": "monkey_trick",
+            "initiative": 2,
+            "slot": 2,
+            "status": "unresolved"
+          },
+          {
+            "hero": "hero_tigerclaw",
+            "card": "light_fingered",
+            "initiative": 2,
+            "slot": 2,
+            "status": "unresolved"
+          }
+        ],
+        "prior_turn_actions": [
+          {
+            "hero": "hero_min",
+            "card": "inner_strength",
+            "action": "source primary action",
+            "slot": 1
+          },
+          {
+            "hero": "hero_hanu",
+            "card": "fight_and_flight",
+            "action": "secondary Movement",
+            "slot": 1
+          },
+          {
+            "hero": "hero_brogan",
+            "card": "onslaught",
+            "action": "secondary Movement",
+            "slot": 1
+          },
+          {
+            "hero": "hero_tigerclaw",
+            "card": "blink_strike",
+            "action": "secondary Movement",
+            "slot": 1
+          }
+        ]
+      }
+    },
+    {
+      "key": "min-defense",
+      "file": ".layout-lab/situation-recipes/defense-abilities/min-defense.json",
+      "name": "Min defending with Inner Strength and doubled items",
+      "description": "Min defending with Inner Strength and doubled items. Attack 4; defense needed 4. Waiting for Min; no defense submitted. Attack item: cluster_mine; Defense item: vanish; Levels: Arien 1, Hanu 1, Min 3, Tigerclaw 1",
+      "seat": "hero_min",
+      "selected": null,
+      "attack": 4,
+      "needed": 4,
+      "options": [
+        {
+          "id": "fast_as_lightning",
+          "text": "Fast as Lightning (Def: 3)",
+          "metadata": {
+            "defense_value": 3,
+            "base_defense": 1
+          }
+        },
+        {
+          "id": "smoke_bomb",
+          "text": "Smoke Bomb (Def: 3)",
+          "metadata": {
+            "defense_value": 3,
+            "base_defense": 1
+          }
+        },
+        {
+          "id": "death_grenade",
+          "text": "Death Grenade (Def: 6)",
+          "metadata": {
+            "defense_value": 6,
+            "base_defense": 4
+          }
+        },
+        {
+          "id": "PASS",
+          "text": "PASS",
+          "metadata": {}
+        }
+      ],
+      "situationId": "537e8fabb644",
+      "group": "cards/defense/abilities-and-effects",
+      "upgrades": {
+        "hero_min": [
+          {
+            "level": 2,
+            "chosen": "inner_strength",
+            "item": "vanish"
+          },
+          {
+            "level": 3,
+            "chosen": "death_grenade",
+            "item": "cluster_mine"
+          }
+        ]
+      },
+      "timeline": {
+        "round": 2,
+        "turn": 2,
+        "current_order": [
+          {
+            "hero": "hero_arien",
+            "card": "noble_blade",
+            "initiative": 11,
+            "slot": 2,
+            "status": "acting"
+          },
+          {
+            "hero": "hero_min",
+            "card": "crane_stance",
+            "initiative": 9,
+            "slot": 2,
+            "status": "unresolved"
+          },
+          {
+            "hero": "hero_hanu",
+            "card": "monkey_trick",
+            "initiative": 2,
+            "slot": 2,
+            "status": "unresolved"
+          },
+          {
+            "hero": "hero_tigerclaw",
+            "card": "light_fingered",
+            "initiative": 2,
+            "slot": 2,
+            "status": "unresolved"
+          }
+        ],
+        "prior_turn_actions": [
+          {
+            "hero": "hero_arien",
+            "card": "aspiring_duelist",
+            "action": "secondary Movement",
+            "slot": 1
+          },
+          {
+            "hero": "hero_hanu",
+            "card": "fight_and_flight",
+            "action": "secondary Movement",
+            "slot": 1
+          },
+          {
+            "hero": "hero_min",
+            "card": "inner_strength",
+            "action": "source primary action",
+            "slot": 1
+          },
+          {
+            "hero": "hero_tigerclaw",
+            "card": "blink_strike",
+            "action": "secondary Movement",
+            "slot": 1
+          }
+        ]
+      }
+    },
+    {
+      "key": "stone-carapace",
+      "file": ".layout-lab/situation-recipes/defense-abilities/stone-carapace.json",
+      "name": "Mrak can defend with resolved Stone Carapace",
+      "description": "Mrak can defend with resolved Stone Carapace. Attack 4; defense needed 4. Waiting for Mrak; no defense submitted. Levels: Arien 1, Hanu 1, Mrak 2, Tigerclaw 1",
+      "seat": "hero_mrak",
+      "selected": "stone_carapace",
+      "attack": 4,
+      "needed": 4,
+      "options": [
+        {
+          "id": "boulder_rush",
+          "text": "Boulder Rush (Def: 6)",
+          "metadata": {
+            "defense_value": 6,
+            "base_defense": 6
+          }
+        },
+        {
+          "id": "stone_grip",
+          "text": "Stone Grip (Def: 4)",
+          "metadata": {
+            "defense_value": 4,
+            "base_defense": 4
+          }
+        },
+        {
+          "id": "fissure",
+          "text": "Fissure (Def: 3)",
+          "metadata": {
+            "defense_value": 3,
+            "base_defense": 3
+          }
+        },
+        {
+          "id": "stone_carapace",
+          "text": "Stone Carapace (Def: 6)",
+          "metadata": {
+            "defense_value": 6,
+            "base_defense": 6
+          }
+        },
+        {
+          "id": "PASS",
+          "text": "PASS",
+          "metadata": {}
+        }
+      ],
+      "situationId": "64f65111b0d6",
+      "group": "cards/defense/abilities-and-effects",
+      "upgrades": {
+        "hero_mrak": [
+          {
+            "level": 2,
+            "chosen": "stone_carapace",
+            "item": "seismic_assault"
+          }
+        ]
+      },
+      "timeline": {
+        "round": 2,
+        "turn": 2,
+        "current_order": [
+          {
+            "hero": "hero_arien",
+            "card": "noble_blade",
+            "initiative": 11,
+            "slot": 2,
+            "status": "acting"
+          },
+          {
+            "hero": "hero_mrak",
+            "card": "treacherous_ground",
+            "initiative": 7,
+            "slot": 2,
+            "status": "unresolved"
+          },
+          {
+            "hero": "hero_hanu",
+            "card": "monkey_trick",
+            "initiative": 2,
+            "slot": 2,
+            "status": "unresolved"
+          },
+          {
+            "hero": "hero_tigerclaw",
+            "card": "light_fingered",
+            "initiative": 2,
+            "slot": 2,
+            "status": "unresolved"
+          }
+        ],
+        "prior_turn_actions": [
+          {
+            "hero": "hero_arien",
+            "card": "aspiring_duelist",
+            "action": "secondary Movement",
+            "slot": 1
+          },
+          {
+            "hero": "hero_hanu",
+            "card": "fight_and_flight",
+            "action": "secondary Movement",
+            "slot": 1
+          },
+          {
+            "hero": "hero_mrak",
+            "card": "stone_carapace",
+            "action": "source primary action",
+            "slot": 1
+          },
+          {
+            "hero": "hero_tigerclaw",
+            "card": "blink_strike",
+            "action": "secondary Movement",
+            "slot": 1
+          }
+        ]
+      }
+    },
+    {
+      "key": "temporal-punch",
+      "file": ".layout-lab/situation-recipes/defense-abilities/temporal-punch.json",
+      "name": "Temporal Punch uses Initiative to defend",
+      "description": "Temporal Punch uses Initiative to defend. Attack 9; defense needed 9. Waiting for Brogan; no defense submitted. Levels: Emmitt 1, Hanu 1, Brogan 1, Tigerclaw 1",
+      "seat": "hero_brogan",
+      "selected": null,
+      "attack": 9,
+      "needed": 9,
+      "options": [
+        {
+          "id": "bulwark",
+          "text": "Bulwark (Init: 12)",
+          "metadata": {
+            "defense_value": 12,
+            "base_defense": 12
+          }
+        },
+        {
+          "id": "onslaught",
+          "text": "Onslaught (Init: 11)",
+          "metadata": {
+            "defense_value": 11,
+            "base_defense": 11
+          }
+        },
+        {
+          "id": "brutal_jab",
+          "text": "Brutal Jab (Init: 8)",
+          "metadata": {
+            "defense_value": 8,
+            "base_defense": 8
+          }
+        },
+        {
+          "id": "mad_dash",
+          "text": "Mad Dash (Init: 7)",
+          "metadata": {
+            "defense_value": 7,
+            "base_defense": 7
+          }
+        },
+        {
+          "id": "PASS",
+          "text": "PASS",
+          "metadata": {}
+        }
+      ],
+      "situationId": "0251584646bd",
+      "group": "cards/defense/abilities-and-effects",
+      "upgrades": {},
+      "timeline": {
+        "round": 1,
+        "turn": 1,
+        "current_order": [
+          {
+            "hero": "hero_emmitt",
+            "card": "temporal_punch",
+            "initiative": 7,
+            "slot": 1,
+            "status": "acting"
+          },
+          {
+            "hero": "hero_brogan",
+            "card": "brogan_shield",
+            "initiative": 6,
+            "slot": 1,
+            "status": "unresolved"
+          },
+          {
+            "hero": "hero_hanu",
+            "card": "monkey_trick",
+            "initiative": 2,
+            "slot": 1,
+            "status": "unresolved"
+          },
+          {
+            "hero": "hero_tigerclaw",
+            "card": "light_fingered",
+            "initiative": 2,
+            "slot": 1,
+            "status": "unresolved"
+          }
+        ],
+        "prior_turn_actions": []
+      }
+    },
+    {
+      "key": "no-minions",
+      "file": ".layout-lab/situation-recipes/defense-variants/no-minions.json",
+      "name": "Brogan - no minion modifier",
+      "description": "Attack 4; minion modifier +0; defense needed 4. Waiting for Brogan; no defense submitted.",
+      "seat": "hero_brogan",
+      "selected": null,
+      "attack": 4,
+      "minionModifier": 0,
+      "needed": 4,
+      "placements": [],
+      "situationId": "0bf0121a1aef",
+      "group": "cards/defense/minions-and-skills",
+      "upgrades": {},
+      "timeline": {
+        "round": 1,
+        "turn": 1,
+        "current_order": [
+          {
+            "hero": "hero_arien",
+            "card": "noble_blade",
+            "initiative": 11,
+            "slot": 1,
+            "status": "acting"
+          },
+          {
+            "hero": "hero_brogan",
+            "card": "brogan_shield",
+            "initiative": 6,
+            "slot": 1,
+            "status": "unresolved"
+          },
+          {
+            "hero": "hero_hanu",
+            "card": "monkey_trick",
+            "initiative": 2,
+            "slot": 1,
+            "status": "unresolved"
+          },
+          {
+            "hero": "hero_tigerclaw",
+            "card": "light_fingered",
+            "initiative": 2,
+            "slot": 1,
+            "status": "unresolved"
+          }
+        ],
+        "prior_turn_actions": []
+      }
+    },
+    {
+      "key": "friendly-melee",
+      "file": ".layout-lab/situation-recipes/defense-variants/friendly-melee.json",
+      "name": "Brogan - friendly melee support",
+      "description": "Attack 4; minion modifier +1; defense needed 3. Waiting for Brogan; no defense submitted.",
+      "seat": "hero_brogan",
+      "selected": null,
+      "attack": 4,
+      "minionModifier": 1,
+      "needed": 3,
+      "placements": [
+        {
+          "id": "minion_48",
+          "team": "BLUE",
+          "type": "MELEE",
+          "distance": 1,
+          "hex": {
+            "q": -1,
+            "r": 1,
+            "s": 0
+          }
+        }
+      ],
+      "situationId": "1e21d49cee63",
+      "group": "cards/defense/minions-and-skills",
+      "upgrades": {},
+      "timeline": {
+        "round": 1,
+        "turn": 1,
+        "current_order": [
+          {
+            "hero": "hero_arien",
+            "card": "noble_blade",
+            "initiative": 11,
+            "slot": 1,
+            "status": "acting"
+          },
+          {
+            "hero": "hero_brogan",
+            "card": "brogan_shield",
+            "initiative": 6,
+            "slot": 1,
+            "status": "unresolved"
+          },
+          {
+            "hero": "hero_hanu",
+            "card": "monkey_trick",
+            "initiative": 2,
+            "slot": 1,
+            "status": "unresolved"
+          },
+          {
+            "hero": "hero_tigerclaw",
+            "card": "light_fingered",
+            "initiative": 2,
+            "slot": 1,
+            "status": "unresolved"
+          }
+        ],
+        "prior_turn_actions": []
+      }
+    },
+    {
+      "key": "friendly-heavy",
+      "file": ".layout-lab/situation-recipes/defense-variants/friendly-heavy.json",
+      "name": "Brogan - friendly heavy support",
+      "description": "Attack 4; minion modifier +1; defense needed 3. Waiting for Brogan; no defense submitted.",
+      "seat": "hero_brogan",
+      "selected": null,
+      "attack": 4,
+      "minionModifier": 1,
+      "needed": 3,
+      "placements": [
+        {
+          "id": "minion_48",
+          "team": "BLUE",
+          "type": "HEAVY",
+          "distance": 1,
+          "hex": {
+            "q": -1,
+            "r": 1,
+            "s": 0
+          }
+        }
+      ],
+      "situationId": "a6bb811ec258",
+      "group": "cards/defense/minions-and-skills",
+      "upgrades": {},
+      "timeline": {
+        "round": 1,
+        "turn": 1,
+        "current_order": [
+          {
+            "hero": "hero_arien",
+            "card": "noble_blade",
+            "initiative": 11,
+            "slot": 1,
+            "status": "acting"
+          },
+          {
+            "hero": "hero_brogan",
+            "card": "brogan_shield",
+            "initiative": 6,
+            "slot": 1,
+            "status": "unresolved"
+          },
+          {
+            "hero": "hero_hanu",
+            "card": "monkey_trick",
+            "initiative": 2,
+            "slot": 1,
+            "status": "unresolved"
+          },
+          {
+            "hero": "hero_tigerclaw",
+            "card": "light_fingered",
+            "initiative": 2,
+            "slot": 1,
+            "status": "unresolved"
+          }
+        ],
+        "prior_turn_actions": []
+      }
+    },
+    {
+      "key": "friendly-ranged",
+      "file": ".layout-lab/situation-recipes/defense-variants/friendly-ranged.json",
+      "name": "Brogan - friendly ranged does not support defense",
+      "description": "Attack 4; minion modifier +0; defense needed 4. Waiting for Brogan; no defense submitted.",
+      "seat": "hero_brogan",
+      "selected": null,
+      "attack": 4,
+      "minionModifier": 0,
+      "needed": 4,
+      "placements": [
+        {
+          "id": "minion_48",
+          "team": "BLUE",
+          "type": "RANGED",
+          "distance": 1,
+          "hex": {
+            "q": -1,
+            "r": 1,
+            "s": 0
+          }
+        }
+      ],
+      "situationId": "09f923ecb882",
+      "group": "cards/defense/minions-and-skills",
+      "upgrades": {},
+      "timeline": {
+        "round": 1,
+        "turn": 1,
+        "current_order": [
+          {
+            "hero": "hero_arien",
+            "card": "noble_blade",
+            "initiative": 11,
+            "slot": 1,
+            "status": "acting"
+          },
+          {
+            "hero": "hero_brogan",
+            "card": "brogan_shield",
+            "initiative": 6,
+            "slot": 1,
+            "status": "unresolved"
+          },
+          {
+            "hero": "hero_hanu",
+            "card": "monkey_trick",
+            "initiative": 2,
+            "slot": 1,
+            "status": "unresolved"
+          },
+          {
+            "hero": "hero_tigerclaw",
+            "card": "light_fingered",
+            "initiative": 2,
+            "slot": 1,
+            "status": "unresolved"
+          }
+        ],
+        "prior_turn_actions": []
+      }
+    },
+    {
+      "key": "enemy-melee",
+      "file": ".layout-lab/situation-recipes/defense-variants/enemy-melee.json",
+      "name": "Brogan - enemy melee pressure",
+      "description": "Attack 4; minion modifier -1; defense needed 5. Waiting for Brogan; no defense submitted.",
+      "seat": "hero_brogan",
+      "selected": null,
+      "attack": 4,
+      "minionModifier": -1,
+      "needed": 5,
+      "placements": [
+        {
+          "id": "minion_48",
+          "team": "RED",
+          "type": "MELEE",
+          "distance": 1,
+          "hex": {
+            "q": -1,
+            "r": 1,
+            "s": 0
+          }
+        }
+      ],
+      "situationId": "716400e0470e",
+      "group": "cards/defense/minions-and-skills",
+      "upgrades": {},
+      "timeline": {
+        "round": 1,
+        "turn": 1,
+        "current_order": [
+          {
+            "hero": "hero_arien",
+            "card": "noble_blade",
+            "initiative": 11,
+            "slot": 1,
+            "status": "acting"
+          },
+          {
+            "hero": "hero_brogan",
+            "card": "brogan_shield",
+            "initiative": 6,
+            "slot": 1,
+            "status": "unresolved"
+          },
+          {
+            "hero": "hero_hanu",
+            "card": "monkey_trick",
+            "initiative": 2,
+            "slot": 1,
+            "status": "unresolved"
+          },
+          {
+            "hero": "hero_tigerclaw",
+            "card": "light_fingered",
+            "initiative": 2,
+            "slot": 1,
+            "status": "unresolved"
+          }
+        ],
+        "prior_turn_actions": []
+      }
+    },
+    {
+      "key": "enemy-heavy",
+      "file": ".layout-lab/situation-recipes/defense-variants/enemy-heavy.json",
+      "name": "Brogan - enemy heavy pressure",
+      "description": "Attack 4; minion modifier -1; defense needed 5. Waiting for Brogan; no defense submitted.",
+      "seat": "hero_brogan",
+      "selected": null,
+      "attack": 4,
+      "minionModifier": -1,
+      "needed": 5,
+      "placements": [
+        {
+          "id": "minion_48",
+          "team": "RED",
+          "type": "HEAVY",
+          "distance": 1,
+          "hex": {
+            "q": -1,
+            "r": 1,
+            "s": 0
+          }
+        }
+      ],
+      "situationId": "dcb763e44645",
+      "group": "cards/defense/minions-and-skills",
+      "upgrades": {},
+      "timeline": {
+        "round": 1,
+        "turn": 1,
+        "current_order": [
+          {
+            "hero": "hero_arien",
+            "card": "noble_blade",
+            "initiative": 11,
+            "slot": 1,
+            "status": "acting"
+          },
+          {
+            "hero": "hero_brogan",
+            "card": "brogan_shield",
+            "initiative": 6,
+            "slot": 1,
+            "status": "unresolved"
+          },
+          {
+            "hero": "hero_hanu",
+            "card": "monkey_trick",
+            "initiative": 2,
+            "slot": 1,
+            "status": "unresolved"
+          },
+          {
+            "hero": "hero_tigerclaw",
+            "card": "light_fingered",
+            "initiative": 2,
+            "slot": 1,
+            "status": "unresolved"
+          }
+        ],
+        "prior_turn_actions": []
+      }
+    },
+    {
+      "key": "enemy-ranged",
+      "file": ".layout-lab/situation-recipes/defense-variants/enemy-ranged.json",
+      "name": "Brogan - enemy ranged pressure at two spaces",
+      "description": "Attack 4; minion modifier -1; defense needed 5. Waiting for Brogan; no defense submitted.",
+      "seat": "hero_brogan",
+      "selected": null,
+      "attack": 4,
+      "minionModifier": -1,
+      "needed": 5,
+      "placements": [
+        {
+          "id": "minion_48",
+          "team": "RED",
+          "type": "RANGED",
+          "distance": 2,
+          "hex": {
+            "q": -2,
+            "r": 0,
+            "s": 2
+          }
+        }
+      ],
+      "situationId": "3cb21fef32c2",
+      "group": "cards/defense/minions-and-skills",
+      "upgrades": {},
+      "timeline": {
+        "round": 1,
+        "turn": 1,
+        "current_order": [
+          {
+            "hero": "hero_arien",
+            "card": "noble_blade",
+            "initiative": 11,
+            "slot": 1,
+            "status": "acting"
+          },
+          {
+            "hero": "hero_brogan",
+            "card": "brogan_shield",
+            "initiative": 6,
+            "slot": 1,
+            "status": "unresolved"
+          },
+          {
+            "hero": "hero_hanu",
+            "card": "monkey_trick",
+            "initiative": 2,
+            "slot": 1,
+            "status": "unresolved"
+          },
+          {
+            "hero": "hero_tigerclaw",
+            "card": "light_fingered",
+            "initiative": 2,
+            "slot": 1,
+            "status": "unresolved"
+          }
+        ],
+        "prior_turn_actions": []
+      }
+    },
+    {
+      "key": "mixed-minions",
+      "file": ".layout-lab/situation-recipes/defense-variants/mixed-minions.json",
+      "name": "Brogan - mixed minion pressure",
+      "description": "Attack 4; minion modifier -2; defense needed 6. Waiting for Brogan; no defense submitted.",
+      "seat": "hero_brogan",
+      "selected": null,
+      "attack": 4,
+      "minionModifier": -2,
+      "needed": 6,
+      "placements": [
+        {
+          "id": "minion_48",
+          "team": "BLUE",
+          "type": "MELEE",
+          "distance": 1,
+          "hex": {
+            "q": -1,
+            "r": 1,
+            "s": 0
+          }
+        },
+        {
+          "id": "minion_49",
+          "team": "RED",
+          "type": "MELEE",
+          "distance": 1,
+          "hex": {
+            "q": 0,
+            "r": -1,
+            "s": 1
+          }
+        },
+        {
+          "id": "minion_50",
+          "team": "RED",
+          "type": "HEAVY",
+          "distance": 1,
+          "hex": {
+            "q": 0,
+            "r": 1,
+            "s": -1
+          }
+        },
+        {
+          "id": "minion_51",
+          "team": "RED",
+          "type": "RANGED",
+          "distance": 2,
+          "hex": {
+            "q": -2,
+            "r": 0,
+            "s": 2
+          }
+        }
+      ],
+      "situationId": "62d0357b6921",
+      "group": "cards/defense/minions-and-skills",
+      "upgrades": {},
+      "timeline": {
+        "round": 1,
+        "turn": 1,
+        "current_order": [
+          {
+            "hero": "hero_arien",
+            "card": "noble_blade",
+            "initiative": 11,
+            "slot": 1,
+            "status": "acting"
+          },
+          {
+            "hero": "hero_brogan",
+            "card": "brogan_shield",
+            "initiative": 6,
+            "slot": 1,
+            "status": "unresolved"
+          },
+          {
+            "hero": "hero_hanu",
+            "card": "monkey_trick",
+            "initiative": 2,
+            "slot": 1,
+            "status": "unresolved"
+          },
+          {
+            "hero": "hero_tigerclaw",
+            "card": "light_fingered",
+            "initiative": 2,
+            "slot": 1,
+            "status": "unresolved"
+          }
+        ],
+        "prior_turn_actions": []
+      }
+    },
+    {
+      "key": "defense-skill",
+      "file": ".layout-lab/situation-recipes/defense-variants/defense-skill.json",
+      "name": "Emmitt - numeric Defense Skill against an attack",
+      "description": "Attack 4; minion modifier +0; defense needed 4. Waiting for Emmitt; no defense submitted. Inspect unstable_timeline.",
+      "seat": "hero_emmitt",
+      "selected": "unstable_timeline",
+      "attack": 4,
+      "minionModifier": 0,
+      "needed": 4,
+      "placements": [],
+      "situationId": "ebbcf4546730",
+      "group": "cards/defense/minions-and-skills",
+      "upgrades": {},
+      "timeline": {
+        "round": 1,
+        "turn": 1,
+        "current_order": [
+          {
+            "hero": "hero_arien",
+            "card": "noble_blade",
+            "initiative": 11,
+            "slot": 1,
+            "status": "acting"
+          },
+          {
+            "hero": "hero_emmitt",
+            "card": "time_walk",
+            "initiative": 6,
+            "slot": 1,
+            "status": "unresolved"
+          },
+          {
+            "hero": "hero_hanu",
+            "card": "monkey_trick",
+            "initiative": 2,
+            "slot": 1,
+            "status": "unresolved"
+          },
+          {
+            "hero": "hero_tigerclaw",
+            "card": "light_fingered",
+            "initiative": 2,
+            "slot": 1,
+            "status": "unresolved"
+          }
+        ],
+        "prior_turn_actions": []
+      }
+    },
+    {
+      "key": "block-skill",
+      "file": ".layout-lab/situation-recipes/defense-variants/block-skill.json",
+      "name": "Tigerclaw - Dodge against a ranged attack",
+      "description": "Attack 3; minion modifier -1; defense needed 4. Waiting for Tigerclaw; no defense submitted. Inspect dodge.",
+      "seat": "hero_tigerclaw",
+      "selected": "dodge",
+      "attack": 3,
+      "minionModifier": -1,
+      "needed": 4,
+      "placements": [
+        {
+          "id": "minion_48",
+          "team": "RED",
+          "type": "RANGED",
+          "distance": 2,
+          "hex": {
+            "q": -2,
+            "r": 1,
+            "s": 1
+          }
+        }
+      ],
+      "situationId": "4c8454116ae1",
+      "group": "cards/defense/minions-and-skills",
+      "upgrades": {},
+      "timeline": {
+        "round": 1,
+        "turn": 1,
+        "current_order": [
+          {
+            "hero": "hero_hanu",
+            "card": "helping_hand",
+            "initiative": 9,
+            "slot": 1,
+            "status": "acting"
+          },
+          {
+            "hero": "hero_brogan",
+            "card": "brogan_shield",
+            "initiative": 6,
+            "slot": 1,
+            "status": "unresolved"
+          },
+          {
+            "hero": "hero_arien",
+            "card": "liquid_leap",
+            "initiative": 4,
+            "slot": 1,
+            "status": "unresolved"
+          },
+          {
+            "hero": "hero_tigerclaw",
+            "card": "light_fingered",
+            "initiative": 2,
+            "slot": 1,
+            "status": "unresolved"
+          }
+        ],
+        "prior_turn_actions": []
+      }
+    },
+    {
+      "key": "plus-skill",
+      "file": ".layout-lab/situation-recipes/defense-variants/plus-skill.json",
+      "name": "Dodger - Shield of Decay with its bonus available",
+      "description": "Attack 4; minion modifier +0; defense needed 4. Waiting for Dodger; no defense submitted. Inspect shield_of_decay. 3 empty battle-zone spawn points in radius 2; printed 3+ can gain its card-text bonus.",
+      "seat": "hero_dodger",
+      "selected": "shield_of_decay",
+      "attack": 4,
+      "minionModifier": 0,
+      "needed": 4,
+      "placements": [],
+      "situationId": "432df020a8b7",
+      "group": "cards/defense/minions-and-skills",
+      "upgrades": {},
+      "timeline": {
+        "round": 1,
+        "turn": 1,
+        "current_order": [
+          {
+            "hero": "hero_arien",
+            "card": "noble_blade",
+            "initiative": 11,
+            "slot": 1,
+            "status": "acting"
+          },
+          {
+            "hero": "hero_dodger",
+            "card": "dark_ritual",
+            "initiative": 3,
+            "slot": 1,
+            "status": "unresolved"
+          },
+          {
+            "hero": "hero_hanu",
+            "card": "monkey_trick",
+            "initiative": 2,
+            "slot": 1,
+            "status": "unresolved"
+          },
+          {
+            "hero": "hero_tigerclaw",
+            "card": "light_fingered",
+            "initiative": 2,
+            "slot": 1,
+            "status": "unresolved"
+          }
+        ],
+        "prior_turn_actions": []
+      }
+    }
+  ],
+  "reviewQueues": {
+    "abilities-and-effects": [
+      "item-attack",
+      "item-defense",
+      "weakness",
+      "no-primary-defense",
+      "misa-defense",
+      "poison-defense",
+      "poison-attack",
+      "barrier-one",
+      "barrier-two",
+      "min-attack",
+      "min-defense",
+      "stone-carapace",
+      "temporal-punch"
+    ],
+    "minions-and-skills": [
+      "friendly-melee",
+      "friendly-ranged",
+      "enemy-ranged",
+      "mixed-minions",
+      "defense-skill",
+      "block-skill",
+      "plus-skill"
+    ]
+  }
+}

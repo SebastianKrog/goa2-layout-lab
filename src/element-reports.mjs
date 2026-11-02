@@ -1,3 +1,4 @@
+import { writeReportSummary } from "./reports.mjs";
 import { presentationEvidence } from "./presentation-model.mjs";
 import { reviewAttribution } from "./report.mjs";
 import { toPresentation } from "./presentation-model.mjs";
@@ -148,6 +149,7 @@ export class ElementReports {
     const draft = (this.draft = {
       id,
       collection: this.reportContext(),
+      session: this.comparison.reportSession?.() || null,
       selectedAt: new Date().toISOString(),
       selectedIndex: this.comparison.windows.indexOf(win),
       descriptor,
@@ -255,10 +257,7 @@ export class ElementReports {
           win.page,
           win.config.render,
         );
-        view.situation.presentation = toPresentation(
-          presentation,
-          win.config.seat,
-        );
+        view.presentation = toPresentation(presentation, win.config.seat);
         view.presentationResolution = presentationEvidence(
           win.config,
           win.intendedPresentation,
@@ -268,6 +267,7 @@ export class ElementReports {
         view.situation.provenance = {
           kind: "element-report",
           review: reviewAttribution(draft.collection),
+          session: draft.session,
           report: [draft.collection?.prefix, draft.id]
             .filter(Boolean)
             .join("/"),
@@ -408,6 +408,7 @@ export class ElementReports {
     const report = {
       schema: 1,
       review: reviewAttribution(draft.collection),
+      session: draft.session,
       id: draft.id,
       comment: draft.comment.trim(),
       selectedAt: draft.selectedAt,
@@ -443,6 +444,7 @@ export class ElementReports {
       path.join(draft.dir, "report.json"),
       JSON.stringify(report, null, 2),
     );
+    await writeReportSummary(draft.dir, report);
     await fs.writeFile(path.join(draft.dir, "index.html"), reportHTML(report));
     const sourceDir = path.resolve(draft.dir),
       targetDir = path.resolve(draft.root || this.root, draft.id);

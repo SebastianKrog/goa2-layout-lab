@@ -1,0 +1,25 @@
+{
+  "id": "716400e0470e",
+  "name": "Brogan - enemy melee pressure",
+  "description": "Attack 4; minion modifier -1; defense needed 5. Waiting for Brogan; no defense submitted.",
+  "backend_revision": "c4750787e620388a093683cc5b8518b437f1c2a3",
+  "saved_at": 1792729763.8541284,
+  "provenance": {
+    "kind": "ui-fabrication"
+  },
+  "summary": {
+    "phase": "RESOLUTION",
+    "round": 1,
+    "decision": "SELECT_CARD_OR_PASS",
+    "responder": "hero_brogan"
+  },
+  "schema": 3,
+  "kind": "situation",
+  "decisionStateId": "071b6ba0af16cceaae5317c4f8459e84d8216234c40ddb8491ba75b4166b3ef6",
+  "tags": [
+    "hero:brogan",
+    "topic:cards",
+    "topic:defense",
+    "topic:minions-and-skills"
+  ]
+}

@@ -263,12 +263,18 @@ test("desk exposes extraction modes and submits the selected pair without loadin
         ![
           "index.html",
           "desk.mjs",
+          "tags.mjs",
+          "tag-ui.mjs",
           "device-panel.mjs",
           "element-report-panel.mjs",
           "reviews-panel.mjs",
+          "reports-panel.mjs",
           "desk.css",
           "live.mjs",
           "native.mjs",
+          "view-windows.mjs",
+          "view-window.mjs",
+          "view.html",
         ].includes(file)
       )
         return route.abort();

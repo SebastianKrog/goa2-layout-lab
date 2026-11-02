@@ -1,4 +1,4 @@
-﻿const {
+const {
   app,
   BrowserWindow,
   WebContentsView,
@@ -23,7 +23,9 @@ app.setPath(
 app.setName("GoA2 Layout lab");
 // This app runs local developer checkouts. Retain software WebGL fallback on VMs.
 app.commandLine.appendSwitch("enable-unsafe-swiftshader");
+const { ViewWindows } = require("./view-windows.cjs");
 const views = new Map();
+let viewWindows;
 let root;
 function applyMetrics(item, scale = 1) {
   const p = item.profile;
@@ -37,7 +39,7 @@ function applyMetrics(item, scale = 1) {
   item.scale = scale;
 }
 function park(item) {
-  const [width, height] = root.getContentSize();
+  const [width, height] = (item.owner || root).getContentSize();
   item.host.setBounds({ x: width - 1, y: height - 1, width: 1, height: 1 });
   item.view.setBounds({
     x: 0,
@@ -75,20 +77,33 @@ function place(item, spec, force = false) {
   if (force || item.scale !== scale) applyMetrics(item, scale);
   item.host.setVisible(true);
 }
-function layout(items) {
+function layout(items, sender = root.webContents) {
+  const external = viewWindows?.owner(sender);
   const shown = new Set();
   for (const spec of items) {
     const item = views.get(spec.id);
     if (!item) continue;
+    if (external) {
+      if (item.owner !== external.window) continue;
+    } else {
+      item.slot = spec.index;
+      if (item.owner !== root) continue;
+      item.lastLayout = spec;
+    }
+    if (external) item.externalLayout = spec;
     shown.add(spec.id);
-    item.lastLayout = spec;
     if (!item.capturing) place(item, spec);
   }
   // Pending views stay parked until initialization completes.
   for (const [id, item] of views)
-    if (!shown.has(id) && item.lastLayout) {
-      if (item.lastLayout)
-        item.lastLayout = { ...item.lastLayout, visible: false };
+    if (
+      item.owner === (external?.window || root) &&
+      !shown.has(id) &&
+      item.lastLayout
+    ) {
+      if (external)
+        item.externalLayout = { ...item.externalLayout, visible: false };
+      else item.lastLayout = { ...item.lastLayout, visible: false };
       if (!item.capturing) item.host.setVisible(false);
     }
 }
@@ -120,7 +135,16 @@ app.whenReady().then(async () => {
     },
   });
   await root.loadURL("about:blank");
+  viewWindows = new ViewWindows(
+    root,
+    views,
+    (state) => {
+      if (!root.isDestroyed()) root.webContents.send("lab:windows", state);
+    },
+    place,
+  );
   global.lab = {
+    viewWindows,
     root,
     views,
     layout,
@@ -138,7 +162,14 @@ app.whenReady().then(async () => {
         },
       });
       host.addChildView(view);
-      const item = { view, host, profile, scale: 0, lastLayout: null };
+      const item = {
+        view,
+        host,
+        owner: root,
+        profile,
+        scale: 0,
+        lastLayout: null,
+      };
       views.set(view.webContents.id, item);
       park(item);
       view.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
@@ -146,6 +177,7 @@ app.whenReady().then(async () => {
         if (
           input.type === "keyDown" &&
           input.key === "Escape" &&
+          item.owner === root &&
           item.lastLayout?.expanded
         ) {
           event.preventDefault();
@@ -164,7 +196,7 @@ app.whenReady().then(async () => {
       const item = views.get(id);
       if (!item) return;
       views.delete(id);
-      root.contentView.removeChildView(item.host);
+      item.owner.contentView.removeChildView(item.host);
       if (!item.view.webContents.isDestroyed()) item.view.webContents.close();
     },
     async open(url, show) {
@@ -194,22 +226,49 @@ app.whenReady().then(async () => {
       const item = views.get(id);
       if (!item) return;
       item.capturing = false;
-      if (item.lastLayout) place(item, item.lastLayout, true);
+      if (item.owner !== root && item.externalLayout)
+        place(item, item.externalLayout, true);
+      else if (item.lastLayout) place(item, item.lastLayout, true);
       else park(item);
     },
   };
   ipcMain.on("lab:focus", (event, id) => {
-    if (event.sender === root.webContents)
-      views.get(id)?.view.webContents.focus();
+    const item = views.get(id);
+    if (
+      item &&
+      (event.sender === root.webContents ||
+        viewWindows.owner(event.sender)?.window === item.owner)
+    )
+      item.view.webContents.focus();
   });
   ipcMain.on("lab:layout", (event, items) => {
     if (
-      event.sender === root.webContents &&
+      (event.sender === root.webContents || viewWindows.owner(event.sender)) &&
       Array.isArray(items) &&
       items.length <= 3
     )
-      layout(items);
+      layout(items, event.sender);
   });
+  ipcMain.handle("lab:window-toggle", (event, payload) => {
+    if (event.sender !== root.webContents) throw Error("Desk only");
+    return viewWindows.toggle(payload);
+  });
+  ipcMain.handle("lab:windows", (event) => {
+    if (event.sender !== root.webContents) return [];
+    return viewWindows.state();
+  });
+  ipcMain.on("lab:window-content", (event, payload) => {
+    if (event.sender === root.webContents) viewWindows.update(payload);
+  });
+  ipcMain.on("lab:windows-prune", (event, count) => {
+    if (event.sender === root.webContents) viewWindows.prune(count);
+  });
+  ipcMain.on("lab:window-action", (event, payload) => {
+    const entry = viewWindows.owner(event.sender);
+    if (!entry || entry.index !== payload.index) return;
+    root.webContents.send("lab:window-action", payload);
+  });
+  root.on("close", () => viewWindows.close());
   root.webContents.setWindowOpenHandler(({ url }) => {
     const u = new URL(url);
     if (

@@ -14,12 +14,11 @@ import tempfile
 import time
 import uuid
 
-from device_bots import bot_kinds, clone_bot_specs, start_clone_bots, stop_clone_bots, cancel_bot_tasks, update_clone_bots
 
 from state_model import portable_situation, presentation as compose_presentation, make_layout
 
 FROZEN_MS = 1792238400000
-SCHEMA = 2
+SCHEMA = 3
 
 
 @asynccontextmanager
@@ -39,7 +38,6 @@ async def lab_lifespan(app):
     try:
         yield
     finally:
-        await cancel_bot_tasks(registry)
         await stop_timers(registry)
         shutdown_heavy_pool()
 
@@ -167,21 +165,22 @@ def create_app():
                 )
         return await call_next(request)
 
-    def read(situation_id):
+    def read(situation_id, *, metadata=False):
         try:
-            return library.read(situation_id)
+            return library.read(situation_id, metadata=metadata)
         except KeyError as error:
             raise HTTPException(404, "Situation not found") from error
         except ValueError as error:
             raise HTTPException(400, str(error)) from error
 
-    def write(saved, name, *, provenance=None, presentation=None, situation_id=None, group="", decision_only=False):
+    def write(saved, name, *, provenance=None, situation_id=None, group="", decision_only=False, tags=None, decision_tags=None, description=None):
         session, result = restore(saved)  # Fail before writing incompatible saves.
         ir = result.input_request if result else None
         situation = {
             "schema": SCHEMA,
             "id": situation_id or uuid.uuid4().hex[:12],
             "name": str(name or "Saved situation")[:160],
+            "description": description if description is not None else f"{session.state.phase.value.capitalize()}, round {session.state.round}. " + (f"Waiting for {ir.player_id} to {ir.request_type.value.lower().replace('_', ' ')}." if ir else "Saved before the next game choice."),
             "backend_revision": revision(),
             "saved_at": real_time(),
             # Validate by restoring, but never rewrite an existing exact Decision State.
@@ -194,13 +193,15 @@ def create_app():
                 "responder": ir.player_id if ir else None,
             },
         }
-        from state_model import decision_state, presentation as normalize_presentation
+        from state_model import decision_state, normalize_tags
         if decision_only:
-            return library.save_decision_state(situation["checkpoint"], name=name)
+            return library.save_decision_state(situation["checkpoint"], name=name, tags=tags)
+        if decision_tags is not None:
+            library.save_decision_state(situation["checkpoint"], tags=decision_tags)
         state = decision_state(situation["checkpoint"])
         record = {k: v for k, v in situation.items() if k not in {"schema", "checkpoint"}}
-        record.update(schema=2, kind="situation", decisionStateId=state["id"],
-                      presentation=normalize_presentation(presentation or {"schema":2,"sessionState":{"pane":"board"},"userState":{}}), checkpoint=situation["checkpoint"])
+        record.update(schema=SCHEMA, kind="situation", decisionStateId=state["id"], checkpoint=situation["checkpoint"])
+        record["tags"] = normalize_tags(tags)
         return library.save(record, group=group)
 
     from device_reports import install_device_reports
@@ -213,16 +214,23 @@ def create_app():
             "frozen_ms": FROZEN_MS,
             "schema": SCHEMA,
             "backend_revision": revision(),
-            "bot_kinds": bot_kinds(),
+            "bot_kinds": [],
         }
+
+    @app.get("/__lab/capabilities")
+    def capabilities():
+        return {"botKinds": []}
 
     @app.get("/__lab/situations")
     def situations(metadata: bool = False):
         return library.entries(metadata=metadata)
 
     @app.get("/__lab/situations/{situation_id}")
-    def situation(situation_id: str):
-        return read(situation_id)
+    def situation(situation_id: str, metadata: bool = False):
+        value = read(situation_id, metadata=metadata)
+        if metadata:
+            value["botKinds"] = []
+        return value
 
     @app.get("/__lab/decision-states")
     def decision_states():
@@ -232,8 +240,21 @@ def create_app():
     def compose_situation(body: dict):
         try:
             saved = library._decision({"decisionStateId": body.get("decisionStateId"), "origin": "local"})
-            return write(saved, body.get("name"), presentation=body.get("presentation", {"schema":2,"sessionState":{},"userState":{}}))
+            if "presentation" in body:
+                raise ValueError("Pass Presentation to the comparison or Review, not the Situation")
+            return write(saved, body.get("name"), tags=body.get("tags"))
         except (ValueError, KeyError, TypeError) as error:
+            raise HTTPException(422, str(error)) from error
+
+    @app.post("/__lab/tags")
+    def tag_record(body: dict):
+        if "tags" not in body:
+            raise HTTPException(422, "Tags are required")
+        try:
+            return library.set_tags(body.get("kind"), body.get("id"), body.get("tags"), body.get("origin"))
+        except KeyError as error:
+            raise HTTPException(404, "Record not found") from error
+        except (ValueError, TypeError) as error:
             raise HTTPException(422, str(error)) from error
 
     @app.post("/__lab/organize")
@@ -332,33 +353,22 @@ def create_app():
                     )
             value = body["content"]
             value = json.loads(value) if isinstance(value, str) else value
-            if value.get("kind") == "situation" and value.get("schema") == 2 and "checkpoint" not in value:
+            if value.get("kind") == "situation" and value.get("schema") == SCHEMA and "checkpoint" not in value:
                 from state_model import validate_situation, decision_state
                 validate_situation(value)
                 bundled = value.get("decisionState")
                 saved = bundled.get("checkpoint") if isinstance(bundled, dict) else library._decision({**value, "origin": "local"})
                 if decision_state(saved)["id"] != value["decisionStateId"]:
                     raise ValueError("Bundled Decision State does not match Situation")
-                variants = value.get("additionalSituations", [])
-                if not isinstance(variants, list) or len(variants) > 200:
-                    raise ValueError("Invalid factory Situation variants")
-                for variant in variants:
-                    validate_situation(variant)
-                    if variant["decisionStateId"] != value["decisionStateId"]:
-                        raise ValueError("Factory variants must share the bundled Decision State")
-                result = write(saved, body.get("name") or value["name"], provenance=value.get("provenance"), presentation=value["presentation"])
-                imported = [write(saved, variant["name"], provenance=variant.get("provenance"), presentation=variant["presentation"])["id"] for variant in variants]
-                if imported:
-                    result["importedVariants"] = imported
-                return result
+                return write(saved, body.get("name") or value["name"], provenance=value.get("provenance"), tags=value.get("tags"), decision_tags=(bundled or {}).get("tags"), description=value.get("description"))
             if "checkpoint" in value:
-                if value.get("schema") != 2:
+                if value.get("schema") != SCHEMA:
                     raise ValueError("Unsupported layout-lab situation schema")
                 return write(
                     value["checkpoint"],
                     body.get("name") or value["name"],
                     provenance=value.get("provenance"),
-                    presentation=value.get("presentation"),
+                    tags=value.get("tags"), decision_tags=value.get("decisionStateTags"), description=value.get("description"),
                 )
             # A normal backend save includes credentials. Whitelist checkpoint
             # fields instead of preserving any of the outer save envelope.
@@ -412,8 +422,8 @@ def create_app():
                 ),
                 body.get("name"),
                 provenance=body.get("provenance"),
-                presentation=body.get("presentation"),
                 decision_only=body.get("kind") == "decision-state",
+                tags=body.get("tags"),
             )
 
     def review_snapshot_path(spec):
@@ -469,16 +479,18 @@ def create_app():
                 situation = {"checkpoint": library._decision({"decisionStateId": body["decision_state_id"], "origin": "local"})}
             else:
                 situation = body.get("situation") or read(body.get("situation_id"))
+            if "checkpoint_json" in body:
+                situation = {**situation, "checkpoint": json.loads(body["checkpoint_json"])}
             session, result = restore(situation["checkpoint"])
         except (ValueError, KeyError, TypeError) as error:
             raise HTTPException(
                 422, f"Situation incompatible with this engine: {error}"
             ) from error
         heroes = [h.id for team in session.state.teams.values() for h in team.heroes]
-        specs = clone_bot_specs(body, session.state)
-        options = {"bot_specs": specs} if specs else {}
+        if body.get("bots"):
+            raise HTTPException(422, "Game backends are manual. Configure bots through the desk decision service.")
         game = app.state.registry.create_game(
-            session, heroes, hero_names=situation["checkpoint"].get("hero_names"), **options
+            session, heroes, hero_names=situation["checkpoint"].get("hero_names")
         )
         game.last_result = result
         records = situation["checkpoint"].get("replay_log")
@@ -489,7 +501,6 @@ def create_app():
             ]
             game.replay_recorder.restore_from_save(records)
         app.state.registry.save_game(game.game_id)
-        await start_clone_bots(game, app.state.registry)
         return {
             "game_id": game.game_id,
             "seats": game.hero_to_token,
@@ -502,17 +513,14 @@ def create_app():
             },
         }
 
-    @app.post("/__lab/bots")
-    async def configure_bots(body: dict):
-        game = app.state.registry.get(body["game_id"])
-        await update_clone_bots(game, app.state.registry, body)
-        return {"ok": True}
-
-    @app.post("/__lab/device/stop")
-    async def stop_device(body: dict):
-        game = app.state.registry.get(body["game_id"])
-        await stop_clone_bots(game)
-        return {"ok": True}
+    @app.get("/__lab/games/{game_id}/bot-state")
+    async def bot_state(game_id: str):
+        # Transient inference input: no report, Situation or Decision State writes.
+        game = app.state.registry.get(game_id)
+        async with game.lock:
+            return {"hash":canonical_hash(game.session.state.model_dump(mode="json")),
+                    "checkpoint_json":json.dumps(checkpoint(game.session)),
+                    "result_json":game.last_result.model_dump_json() if game.last_result else "null"}
 
     @app.get("/__lab/games/{game_id}/checkpoint")
     async def report_checkpoint(game_id: str):
@@ -525,7 +533,7 @@ def create_app():
             reference = library.save_decision_state(saved)
             return {"hash": canonical_hash(game.session.state.model_dump(mode="json")),
                     "checkpoint_json": json.dumps(saved),
-                    "situation": {"schema": SCHEMA, "kind":"situation", "presentation":{"schema":2,"sessionState":{},"userState":{}}, "id": uuid.uuid4().hex[:12],
+                    "situation": {"schema": SCHEMA, "kind":"situation", "id": uuid.uuid4().hex[:12],
                                   "name": "Element report moment", "backend_revision": revision(),
                                   "saved_at": real_time(), "checkpoint": saved, "decisionStateId": reference["id"],
                                   "provenance": {},
@@ -566,10 +574,10 @@ def create_app():
         ids = body.get("games", [])
         if (
             not isinstance(ids, list)
-            or len(ids) not in (2, 3)
+            or not 1 <= len(ids) <= 11
             or len(set(ids)) != len(ids)
         ):
-            raise HTTPException(422, "Choose two or three distinct lab games")
+            raise HTTPException(422, "Choose one to eleven distinct lab games")
         actor = body.get("actor")
         data = copy.deepcopy(body.get("message", {}))
         kind = data.get("type")
@@ -585,7 +593,7 @@ def create_app():
             "SET_READY": (protocol._handle_set_ready, True),
         }
         overrides = {"PROPOSE_OVERRIDE", "VOTE_OVERRIDE", "CANCEL_OVERRIDE"}
-        if kind not in handlers and kind not in overrides:
+        if kind not in handlers and kind not in overrides and kind != "ADVANCE":
             raise HTTPException(422, "Unsupported synchronized game action")
         games = [app.state.registry.get(i) for i in ids]
         if body.get("source") not in ids or any(
@@ -605,6 +613,8 @@ def create_app():
                     "Games have diverged. Reset all to the same situation before synchronizing.",
                 )
             source = games[ids.index(body["source"])]
+            if body.get("expectedHash") is not None and hashes[0] != body["expectedHash"]:
+                raise HTTPException(409, "Bot decision is stale")
             if kind == "SUBMIT_INPUT" and data.get("request_id"):
                 ir = source.last_result.input_request if source.last_result else None
                 if ir is None or str(ir.id) != str(data["request_id"]):
@@ -650,12 +660,20 @@ def create_app():
                             game, app.state.registry, actor, kind, message
                         )
                     else:
-                        handler, with_data = handlers[kind]
-                        reply = (
-                            await handler(game, actor, message)
-                            if with_data
-                            else await handler(game, actor)
-                        )
+                        if kind == "ADVANCE":
+                            if game.last_result and game.last_result.input_request:
+                                raise ValueError("Cannot advance over a pending decision")
+                            result = game.session.advance()
+                            game.last_result = result
+                            protocol.log_session_result(game, result)
+                            reply = protocol._action_result_message(game, result, actor)
+                        else:
+                            handler, with_data = handlers[kind]
+                            reply = (
+                                await handler(game, actor, message)
+                                if with_data
+                                else await handler(game, actor)
+                            )
                         if reply.get("type") == "ERROR":
                             raise ValueError(
                                 reply.get("detail", "Game action rejected")

@@ -2,17 +2,20 @@
 
 This repository owns the GoA2 layout comparison tool and its shared situation library. Start with [README.md](README.md) for repository setup and operation. Follow the checked-out frontend's milestone/acceptance documentation when deciding what a UI change is expected to deliver.
 
-Use [the canonical terminology](docs/terminology.md) for Decision State, Situation, Presentation, View, Layout and Review Run. Situations compose Decision State and Presentation; Layouts keep executable/view settings separate. Runtime uses only the new model; offline tooling ports older situations.
+Use [the canonical terminology](docs/terminology.md) for Decision State, Situation, Presentation, View, Layout and Review Run. Situations name Decision States independently of Presentation and Layout. Review entries and comparison requests add optional Presentation instructions; Layouts choose configured Views. Game groups synchronize game commands and controller policies by default while
+View UI state remains independent. Lab sessions group reports, not games. Runtime
+uses only the current model; offline tooling ports older situations.
 
 ## Use the repository skills
 
 Load the appropriate SKILL.md explicitly from this checkout; agent/skills/ is the intentional repository location and may not be automatically discovered by an agent runtime.
 
-| Task | Skill |
-| --- | --- |
-| Play one hero against Random/Simple/ISMCTS bots in desk views or on a phone | [goa2-play-bots](agent/skills/goa2-play-bots/SKILL.md) |
-| Create, adapt, verify or organize a saved UI situation | [goa2-ui-situations](agent/skills/goa2-ui-situations/SKILL.md) |
-| Compare revisions, report selected divs across views, create images/diffs, or prepare a human viewer | [goa2-compare-views](agent/skills/goa2-compare-views/SKILL.md) |
+| Task                                                                                                 | Skill                                                                |
+| ---------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| Play one hero against Random/Simple/ISMCTS bots in desk views or on a phone                          | [goa2-play-bots](agent/skills/goa2-play-bots/SKILL.md)               |
+| Create, adapt, verify or organize a saved UI situation                                               | [goa2-ui-situations](agent/skills/goa2-ui-situations/SKILL.md)       |
+| Build a Review Run for a UI change, reusing library coverage and filling gaps                        | [goa2-review-ui-change](agent/skills/goa2-review-ui-change/SKILL.md) |
+| Compare revisions, report selected divs across views, create images/diffs, or prepare a human viewer | [goa2-compare-views](agent/skills/goa2-compare-views/SKILL.md)       |
 
 The skills and their linked references own the workflow details. Use their instructions and bundled helpers rather than duplicating launch, API, capture or situation recipes here. When a play or comparison task needs a new situation, prepare the situation first and pass it to that workflow.
 

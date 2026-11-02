@@ -1,5 +1,11 @@
+import { evidenceTarget } from "./evidence-state.mjs";
 import { makeLayout, layoutSlots } from "./layouts.mjs";
 import { ReviewDefinitions } from "./review-definitions.mjs";
+import {
+  reviewEntry,
+  inspectionOptions,
+  presentationFor,
+} from "./inspection.mjs";
 import { resolveView } from "./presentation-model.mjs";
 import fs from "node:fs/promises";
 import path from "node:path";
@@ -15,10 +21,12 @@ export class Reviews {
     {
       root = path.join(DATA, "reports", "reviews"),
       guard = () => {},
+      situationMappings = {},
       performedBy = "human",
     } = {},
   ) {
     this.performedBy = performedBy;
+    this.situationMappings = situationMappings;
     this.comparison = comparison;
     this.devices = devices;
     this.root = root;
@@ -83,6 +91,7 @@ export class Reviews {
       !Array.isArray(r.reports)
     )
       throw Error("Invalid saved review.");
+    this.records.set(r.id, r);
     return r;
   }
   summary(r) {
@@ -150,11 +159,95 @@ export class Reviews {
     }
     return { runs: reviews, reviews: groups, warnings };
   }
+  async unlinkReports(urls) {
+    const removed = new Set(urls),
+      listing = await this.list();
+    for (const { id } of listing.runs) {
+      const run = await this.saved(id),
+        reports = run.reports.filter((report) => !removed.has(report.url));
+      if (reports.length !== run.reports.length) {
+        run.reports = reports;
+        this.records.set(id, run);
+        await this.persist(run);
+      }
+    }
+  }
+  async manage({ action, id }, state) {
+    const listing = await this.list(),
+      flags = await state.read();
+    let selected;
+    if (action === "archive-all")
+      selected = listing.reviews.filter(
+        (group) =>
+          !flags.archivedReviews.includes(group.id) &&
+          !group.runs.some((run) => run.status === "active"),
+      );
+    else if (action === "delete-archive")
+      selected = listing.reviews.filter((group) =>
+        flags.archivedReviews.includes(group.id),
+      );
+    else {
+      this.validId(id);
+      selected = listing.reviews.filter((group) => group.id === id);
+      if (!selected.length) throw Error("Review not found.");
+    }
+    if (
+      selected.some((group) =>
+        group.runs.some((run) => run.status === "active"),
+      )
+    )
+      throw Error("End the active Review before archiving or deleting it.");
+    if (["archive", "archive-all", "restore"].includes(action)) {
+      await state.change((value) => {
+        const ids = new Set(value.archivedReviews);
+        for (const group of selected)
+          action === "restore" ? ids.delete(group.id) : ids.add(group.id);
+        value.archivedReviews = [...ids];
+      });
+    } else if (["delete", "delete-archive"].includes(action)) {
+      this.guard();
+      await this.writes;
+      const targets = [];
+      for (const group of selected) {
+        for (const run of group.runs)
+          targets.push({
+            path: await evidenceTarget(this.root, run.id),
+            runId: run.id,
+          });
+        try {
+          targets.push({
+            path: await evidenceTarget(this.definitions.root, group.id),
+          });
+        } catch (error) {
+          if (error.code !== "ENOENT") throw error;
+        }
+      }
+      for (const target of targets) {
+        await fs.rm(target.path, { recursive: true, force: true });
+        if (target.runId) {
+          this.records.delete(target.runId);
+          if (this.current?.id === target.runId) this.current = null;
+        }
+      }
+      const ids = new Set(selected.map((group) => group.id)),
+        runs = selected.flatMap((group) => group.runs.map((run) => run.id));
+      await state.change((value) => {
+        value.archivedReviews = value.archivedReviews.filter(
+          (id) => !ids.has(id),
+        );
+        value.archivedReports = value.archivedReports.filter(
+          (id) => !runs.some((run) => id.startsWith("reviews/" + run + "/")),
+        );
+      });
+    } else throw Error("Choose an archive, restore or delete action.");
+    return { ok: true, count: selected.length };
+  }
   async detail(id) {
     const r = await this.saved(id);
     return {
       ...this.summary(r),
-      entries: r.entries.map(({ situation, entryId }, index) => ({
+      entries: r.entries.map(({ situation, entryId, ...entry }, index) => ({
+        ...inspectionOptions(entry),
         index,
         entryId,
         situationId: situation.id,
@@ -194,23 +287,43 @@ export class Reviews {
       const key = from
         ? `saved:${entry.fromIndex}`
         : `library:${entry.situationId}`;
-      if (seen.has(key)) throw Error("Select each situation once.");
+      if (
+        seen.has(key) &&
+        !entry.presentation &&
+        !entry.presentationsByInterface &&
+        !entry.viewPresentations
+      )
+        throw Error(
+          "Give repeated Situations distinct Presentation instructions.",
+        );
       seen.add(key);
     }
     return this.start({
       name: name ?? previous.name,
       performedBy,
       slots: slots || layoutSlots(previous.layout),
+      synchronization: previous.layout.synchronization,
       queue: selected.map((entry) =>
         Object.hasOwn(entry, "fromIndex")
           ? {
               ...(inputs === "frozen"
                 ? { from: { reviewId: id, index: entry.fromIndex } }
                 : {}),
-              id: previous.entries[entry.fromIndex].situation.id,
-              entryId: previous.entries[entry.fromIndex].entryId || undefined,
+              id:
+                inputs === "library"
+                  ? this.situationMappings[
+                      previous.entries[entry.fromIndex].situation.id
+                    ] || previous.entries[entry.fromIndex].situation.id
+                  : previous.entries[entry.fromIndex].situation.id,
+              entryId:
+                selected.filter((e) => e.fromIndex === entry.fromIndex).length >
+                1
+                  ? undefined
+                  : previous.entries[entry.fromIndex].entryId || undefined,
+              ...inspectionOptions(previous.entries[entry.fromIndex]),
+              ...inspectionOptions(entry),
             }
-          : { id: entry.situationId },
+          : { id: entry.situationId, ...inspectionOptions(entry) },
       ),
       parentRunId: id,
       previous,
@@ -253,8 +366,8 @@ export class Reviews {
         const snapshot = JSON.stringify(
           {
             ...r,
-            entries: r.entries.map(({ situation, entryId }) => ({
-              entryId,
+            entries: r.entries.map(({ situation, ...entry }) => ({
+              ...entry,
               situation: { ...situation, checkpoint: undefined },
             })),
           },
@@ -286,18 +399,21 @@ export class Reviews {
       });
     return this.writes;
   }
-  plan(situation, config) {
+  plan(situation, config, index, entry = {}) {
     const resolved = resolveView(
       { ...config, bots: {}, autoSwitch: false },
       situation,
+      presentationFor(entry, config, index),
     );
     const [slot] = slotsForSituation([resolved.config], situation);
     return { config: slot, presentation: resolved.intended };
   }
   async start({
     ids,
+    entries: requestedEntries,
     name,
     slots,
+    synchronization = this.comparison.sync.mode,
     queue,
     parentRunId,
     previous,
@@ -310,12 +426,29 @@ export class Reviews {
       throw Error("End the current review before starting another.");
     if (!["human", "agent"].includes(performedBy))
       throw Error("Review performer must be human or agent.");
+    if (requestedEntries) {
+      if (!Array.isArray(requestedEntries))
+        throw Error("Review entries must be a list.");
+      queue = requestedEntries.map((entry) => {
+        const normalized = reviewEntry(entry);
+        return {
+          ...normalized,
+          id: normalized.situationId,
+          entryId: normalized.id,
+        };
+      });
+    }
     if (queue) ids = queue.map((entry) => entry.id);
+    if (queue) {
+      const keys = queue.map((e) => e.entryId).filter(Boolean);
+      if (new Set(keys).size !== keys.length)
+        throw Error("Review entry IDs must be unique.");
+    }
     if (
       !Array.isArray(ids) ||
       !ids.length ||
       ids.length > 200 ||
-      new Set(ids).size !== ids.length ||
+      (!queue && new Set(ids).size !== ids.length) ||
       ids.some(
         (id) => typeof id !== "string" || !/^[A-Za-z0-9]{1,40}$/.test(id),
       )
@@ -327,17 +460,18 @@ export class Reviews {
     if (!title || title.length > 100)
       throw Error("Use a review name up to 100 characters.");
     const configs = validateSlots(
-      this.comparison.windows.length
-        ? this.comparison.windows.map((w) => w.config)
-        : slots || [
-            {
-              source: "live",
-              profile: "desktop",
-              render: "2d",
-              uiMode: "desktop",
-              seat: "spectator",
-            },
-          ],
+      slots ||
+        (this.comparison.windows.length
+          ? this.comparison.windows.map((w) => w.config)
+          : [
+              {
+                source: "live",
+                profile: "desktop",
+                render: "2d",
+                uiMode: "desktop",
+                seat: "spectator",
+              },
+            ]),
     );
     const identifier = randomBytes(12).toString("hex");
     let createdDefinition = null;
@@ -345,6 +479,11 @@ export class Reviews {
       const entries = [];
       for (const [index, id] of ids.entries())
         entries.push({
+          ...reviewEntry({
+            situationId: id,
+            ...inspectionOptions(queue?.[index] || {}),
+            id: queue?.[index]?.entryId,
+          }),
           entryId: queue?.[index]?.entryId || randomBytes(12).toString("hex"),
           situation: await this.comparison.api("/review/snapshot", {
             id,
@@ -359,9 +498,10 @@ export class Reviews {
         entries,
         edited,
       });
-      entries.forEach(
-        (entry, index) => (entry.entryId = definition.entries[index].id),
-      );
+      entries.forEach((entry, index) => {
+        entry.entryId = definition.entries[index].id;
+        entry.id = entry.entryId;
+      });
       const record = {
         schema: 2,
         kind: "review-run",
@@ -370,7 +510,12 @@ export class Reviews {
         reviewRevision: definition.revision,
         parentRunId: parentRunId || null,
         inputs,
-        layout: makeLayout(title.slice(0, 80), configs, "none", identifier),
+        layout: makeLayout(
+          title.slice(0, 80),
+          configs,
+          synchronization,
+          identifier,
+        ),
         sources: {
           references: this.comparison.services?.references || null,
           comparator: this.comparison.services?.comparator || null,
@@ -388,12 +533,6 @@ export class Reviews {
       record.sources =
         (await this.comparison.services?.provenance?.()) || record.sources;
       await this.load(record, 0, async (opened) => {
-        record.layout = makeLayout(
-          title.slice(0, 80),
-          opened.map((win) => win.config),
-          "none",
-          identifier,
-        );
         record.visited = [0];
         if (await this.definitions.commit(definition))
           createdDefinition = definition;
@@ -446,12 +585,15 @@ export class Reviews {
     const r = this.current;
     if (!r?.active) return body;
     const s = r.entries[r.index].situation;
-    const plan = this.plan(s, body.slot);
+    const plan = this.plan(s, body.slot, undefined, r.entries[r.index]);
+    const presentation = presentationFor(r.entries[r.index], plan.config);
+    // The seat is already configured. Pass sparse changes, not resolved defaults.
+    delete presentation.viewpoint;
     return {
       ...body,
       situationId: s.id,
       slot: plan.config,
-      presentation: plan.presentation,
+      presentation,
       reviewId: r.id,
       reviewSnapshot: s.review_snapshot,
       bots: {},
@@ -460,9 +602,7 @@ export class Reviews {
   async load(record, index, beforeCommit = null) {
     const c = this.comparison,
       s = record.entries[index].situation;
-    const configs = c.windows.length
-      ? c.windows.map((w) => w.config)
-      : layoutSlots(record.layout);
+    const configs = layoutSlots(record.layout);
     let opened = [],
       devicePlans = [],
       committed = false;
@@ -470,7 +610,7 @@ export class Reviews {
     try {
       const staged = await Promise.allSettled(
         configs.map((config, i) => {
-          const p = this.plan(s, config, i);
+          const p = this.plan(s, config, i, record.entries[index]);
           return c.open(p.config, p.presentation, null, i, s);
         }),
       );
@@ -481,12 +621,25 @@ export class Reviews {
       if (failed) throw failed.reason;
       devicePlans = await this.devices.prepareReview(
         s,
-        (config) => this.plan(s, config),
+        (config) => this.plan(s, config, undefined, record.entries[index]),
         record.id,
+      );
+      const group = `review:${record.id}:${index}`;
+      for (const w of opened) w.syncGroup = group;
+      const commitSync = await c.sync.prepareMode(
+        record.layout.synchronization,
+        [
+          ...opened,
+          ...devicePlans.map((p) => ({
+            config: p.config,
+            clone: p.clone,
+            syncGroup: group,
+          })),
+        ],
+        { bridges: true },
       );
       this.guard();
       if (beforeCommit) await beforeCommit(opened);
-      await c.sync.setMode("none");
       this.guard();
       const old = c.windows;
       c.windows = opened;
@@ -500,6 +653,8 @@ export class Reviews {
       this.current = record;
       this.records.set(record.id, record);
       this.devices.commitReview(devicePlans);
+      for (const p of devicePlans) p.session.syncGroup = group;
+      commitSync();
       committed = true;
       await Promise.allSettled(old.map((w) => c.closeWindow(w)));
       await this.devices.retireReview(devicePlans);

@@ -6,6 +6,72 @@ defines the corresponding package versions and tags.
 
 ## Unreleased
 
+- Layout-first loading with curated desktop/mobile comparisons and a Main frontend source.
+- Game-only Situations, independent Presentation presets, explicit Review entries and comparison CLI.
+- Ported the library to 37 game moments, preserving old UI setups separately without creating Reviews.
+
+Planned for **1.0.1**.
+
+### Changed
+
+- Bot policies are detached from frontend game backends. One separate service
+  computes each decision and the lab applies it across synchronized clones.
+- API synchronization is the default, including bot games and linked devices;
+  separate play sessions keep distinct groups. Stale bot results are discarded.
+
+- Presentation presets are small session changes, with eight curated actions including
+  generic card roles and View public spells. Exact cards remain available on Review entries.
+- Applying a Presentation preserves the running View and game; unsupported targets show warnings.
+
+### Added
+
+- Empty start screen with Desktop, Mobile portrait and Device working-tree 2v2
+  quickstarts, ISMCTS opponents and human-team autoswitch, including on devices.
+- Main vs working tree comparison shortcuts for two desktop, mobile portrait or
+  mobile landscape Views; choose a Situation before opening them.
+
+- Reports tab with search, activity/type filters, capture timestamps, Review Run
+  and Lab session groups. New session controls stay in Settings.
+- Persistent archives and Restore/Archive all actions for Reports and Reviews;
+  confirmed Delete/Delete archive actions keep Review counts and links in sync.
+- Compact Review history rows and timestamps in new and existing device viewers.
+
+- Compact Situation rows with content-based names, expandable descriptions, and
+  thin category-colored tags beside each name. Tags collapse only when needed.
+- Full-roster hero tags, including opponents and off-board heroes.
+- View editors positioned over their View, including inside separate windows;
+  detached titles move with the View and no desk space is reserved for them.
+  Editors open from cached desk data while roster details load in the background.
+  Roster requests are shared/cached and use lightweight checkpoint metadata.
+
+- Per-View **More… → Swap with View …** actions to rearrange the desk without
+  restarting games or moving separate windows.
+
+- Separate View windows for multiple screens, retaining View-specific controls,
+  game state and Review navigation. Closing a window returns the View to the lab.
+
+- Repository skill for preparing UI-change Review Runs from existing library
+  Situations, with verified additions for missing coverage.
+
+- Tags for Situations, Decision States, saved View settings, and Layouts.
+- Combined Situation tag filters, tag search, compact chips, and metadata editing
+  in existing dialogs. Filters include inherited Decision State tags and retain
+  Review selections outside the current filter.
+- Initial factual tags throughout the library, with a repeatable dry-run/apply
+  helper. Checkpoint contents and Decision State IDs are unchanged.
+- Tag validation, storage, export/import, promotion, and UI regression coverage.
+
+### Fixed
+
+- Device auto-switch repairs stale player URLs and resumes polling after phone
+  background/history restoration, preserving the current game and report drafts.
+- Preserve runtime game groups across Reset, restrict mirrored UI clicks to their
+  group, and keep frontend services used by active device shares.
+- Reject conflicting controllers before Add View and apply controller edits only
+  after successful staging, preserving existing games on failure.
+- Carry exact engine JSON through bot/device transports without rounding large
+  integers. Review Runs now freeze and restore their synchronization policy.
+
 ## 1.0 — 2026-10-22
 
 First stable release, including the complete 1.0-preview feature set.

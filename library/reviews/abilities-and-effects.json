@@ -1,0 +1,178 @@
+{
+  "schema": 2,
+  "kind": "review",
+  "id": "79cc1c701d154622a077c101",
+  "revision": 1,
+  "name": "Defense previews - abilities and effects",
+  "entries": [
+    {
+      "schema": 1,
+      "kind": "review-entry",
+      "id": "8d135dae90be4b39bfc7eaff",
+      "situationId": "baa455559b80",
+      "viewpoint": "hero_brogan",
+      "presentation": {
+        "schema": 2,
+        "sessionState": {
+          "pane": "board"
+        }
+      }
+    },
+    {
+      "schema": 1,
+      "kind": "review-entry",
+      "id": "2588b0ea6d8b4e3ba8f5ac77",
+      "situationId": "9b27d53430c5",
+      "viewpoint": "hero_brogan",
+      "presentation": {
+        "schema": 2,
+        "sessionState": {
+          "pane": "board"
+        }
+      }
+    },
+    {
+      "schema": 1,
+      "kind": "review-entry",
+      "id": "6ae9b5729a534498b10753a1",
+      "situationId": "5f97f72cd768",
+      "viewpoint": "hero_brogan",
+      "presentation": {
+        "schema": 2,
+        "sessionState": {
+          "pane": "board"
+        }
+      }
+    },
+    {
+      "schema": 1,
+      "kind": "review-entry",
+      "id": "22c2365163ef4629bc40dfdf",
+      "situationId": "8cba5dd05cc6",
+      "viewpoint": "hero_emmitt",
+      "presentation": {
+        "schema": 2,
+        "sessionState": {
+          "pane": "board"
+        }
+      }
+    },
+    {
+      "schema": 1,
+      "kind": "review-entry",
+      "id": "c8d9ccaafb55467fb08379c1",
+      "situationId": "69fc0d04c54f",
+      "viewpoint": "hero_misa",
+      "presentation": {
+        "schema": 2,
+        "sessionState": {
+          "pane": "board"
+        }
+      }
+    },
+    {
+      "schema": 1,
+      "kind": "review-entry",
+      "id": "d5b39d576cdc48f18c15314b",
+      "situationId": "939e43a3593b",
+      "viewpoint": "hero_brogan",
+      "presentation": {
+        "schema": 2,
+        "sessionState": {
+          "pane": "board"
+        }
+      }
+    },
+    {
+      "schema": 1,
+      "kind": "review-entry",
+      "id": "f7f7ab95f81b4a348050515e",
+      "situationId": "f1a4454d8dcc",
+      "viewpoint": "hero_brogan",
+      "presentation": {
+        "schema": 2,
+        "sessionState": {
+          "pane": "board"
+        }
+      }
+    },
+    {
+      "schema": 1,
+      "kind": "review-entry",
+      "id": "6b0c9bdc1db14b899abaef51",
+      "situationId": "f3ef37781f36",
+      "viewpoint": "hero_brogan",
+      "presentation": {
+        "schema": 2,
+        "sessionState": {
+          "pane": "board"
+        }
+      }
+    },
+    {
+      "schema": 1,
+      "kind": "review-entry",
+      "id": "9aa34b1483254f87b7191e4b",
+      "situationId": "357745484765",
+      "viewpoint": "hero_brogan",
+      "presentation": {
+        "schema": 2,
+        "sessionState": {
+          "pane": "board"
+        }
+      }
+    },
+    {
+      "schema": 1,
+      "kind": "review-entry",
+      "id": "2cf2fcabc60947f493d68591",
+      "situationId": "dca380995b59",
+      "viewpoint": "hero_brogan",
+      "presentation": {
+        "schema": 2,
+        "sessionState": {
+          "pane": "board"
+        }
+      }
+    },
+    {
+      "schema": 1,
+      "kind": "review-entry",
+      "id": "9547fb1e335c4696bcb0cda1",
+      "situationId": "537e8fabb644",
+      "viewpoint": "hero_min",
+      "presentation": {
+        "schema": 2,
+        "sessionState": {
+          "pane": "board"
+        }
+      }
+    },
+    {
+      "schema": 1,
+      "kind": "review-entry",
+      "id": "23cdf5f5045f4a518c86f7c8",
+      "situationId": "64f65111b0d6",
+      "viewpoint": "hero_mrak",
+      "presentation": {
+        "schema": 2,
+        "sessionState": {
+          "pane": "board"
+        }
+      }
+    },
+    {
+      "schema": 1,
+      "kind": "review-entry",
+      "id": "d4240b3c77dc49e49e512f72",
+      "situationId": "0251584646bd",
+      "viewpoint": "hero_brogan",
+      "presentation": {
+        "schema": 2,
+        "sessionState": {
+          "pane": "board"
+        }
+      }
+    }
+  ]
+}

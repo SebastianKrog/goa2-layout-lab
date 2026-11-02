@@ -4,7 +4,7 @@ import { spawn } from "node:child_process";
 import fs from "node:fs/promises";
 import { openSync, closeSync } from "node:fs";
 import path from "node:path";
-import { TOOL, DATA, BACKEND, PORTS } from "./config.mjs";
+import { TOOL, DATA, BACKEND, BOT_BACKEND, PORTS } from "./config.mjs";
 import { dependencyRuntime, reuseDependencies } from "./dependency-cache.mjs";
 
 const [action, ...args] = process.argv.slice(2);
@@ -63,10 +63,12 @@ if (action === "install") {
       GOA2_LAB_TOOL: TOOL,
       GOA2_LAB_BACKEND_PORT: String(PORTS.backend),
     });
-  } else if (action === "backend") {
+  } else if (action === "backend" || action === "bots") {
     const [file, token] = args;
     pidfile = file;
-    cwd = BACKEND;
+    const isBots = action === "bots";
+    const checkout = isBots ? BOT_BACKEND : BACKEND;
+    cwd = checkout;
     command = "uv";
     commandArgs = [
       "run",
@@ -75,12 +77,12 @@ if (action === "install") {
       "python",
       "-m",
       "uvicorn",
-      "backend:create_app",
+      isBots ? "bot_decisions:create_app" : "backend:create_app",
       "--factory",
       "--host",
       "0.0.0.0",
       "--port",
-      String(PORTS.backend),
+      String(isBots ? PORTS.bots : PORTS.backend),
       // Bound shutdown of lab-owned HTTP/WS requests before retiring the service.
       "--timeout-graceful-shutdown",
       "5",
@@ -88,9 +90,13 @@ if (action === "install") {
     Object.assign(env, {
       UV_PROJECT_ENVIRONMENT:
         process.env.GOA2_LAB_VENV ||
-        path.join(DATA, "runtime", `venv-${process.platform}-${process.arch}`),
+        path.join(
+          DATA,
+          "runtime",
+          `venv-${isBots ? "bots-" : ""}${process.platform}-${process.arch}`,
+        ),
       UV_LINK_MODE: "copy",
-      PYTHONPATH: [path.join(TOOL, "src"), path.join(BACKEND, "src")].join(
+      PYTHONPATH: [path.join(TOOL, "src"), path.join(checkout, "src")].join(
         path.delimiter,
       ),
       GOA2_LAB_TOKEN: token,

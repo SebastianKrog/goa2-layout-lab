@@ -1,15 +1,21 @@
 ---
 name: goa2-ui-situations
-description: Fabricate and save reproducible GoA2 game moments and presentation states for comparing frontend UIs in goa2-layout-lab. Use for specific decision prompts, hero-specific displays, selected cards, or open menus; game-rule testing and comparison-image production are separate tasks.
+description: Fabricate and save game-only GoA2 Situations with separate Viewpoint and Presentation instructions for UI comparisons in goa2-layout-lab. Use for specific decision prompts, hero-specific displays, selected cards, or open menus; game-rule testing and comparison-image production are separate tasks.
 ---
 
 # GoA2 UI situations
 
-Produce a reusable saved situation that shows the requested UI condition, with the correct player viewpoint and per-layout presentation. The backend supplies real game state and prompts; the frontend supplies panels, selection, inspection, scrolling and camera state. Success means the intended UI can be reopened and compared, not that a game rule has been tested.
+Produce a reusable game-only Situation and separate inspection instructions for
+the requested UI condition. Choose Viewpoint and Presentation per inspection. The backend supplies real game state and prompts; the frontend supplies panels, selection, inspection, scrolling and camera state. Success means the intended UI can be reopened and compared, not that a game rule has been tested.
 
 ## State boundaries and current desk
 
-Follow [the canonical terminology](../../../docs/terminology.md): Decision State = exact game checkpoint; Presentation = Viewpoint + Session State + supported User State; Situation = Decision State + Presentation; View = playable instance; Layout = configured view arrangement and synchronization. Save Situation captures the complete moment. Save Decision State is game-only; Presentation templates and Layouts are reusable independently. Use `uiMode` for desktop/mobile, distinct from 2D/3D renderer. Viewpoint follows the Situation unless an explicit `overrides.viewpoint` pins it. Runtime accepts only the new model; old fixtures are ported with the offline migration tool, not a restore checkbox. The empty desk defaults to one Live working-tree View. Start/Add/Edit preserve existing progress on cancellation or failed staging.
+Follow [the canonical terminology](../../../docs/terminology.md) and
+[storage/API contracts](../../../docs/state-model.md). Choose a Layout, then a
+Situation. Situations contain game state only; menus and selections belong to small Presentation changes. Configure Viewpoint
+separately and leave preferences on the View. Save reusable role-based changes
+as Presentations. Use `uiMode` for desktop/mobile, distinct from renderer.
+Start/Add/Edit preserve existing games on cancellation or failed staging.
 
 ## Choose the stopping point
 
@@ -18,7 +24,7 @@ Translate the request into a short visual contract before building anything:
 - Heroes and visible content: card IDs/names, spells, runes, hand size, counters.
 - Exact moment: before choosing, after local selection but before submission, after the first of two commits, or after resolution. These are different fixtures.
 - Engine condition when relevant: phase, actual pending request type, responder and meaningful offered options.
-- Presentation: owner/opponent/spectator, panel, selected/inspected card or hero, scroll and camera, device, 2D/3D, source and shell.
+- Inspection setup: Viewpoint, device, renderer and source separately; Presentation changes for panels, card roles and public spells.
 - Availability: which layouts have the feature, show the content inline instead, or do not implement it.
 
 Infer a useful default from the request and record it. Ask only when alternatives would produce materially different requested comparisons. For "Emmitt selecting two cards", normally prepare planning with his first card committed and the second still choosable; do not confuse this with the post-reveal retrieve-one prompt.
@@ -43,7 +49,7 @@ Use the shortest reliable route:
 
 Use existing backend fixtures as construction references, not as rule-test assignments. EffectScenarioBuilder makes generic heroes and synthetic boards; its hero named hero_gydion is not automatically a fully initialized registry Gydion. For frontend fixtures, normally keep a full-map GameSetup and adapt only the useful step sequence/context from a test.
 
-Use registered cards and enum values. Maintain live card zones, actor/turn and context consistently; keep the master card catalogue as the model expects. Directly setting setup data such as level or rune_slots is appropriate for a display fixture. Do not manufacture a frontend STATE_UPDATE, overwrite window.**GOA2_LAB_STATE**, invent an input_request, or change production engine/card implementations to make a prompt appear.
+Use registered cards and enum values. Maintain live card zones, actor/turn and context consistently; keep the master card catalogue as the model expects. Directly setting setup data such as level or rune_slots is appropriate for a display fixture when the core inventory and turn schedule remain plausible. Do not manufacture a frontend STATE_UPDATE, overwrite `window.__GOA2_LAB_STATE__`, invent an input_request, or change production engine/card implementations to make a prompt appear.
 
 Load effects through goa2.bootstrap.register_all_effects() before constructing/resolving custom hero situations.
 
@@ -84,15 +90,19 @@ board position reachable or running broad game-rule tests.
 
 ## Add the viewpoints and UI state
 
-Load the same checkpoint into independent lab clones. Use Synchronize None while arranging different presentations; API requests may be used when deliberately advancing every clone together. API + clicks is optional convenience, not a fixture-generation dependency: it skips unmatched controls.
+Load the same checkpoint into isolated lab clones. Keep the default API
+synchronization while arranging independent menus and cameras; use None only
+when deliberately advancing games separately. Disable bots for static inspection. API + clicks is optional convenience, not a fixture-generation dependency: it skips unmatched controls.
 
 Use an owning player seat for private hands, deck contents and decision choices. During defense or forced discard, the responder can differ from the active attacker. Use the responder's seat for the chooser, and separate opponent/spectator views when useful. Do not enable reveal-all to disguise a wrong viewpoint.
 
-Save those slots as provenance.slots, with seats that exist in the checkpoint; a provenance.seat hint alone is not a saved comparison setup. This matters for custom rosters that omit the default hero_arien. The loader repairs absent preset seats while preserving valid independent seats and spectators.
+Save those slots as a separate Layout, with seats that exist in the checkpoint. This matters for custom rosters that omit the default hero_arien. The loader repairs absent preset seats while preserving valid independent seats and spectators.
 
-Configure one, two or three slots deliberately. The userscript target uses the legacy desktop shell with a phone profile and 2D; the migrated comparator/live source may use the native mobile shell. Two desktop 2D or 3D slots are also valid.
+Configure one, two or three slots deliberately. The userscript Target uses the legacy desktop shell with a phone profile and 2D;
+Main/Comparator/Live may use native mobile when supported. Main falls back to
+desktop at the requested phone dimensions with a warning when unsupported. Two desktop 2D or 3D slots are also valid.
 
-Open supported panels using the lab's pane/hero adapters or the actual UI. Local planning-card selection is presentation state, not a backend commit. Wait for the panel and real card control to mount before selecting; a navigation click alone is not proof that the panel has rendered. Save the Situation after opening the correct hand and selecting the card, and verify `presentation.sessionState.selectedCard`. Save a Presentation template too when useful for reuse. The current adapters handle Windows CRLF checkouts and asynchronous mobile panels; inspect adapter warnings before classifying absent markers as a missing frontend feature. Capture per-view camera, scroll, inspection and panel state through Save... > Presentation.
+Open supported panels using the lab's pane/hero adapters or the actual UI. Local planning-card selection is presentation state, not a backend commit. Wait for the panel and real card control to mount before selecting; a navigation click alone is not proof that the panel has rendered. Save the game moment as a Situation. Save a generic card role as a Presentation, or put the specific selected card ID directly on the Review entry. The current adapters handle Windows CRLF checkouts and asynchronous mobile panels; inspect adapter warnings before classifying absent markers as a missing frontend feature. Full camera/scroll/UI snapshots are recorded by capture/reporting; Save Presentation stores one chosen session change.
 
 A missing Hand menu does not necessarily mean a missing hand: a desktop layout may show it inline. Record supported, inline-equivalent, unsupported or not-verified for each requested feature/source/shell. Preserve the same game checkpoint even when a layout cannot show the requested panel. Do not add temporary frontend markup or claim a menu opened when the adapter only scrolled to inline content.
 
@@ -100,9 +110,12 @@ Cheats controls stay hidden by default. Setup data can be fabricated without dis
 
 ## Save and check reproducibility
 
-Import the checkpoint through the lab, which validates and normalizes it. In standalone factories, restore/checkpoint once to normalize a waiting step, then restore that normalized checkpoint again and confirm the prompt and canonical hash are stable. Initial restoration can initialize transient context defaults; compare clones and presentation-only changes against the normalized state. Save the situation from the intended game window after setting its Presentation, with a useful name such as "Snorri - second rune choice - owner". A saved Layout contains view configuration; it does not contain a Decision State.
+Import the checkpoint through the lab, which validates and normalizes it. In standalone factories, restore/checkpoint once to normalize a waiting step, then restore that normalized checkpoint again and confirm the prompt and canonical hash are stable. Initial restoration can initialize transient context defaults; compare clones and presentation-only changes against the normalized state. Save the game-only Situation from the intended View with a name such as
+"Snorri — second rune choice". Record owner Viewpoint and UI changes separately;
+saving the Situation does not save the arranged UI. A saved Layout contains view configuration; it does not contain a Decision State.
 
-Reopen the saved Situation and verify its composed Presentation; use explicit View overrides for intentionally different player viewpoints. Check only the observable fixture contract:
+Reopen the saved Situation with the separate Presentation instructions and verify the result; use View settings or the separate inspection `viewpoint` for player visibility,
+and per-View Presentation instructions for different UI changes. Check only the observable fixture contract:
 
 - Correct phase/prompt, responder, hero and representative options/content.
 - Same canonical game hash across slots intended to share the checkpoint; local menu/selection changes do not advance it.
@@ -113,14 +126,34 @@ Do not consume the final choice just to demonstrate it works. For a post-choice 
 
 Prefer an isolated lab session with distinct ports when setup/reload would replace the user's current comparison. If the user wants the new situation in their desk, preserve unsaved game moments and viewpoints before replacing them. Never call a standalone script's startDesk default auto-load against an existing session.
 
+Give Situations content-based names, without milestone codes or numbered
+variants. Name game conditions in Situations; use Review entry names for
+inspection differences such as Viewpoint, panel or selection. Include a short `description` explaining
+what to inspect and the saved stopping point. The list previews it and expands
+it on demand. Hero filters include the full checkpoint roster automatically.
+
 ## Store and group situations
 
 Use **situation** consistently. The lab exposes catalog.situations and situationId in load requests. Reuse the shared repo library in library/situations/<group>/ before fabricating another copy. New user- or agent-generated checkpoints go to ignored .layout-lab/situations/; factory scratch files go to .layout-lab/situation-recipes/.
 
-Choose a focused folder such as cards/defense, cards/upgrades, heroes/gydion, heroes/snorri, heroes/emmitt or menus. Grouping is a real directory tree, not a naming prefix. Move a draft with POST /api/organize {id,group,shared:false}. After reopening and confirming the visual contract, add reusable fixtures to the shared library with {id,group,shared:true}. Promotion returns a new ID and keeps the local draft. Review that repo-visible JSON; commit only when authorized. Never put the curated library inside ignored runtime data.
+Choose a focused folder such as cards/defense, cards/upgrades, heroes/gydion, heroes/snorri or heroes/emmitt. A menu-only difference reuses the same Situation. Grouping is a real directory tree, not a naming prefix. Move a draft with POST /api/organize {id,group,shared:false}. After reopening and confirming the visual contract, add reusable fixtures to the shared library with {id,group,shared:true}. Promotion returns a new ID and keeps the local draft. Review that repo-visible JSON; commit only when authorized. Never put the curated library inside ignored runtime data.
+
+Tag new Situations with their subject and UI focus, reusing the [tag conventions](../../../docs/tags.md).
+Use Decision State tags for phase/decision facts shared by Situations; View tags
+belong to saved View settings. `scripts/tag-library.py` suggests additive tags
+for curated records, with a dry run by default.
 
 ## Deliver the situation, not images
 
 Return the saved situation ID/name, factory or import file, exact visual condition, slots/seats and availability notes. Preserve enough setup detail to regenerate it. Use the small handoff record in lab-workflow.md when another task will generate images. State what was actually reopened and verified.
 
 Stop here when only situation preparation was requested. Use the available goa2-compare-views skill for commit selection, screenshot framing, combined images, overlays/diffs, static report exports or a live human viewer. Pass it the saved situation and verification notes.
+
+## Small Presentation changes
+
+Presentations are sparse session alterations, not UI snapshots. Reusable presets target
+roles (`{role:"gold"}`, `{role:"upgrade",tier:2,branch:"A",color:"RED"}`), panels or
+`publicSpells:true`. Put exact card IDs only on Review entries or ad hoc comparison
+requests. Keep `viewpoint` separate. Do not capture preferences, game URLs or renderer
+identity into a preset. Application warnings mean the Situation/View remains usable;
+inspect the actual result and include those warnings in the handoff.

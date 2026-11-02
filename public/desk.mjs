@@ -1,8 +1,24 @@
+import { initReportsPanel } from "./reports-panel.mjs";
+import { tagList } from "./tag-ui.mjs";
+import {
+  normalizeTags,
+  parseTags,
+  situationTags,
+  tagLabel,
+  tagType,
+} from "./tags.mjs";
 import { initReviewsPanel } from "./reviews-panel.mjs";
 import { initElementReportPanel } from "./element-report-panel.mjs";
 import { initDevicePanel } from "./device-panel.mjs";
 import { LiveView } from "./live.mjs";
+import { ViewWindows } from "./view-windows.mjs";
 import { NativeView } from "./native.mjs";
+const editorOnlyIndex = new URLSearchParams(location.search).has("editView")
+  ? Number(new URLSearchParams(location.search).get("editView"))
+  : null;
+let editorOnlyOpened = false;
+let editorBootstrap = null;
+if (editorOnlyIndex !== null) document.body.classList.add("editor-only");
 const $ = (id) => document.getElementById(id);
 const el = (tag, cls, text) => {
   const e = document.createElement(tag);
@@ -11,6 +27,7 @@ const el = (tag, cls, text) => {
   return e;
 };
 const sourceNames = {
+  main: "Main",
   base: "Base",
   comparator: "Current build",
   target: "Userscript target",
@@ -30,7 +47,7 @@ const paneNames = {
   log: "Log",
   settings: "Settings",
 };
-let openDevice, reviewHistory;
+let openDevice, reviewHistory, reportsPanel;
 let catalog = {},
   state = {},
   configs = [],
@@ -40,9 +57,11 @@ let catalog = {},
   checking = false,
   disconnected = false,
   stopped = false,
-  draftSetup = false;
+  draftSetup = false,
+  customSetup = false;
 let currentPage = "compare",
   expandedIndex = null;
+let viewOrder = [];
 let editing = null,
   editDraft,
   creating = false,
@@ -53,6 +72,13 @@ let editing = null,
   lastWindowKey = "",
   toastTimer,
   applyingWorkspace = false;
+const viewWindows = new ViewWindows(() => {
+  if (initialized) {
+    render();
+    controls();
+  }
+}, showError);
+viewWindows.editorContext = () => ({ catalog, state });
 const reviewSelection = new Set();
 let filteredSituations = [];
 const excluded = new Set(),
@@ -90,6 +116,7 @@ const configKey = (c) =>
       uiMode: c.uiMode,
       label: c.label || "",
       autoSwitch: !!c.autoSwitch,
+      autoSwitchManualOnly: !!c.autoSwitchManualOnly,
       bots: c.bots || {},
       defaults: presentationKey(
         c.presentationDefaults || { viewpoint: c.seat },
@@ -113,7 +140,9 @@ const matching = (i) =>
 function showError(error) {
   $("error").hidden = false;
   $("error").textContent = error.message || String(error);
-  const dialog = document.querySelector("dialog[open]");
+  const dialog = $("tagsDialog").open
+    ? $("tagsDialog")
+    : document.querySelector("dialog[open]");
   if (dialog) {
     let alert = dialog.querySelector("[data-dialog-error]");
     if (!alert) {
@@ -141,13 +170,20 @@ function navigate(name) {
   }
   if (name !== "compare") liveViews.clear();
   else if (initialized) render();
-  for (const page of ["compare", "situations", "reviews", "settings"])
+  for (const page of [
+    "compare",
+    "situations",
+    "reviews",
+    "reports",
+    "settings",
+  ])
     $(page + "Page").hidden = page !== name;
   document.querySelectorAll("[data-page]").forEach((b) => {
     b.classList.toggle("active", b.dataset.page === name);
     b.setAttribute("aria-current", b.dataset.page === name ? "page" : "false");
   });
   if (name === "reviews") void reviewHistory?.refresh();
+  if (name === "reports") void reportsPanel?.refresh(true);
   window.scrollTo(0, 0);
 }
 document.querySelector(".brand").onclick = (event) => {
@@ -170,6 +206,17 @@ function fill(select, entries, selected = select.value) {
   if (entries.some(([v]) => v === selected)) select.value = selected;
 }
 async function read(route) {
+  const cached =
+    route === "/api/catalog"
+      ? "catalog"
+      : route === "/api/status"
+        ? "state"
+        : null;
+  if (cached && editorBootstrap?.[cached]) {
+    const value = editorBootstrap[cached];
+    delete editorBootstrap[cached];
+    return value;
+  }
   const r = await fetch(route, { signal: AbortSignal.timeout(15000) });
   const v = await r.json();
   if (!r.ok) throw new Error(v.error || `Request failed (${r.status})`);
@@ -217,12 +264,10 @@ function controls() {
     !(state.windows || []).some((w) =>
       ["live", "comparator"].includes(w.config.source),
     );
-  const independent =
-    count < 2 ||
-    (state.windows || []).some((w) => Object.keys(w.config.bots || {}).length);
+  const independent = count < 1;
   $("synchronize").disabled = !!busy || independent;
   $("synchronize").title = independent
-    ? "Synchronization requires at least two manual views."
+    ? "Load a View before changing synchronization."
     : "";
   $("editor")
     .querySelectorAll("[data-close]")
@@ -242,10 +287,14 @@ function controls() {
   updateCropControls(busy);
   $("addView").disabled = !!busy || configs.length >= 3;
   $("addView").title = configs.length >= 3 ? "Up to three views" : "Add a view";
+  $("load").disabled = !!busy || !configs.length || !$("situation").value;
   updateReviewControls();
   reviewHistory?.updateState();
+  reportsPanel?.updateState();
+  viewWindows.profiles = catalog.profiles;
+  viewWindows.sync(state.windows || [], liveViews);
 }
-async function task(label, fn, { sync = true } = {}) {
+async function task(label, fn, { sync = true, refreshCatalog = true } = {}) {
   if (running || state.busy) return;
   running = true;
   operation = label;
@@ -257,7 +306,7 @@ async function task(label, fn, { sync = true } = {}) {
   controls();
   try {
     const result = await fn();
-    await reloadCatalog();
+    if (refreshCatalog) await reloadCatalog();
     state = await read("/api/status");
     void reviewHistory?.refresh();
     lastWindowKey = (state.windows || []).map(viewKey).join("|");
@@ -330,6 +379,30 @@ async function reloadCatalog() {
     ["__custom", "Custom setup"],
   ]);
   $("preset").querySelector('[value="__custom"]').disabled = true;
+  if (catalog.primaryLayouts?.length) {
+    const other = el("optgroup");
+    other.label = "Other layouts";
+    for (const option of [...$("preset").options]) {
+      if (
+        option.value !== "__custom" &&
+        !catalog.primaryLayouts.includes(option.value)
+      )
+        other.append(option);
+      if (option.value === "Current")
+        option.textContent = "Desktop · Working tree";
+    }
+    $("preset").insertBefore(
+      other,
+      $("preset").querySelector('[value="__custom"]'),
+    );
+  }
+  const chosenPresentation = $("inspectionPresentation").value;
+  fill($("inspectionPresentation"), [
+    ["", "Default presentation"],
+    ...(catalog.presentations || []).map((p) => [p.id, p.name]),
+  ]);
+  if ((catalog.presentations || []).some((p) => p.id === chosenPresentation))
+    $("inspectionPresentation").value = chosenPresentation;
   const branch = catalog.settings?.comparatorRef || "mobile-migration";
   fill($("revision"), [
     [branch, "Newest configured build"],
@@ -338,8 +411,10 @@ async function reloadCatalog() {
       .map((c) => [c.sha, c.sha.slice(0, 8) + " · " + c.subject]),
   ]);
   $("savedCount").textContent = catalog.situations.length;
-  renderLibrary();
-  renderSettings();
+  if (editorOnlyIndex === null) {
+    renderLibrary();
+    renderSettings();
+  }
 }
 function syncViews() {
   configs = state.windows.map((w) => ({ ...w.config }));
@@ -382,129 +457,218 @@ document.querySelectorAll("dialog").forEach((dialog) =>
   }),
 );
 function render() {
+  $("startScreen").hidden = configs.length > 0;
+  $("workspaceToolbar").hidden = !configs.length;
+  $("startOver").hidden = !!state.windows?.length;
+  $("slots").closest(".view-workspace").hidden =
+    !state.windows?.length && !customSetup;
+
   while (configs.length < Number($("count").value))
     configs.push(structuredClone(configs.at(-1) || catalog.presets.Current[0]));
   configs.length = Number($("count").value);
+  viewOrder = viewOrder.filter((index) => index < configs.length);
+  for (let index = 0; index < configs.length; index++)
+    if (!viewOrder.includes(index)) viewOrder.push(index);
   const preset = Object.entries(catalog.presets).find(
     ([, slots]) =>
       slots.length === configs.length &&
       slots.every((s, i) => configKey(s) === configKey(configs[i])),
   );
   $("preset").value = preset ? preset[0] : "__custom";
-  $("slots").classList.toggle("one", configs.length === 1);
-  $("slots").classList.toggle("two", configs.length === 2);
+  const inlineCount = configs.filter(
+    (_, index) => !viewWindows.detached.has(index),
+  ).length;
+  $("slots")
+    .closest(".view-workspace")
+    .classList.toggle("all-detached", inlineCount === 0 && configs.length > 0);
+  $("slots").classList.toggle("one", inlineCount <= 1);
+  $("slots").classList.toggle("two", inlineCount === 2);
   $("viewCount").textContent = $("navCount").textContent = configs.length;
   const keep = new Set();
   $("slots").replaceChildren(
-    ...configs.map((s, i) => {
-      const w = active(i),
-        opened = matching(i) && !w.closed,
-        letter = String.fromCharCode(65 + i),
-        card = el("article", "slot");
-      card.dataset.index = i;
-      card.onpointerdown = () => {
-        focusedIndex = i;
-      };
-      const header = el("div", "slot-header");
-      header.append(el("span", "view-letter", letter));
-      const heading = el("div");
-      heading.append(
-        el("h3", "", s.label || sourceNames[s.source]),
-        el(
-          "small",
-          "",
-          human(s.seat) +
-            " / " +
-            devices[s.profile] +
-            " / " +
-            s.render.toUpperCase() +
-            (Object.keys(s.bots || {}).length
-              ? " / Bots: " +
-                Object.entries(s.bots)
-                  .map(
-                    ([id, kind]) =>
-                      human(id) +
-                      " " +
-                      (kind === "ismcts"
-                        ? "ISMCTS"
-                        : kind === "heuristic"
-                          ? "Simple"
-                          : "Random"),
-                  )
-                  .join(", ")
-              : ""),
-        ),
-      );
-      header.append(heading);
-      card.append(header);
-      let live;
-      if (opened && currentPage === "compare" && !document.hidden) {
-        const key = viewKey(w);
-        keep.add(key);
-        live = liveViews.get(key);
-        if (!live) {
-          const View =
-            window.layoutLabDesktop && w.nativeId ? NativeView : LiveView;
-          live = new View(i, w, catalog.profiles[s.profile].viewport);
-          liveViews.set(key, live);
-        }
-        card.append(live.host);
-      } else {
-        const empty = el(
-          "div",
-          "live-stage empty-view",
-          w?.closed ? "View closed" : "Choose a situation and start this view",
+    ...configs
+      .map((s, i) => {
+        const w = active(i),
+          opened = matching(i) && !w.closed,
+          letter = String.fromCharCode(65 + i),
+          card = el("article", "slot");
+        card.dataset.index = i;
+        const detached = viewWindows.detached.has(i);
+        card.classList.toggle("detached", detached);
+        card.onpointerdown = () => {
+          focusedIndex = i;
+        };
+        const header = el("div", "slot-header");
+        header.append(el("span", "view-letter", letter));
+        const heading = el("div");
+        heading.append(
+          el("h3", "", s.label || sourceNames[s.source]),
+          el(
+            "small",
+            "",
+            human(s.seat) +
+              " / " +
+              devices[s.profile] +
+              " / " +
+              s.render.toUpperCase() +
+              (Object.keys(s.bots || {}).length
+                ? " / Bots: " +
+                  Object.entries(s.bots)
+                    .map(
+                      ([id, kind]) =>
+                        human(id) +
+                        " " +
+                        (kind === "ismcts"
+                          ? "ISMCTS"
+                          : kind === "heuristic"
+                            ? "Simple"
+                            : "Random"),
+                    )
+                    .join(", ")
+                : ""),
+          ),
         );
-        const start = button("Start", () => openEditor(i));
-        start.classList.add("primary");
-        empty.append(start);
-        card.append(empty);
-      }
-      const actions = el("div", "slot-footer");
-      actions.hidden = !w;
-      actions.append(button("Edit view", () => openEditor(i)));
-      card.classList.toggle("expanded", expandedIndex === i);
-      const expand = button(
-        w?.closed ? "Reopen" : expandedIndex === i ? "Collapse" : "Expand",
-        () => {
-          if (w?.closed)
-            return task("Reopening view...", () =>
-              call("configure", { index: i, update: {} }),
-            );
-          expandedIndex = expandedIndex === i ? null : i;
-          render();
-          if (expandedIndex !== null)
-            live?.canvas.focus({ preventScroll: true });
-        },
-      );
-      expand.disabled = !matching(i);
-      if (!matching(i)) expand.dataset.unopened = "true";
-      actions.append(expand);
-      const scale = el("select");
-      scale.setAttribute("aria-label", "Scale view " + letter);
-      scale.append(option("fit", "Fit"), option("actual", "100%"));
-      scale.value = live?.fit === false ? "actual" : "fit";
-      scale.onchange = () => live?.zoom(scale.value === "fit");
-      actions.append(scale);
-      const capture = el("label", "check"),
-        check = el("input");
-      check.type = "checkbox";
-      check.checked = !excluded.has(i);
-      check.setAttribute("aria-label", "Include in capture");
-      check.dataset.captureIndex = i;
-      check.onchange = () => setCaptureSelection(i, check.checked);
-      capture.append(check, document.createTextNode("Capture"));
-      actions.append(capture);
-      card.append(actions);
-      const issues = [
-        ...(w?.warnings || []),
-        ...(w?.errors || []),
-        ...(w?.assets || []),
-      ];
-      if (issues.length)
-        card.append(el("div", "view-warning", issues.join("\n")));
-      return card;
-    }),
+        if (s.tags?.length) heading.append(tagList(normalizeTags(s.tags)));
+        header.append(heading);
+        card.append(header);
+        let live;
+        if (
+          opened &&
+          currentPage === "compare" &&
+          !document.hidden &&
+          editorOnlyIndex === null
+        ) {
+          const key = viewKey(w);
+          keep.add(key);
+          live = liveViews.get(key);
+          if (!live) {
+            const View =
+              window.layoutLabDesktop && w.nativeId ? NativeView : LiveView;
+            live = new View(i, w, catalog.profiles[s.profile].viewport);
+            liveViews.set(key, live);
+            if (viewWindows.fit.has(i)) live.zoom(viewWindows.fit.get(i));
+          }
+          card.append(live.host);
+        } else {
+          const empty = el(
+            "div",
+            "live-stage empty-view",
+            w?.closed
+              ? "View closed"
+              : "Choose a situation and start this view",
+          );
+          const start = button("Start", () => openEditor(i));
+          start.classList.add("primary");
+          empty.append(start);
+          card.append(empty);
+        }
+        if (detached) {
+          const notice = el(
+            "div",
+            "separate-notice",
+            "Shown in a separate window",
+          );
+          card.append(notice);
+        }
+        const actions = el("div", "slot-footer");
+        actions.hidden = !w;
+        const edit = button("Edit view", () => openEditor(i));
+        edit.dataset.windowControl = "edit";
+        actions.append(edit);
+        const separate = button(
+          detached ? "Return to lab" : "Open in window",
+          () => {
+            expandedIndex = null;
+            void viewWindows.toggle(i, w);
+          },
+        );
+        separate.dataset.windowControl = "window";
+        separate.disabled = !opened;
+        if (!opened) separate.dataset.unopened = "true";
+        actions.append(separate);
+        if (configs.length > 1) {
+          const more = el("select");
+          more.setAttribute("aria-label", `View ${letter} actions`);
+          more.dataset.windowControl = "more";
+          more.dataset.actionMenu = "";
+          more.append(option("", "More…"));
+          for (let other = 0; other < configs.length; other++)
+            if (other !== i)
+              more.append(
+                option(
+                  String(other),
+                  `Swap with View ${String.fromCharCode(65 + other)}`,
+                ),
+              );
+          more.onchange = () => {
+            const other = Number(more.value);
+            const chosen = more.value !== "";
+            more.value = "";
+            if (!chosen || other === i || !viewOrder.includes(other)) return;
+            const from = viewOrder.indexOf(i),
+              to = viewOrder.indexOf(other);
+            [viewOrder[from], viewOrder[to]] = [viewOrder[to], viewOrder[from]];
+            expandedIndex = null;
+            render();
+            controls();
+          };
+          actions.append(more);
+        }
+        card.classList.toggle("expanded", expandedIndex === i);
+        const expand = button(
+          w?.closed ? "Reopen" : expandedIndex === i ? "Collapse" : "Expand",
+          () => {
+            if (w?.closed)
+              return task("Reopening view...", () =>
+                call("configure", { index: i, update: {} }),
+              );
+            expandedIndex = expandedIndex === i ? null : i;
+            render();
+            if (expandedIndex !== null)
+              live?.canvas.focus({ preventScroll: true });
+          },
+        );
+        expand.disabled = !matching(i);
+        if (!matching(i)) expand.dataset.unopened = "true";
+        expand.dataset.inlineOnly = "";
+        actions.append(expand);
+        const scale = el("select");
+        scale.setAttribute("aria-label", "Scale view " + letter);
+        scale.append(option("fit", "Fit"), option("actual", "100%"));
+        scale.value =
+          (viewWindows.fit.get(i) ?? live?.fit) === false ? "actual" : "fit";
+        scale.dataset.windowControl = "scale";
+        scale.onchange = () => {
+          live?.zoom(scale.value === "fit");
+          viewWindows.setFit(i, scale.value === "fit");
+        };
+        actions.append(scale);
+        const capture = el("label", "check"),
+          check = el("input");
+        check.type = "checkbox";
+        check.checked = !excluded.has(i);
+        check.setAttribute("aria-label", "Include in capture");
+        check.dataset.captureIndex = i;
+        check.dataset.windowControl = "capture";
+        check.onchange = () => setCaptureSelection(i, check.checked);
+        capture.append(check, document.createTextNode("Capture"));
+        actions.append(capture);
+        card.append(actions);
+        const issues = [
+          ...(w?.warnings || []),
+          ...(w?.botError ? [w.botError] : []),
+          ...(w?.errors || []),
+          ...(w?.assets || []),
+        ];
+        if (issues.length)
+          card.append(el("div", "view-warning", issues.join("\n")));
+        return card;
+      })
+      .sort(
+        (a, b) =>
+          viewOrder.indexOf(Number(a.dataset.index)) -
+          viewOrder.indexOf(Number(b.dataset.index)),
+      ),
   );
   for (const [key, live] of liveViews)
     if (!keep.has(key)) {
@@ -569,9 +733,13 @@ function field(host, labelText, key, values) {
           : editDraft[key],
     );
   else {
-    input.value = editDraft[key] || "";
-    input.maxLength = 80;
-    input.placeholder = "Optional, e.g. Arien / close camera";
+    input.value =
+      key === "tags" ? (editDraft.tags || []).join(", ") : editDraft[key] || "";
+    input.maxLength = key === "tags" ? 1600 : 80;
+    input.placeholder =
+      key === "tags"
+        ? "Comma-separated tags"
+        : "Optional, e.g. Arien / close camera";
   }
   input.onchange = () => {
     if (key === "viewpointOverride") {
@@ -585,7 +753,14 @@ function field(host, labelText, key, values) {
     } else if (key === "interfacePreset") {
       editDraft.render = input.value === "3d" ? "3d" : "2d";
       editDraft.uiMode = input.value === "mobile" ? "mobile" : "desktop";
-    } else editDraft[key] = input.value;
+    } else
+      editDraft[key] =
+        key === "tags"
+          ? input.value
+              .split(",")
+              .map((t) => t.trim())
+              .filter(Boolean)
+          : input.value;
     if (key === "seat") editorBots();
     if (["source", "render", "uiMode", "interfacePreset"].includes(key)) {
       normalizeDraft();
@@ -594,16 +769,21 @@ function field(host, labelText, key, values) {
         $("viewPresentation"),
         [
           ["", "Keep current / inherit presentation"],
-          ...(catalog.presentations || [])
-            .filter((p) => p.render === editDraft.render)
-            .map((p) => [p.id, p.name]),
+          ...(catalog.presentations || []).map((p) => [p.id, p.name]),
         ],
         "",
       );
     }
   };
   input.oninput = () => {
-    if (!values) editDraft[key] = input.value;
+    if (!values)
+      editDraft[key] =
+        key === "tags"
+          ? input.value
+              .split(",")
+              .map((t) => t.trim())
+              .filter(Boolean)
+          : input.value;
   };
   label.append(input);
   host.append(label);
@@ -623,6 +803,7 @@ function editorFields() {
   const advanced = $("editorAdvancedFields");
   advanced.replaceChildren();
   field(advanced, "View name", "label");
+  field(advanced, "View tags", "tags");
   field(host, "Source", "source", Object.entries(sourceNames));
   field(host, "Device", "profile", Object.entries(devices));
   field(host, "Interface preset", "interfacePreset", [
@@ -655,13 +836,15 @@ function editorFields() {
         ],
   );
   field(host, "Viewpoint", "viewpointOverride", [
-    ["__follow", "Follow situation"],
+    ["__follow", "Follow Layout / inspection"],
     ...editorSeats.map((id) => [id, human(id)]),
     ["spectator", "Spectator"],
   ]);
 }
 let editorSeats = [],
   editorBotKinds = [];
+let rosterEpoch = 0;
+const rosterOptions = new Map();
 function editorBots() {
   const enabled = editorBotKinds.length > 0 && editDraft.seat !== "spectator";
   $("viewBots").hidden = !enabled;
@@ -730,7 +913,18 @@ async function openEditor(i) {
     entries,
     parent ? "__current" : $("situation").value,
   );
-  if (!(await updateEditorRoster())) return;
+  const selected = catalog.situations.find(
+    (s) => s.id === $("viewSituation").value,
+  );
+  editorSeats =
+    parent?.seats ||
+    situationTags(selected || {})
+      .filter((tag) => tag.startsWith("hero:"))
+      .map((tag) => "hero_" + tag.slice(5).replaceAll("-", "_"));
+  if (!editorSeats.length)
+    editorSeats = [editDraft.seat || "hero_arien"].filter(
+      (seat) => seat !== "spectator",
+    );
   editing = i;
   if (editDraft.seat !== "spectator" && !editorSeats.includes(editDraft.seat))
     editDraft.seat = editorSeats[0];
@@ -741,9 +935,7 @@ async function openEditor(i) {
     $("viewPresentation"),
     [
       ["", "Keep current / inherit presentation"],
-      ...(catalog.presentations || [])
-        .filter((p) => p.render === editDraft.render)
-        .map((p) => [p.id, p.name]),
+      ...(catalog.presentations || []).map((p) => [p.id, p.name]),
     ],
     "",
   );
@@ -766,7 +958,7 @@ async function openEditor(i) {
   action("Remove view", "Removing view…", async () => {
     await call("views/remove", { index: i });
     configs.splice(i, 1);
-    if (!configs.length) configs = structuredClone(catalog.presets.Current);
+    if (!configs.length) customSetup = false;
     $("count").value = configs.length;
     expandedIndex = null;
     excluded.clear();
@@ -832,9 +1024,49 @@ async function openEditor(i) {
   tools.append(heroRow);
   tools.querySelectorAll("button").forEach((b) => (b.dataset.needsWindow = i));
   $("editor").showModal();
+  positionViewEditor();
   controls();
+  void updateEditorRoster().then((updated) => {
+    if (updated) {
+      if (!parent) editorFields();
+      else editorBots();
+    }
+  });
+}
+function positionViewEditor() {
+  const editor = $("editor");
+  if (!editor.open) return;
+  const card = document.querySelector(`.slot[data-index="${editing}"]`);
+  const rect =
+    editorOnlyIndex !== null
+      ? { left: 0, top: 0, width: innerWidth, height: innerHeight }
+      : card?.getBoundingClientRect();
+  if (!rect || !rect.width) return;
+  editor.classList.add("view-overlay");
+  Object.assign(editor.style, {
+    left: Math.max(0, rect.left) + "px",
+    top: Math.max(0, rect.top) + "px",
+    right: "auto",
+    bottom: "auto",
+    width: Math.min(rect.width, innerWidth) + "px",
+    height: Math.min(rect.height, innerHeight - Math.max(0, rect.top)) + "px",
+  });
+}
+window.addEventListener("resize", positionViewEditor);
+window.addEventListener("scroll", positionViewEditor, true);
+async function openEmbeddedEditor() {
+  if (editorOnlyIndex === null || editorOnlyOpened || !initialized) return;
+  editorOnlyOpened = true;
+  if (!Number.isInteger(editorOnlyIndex) || !active(editorOnlyIndex)) {
+    window.parent.postMessage({ type: "lab-editor-closed" }, location.origin);
+    return;
+  }
+  await openEditor(editorOnlyIndex);
 }
 async function updateEditorRoster() {
+  const epoch = ++rosterEpoch,
+    draft = editDraft,
+    viewIndex = editing;
   try {
     const selected = $("viewSituation").value;
     const parent = active(creating ? inheritIndex : editing);
@@ -842,9 +1074,30 @@ async function updateEditorRoster() {
       selected === "__current"
         ? parent?.situationId || state.situationId
         : selected;
-    const options = await read(
-      `/api/device/options?situationId=${encodeURIComponent(situationId || "")}`,
-    );
+    const key =
+      selected === "__current" && parent
+        ? "game:" + parent.gameId
+        : "decision:" +
+          (catalog.situations.find((s) => s.id === situationId)
+            ?.decisionStateId || situationId);
+    if (!rosterOptions.has(key)) {
+      const pending = read(
+        `/api/device/options?situationId=${encodeURIComponent(situationId || "")}`,
+      ).catch((error) => {
+        rosterOptions.delete(key);
+        throw error;
+      });
+      rosterOptions.set(key, pending);
+    }
+    const options = await rosterOptions.get(key);
+    if (
+      epoch !== rosterEpoch ||
+      draft !== editDraft ||
+      editing !== viewIndex ||
+      !$("editor").open ||
+      selected !== $("viewSituation").value
+    )
+      return false;
     editorSeats =
       selected === "__current" && parent
         ? parent.seats
@@ -861,7 +1114,7 @@ async function updateEditorRoster() {
     );
     return true;
   } catch (error) {
-    showError(error);
+    if (epoch === rosterEpoch && $("editor").open) showError(error);
     return false;
   }
 }
@@ -896,6 +1149,8 @@ $("editor").addEventListener("cancel", (event) => {
   if (running || state.busy) event.preventDefault();
 });
 $("editor").addEventListener("close", () => {
+  if (editorOnlyIndex !== null)
+    window.parent.postMessage({ type: "lab-editor-closed" }, location.origin);
   if (!editorCommitted) cancelViewDraft();
 });
 $("editorForm").onsubmit = (event) => {
@@ -904,6 +1159,7 @@ $("editorForm").onsubmit = (event) => {
   const update = { ...editDraft, autoSwitch: $("viewAutoSwitch").checked };
   const selected = $("viewSituation").value;
   void task(creating ? "Starting view..." : "Saving view...", async () => {
+    if (Object.hasOwn(update, "tags")) update.tags = normalizeTags(update.tags);
     if (creating || selected !== "__current") {
       await call("views/add", {
         config: update,
@@ -996,14 +1252,132 @@ document.addEventListener("keydown", (event) => {
     event.preventDefault();
   }
 });
+const selectedTags = new Set();
+let tagTarget;
+function editTags(kind, record) {
+  if (!record) return;
+  tagTarget = { kind, id: record.id, origin: record.origin };
+  $("tagsRecordName").textContent = record.name;
+  $("tagsInput").value = (record.tags || []).join(", ");
+  $("tagsInheritedNote").textContent =
+    kind === "situation" && record.decisionStateTags?.length
+      ? "Inherited from Decision State: " +
+        record.decisionStateTags.join(", ") +
+        ". Edit that state to change these tags."
+      : "";
+  $("tagsInheritedNote").hidden = !$("tagsInheritedNote").textContent;
+  $("tagsDialog").querySelector("[data-dialog-error]")?.remove();
+  $("tagsDialog").showModal();
+}
+$("tagsForm").onsubmit = (event) => {
+  event.preventDefault();
+  void task(
+    "Saving tags…",
+    async () => {
+      const tags = parseTags($("tagsInput").value);
+      const saved = await call("tags", { ...tagTarget, tags });
+      if (tagTarget.kind === "situation") {
+        const record = catalog.situations.find((s) => s.id === tagTarget.id);
+        if (record) record.tags = tags;
+      } else if (tagTarget.kind === "decision-state") {
+        const record = (catalog.decisionStates || []).find(
+          (d) => d.id === tagTarget.id,
+        );
+        const origin = saved.origin || tagTarget.origin || record?.origin;
+        for (const situation of catalog.situations) {
+          if (situation.decisionStateId !== tagTarget.id) continue;
+          const localCopy = record?.origin === "local";
+          if (
+            (origin === "local" && situation.origin === "local") ||
+            (origin !== "local" &&
+              (situation.origin === "library" || !localCopy))
+          )
+            situation.decisionStateTags = tags;
+        }
+        if (record && (!origin || record.origin === origin)) record.tags = tags;
+      } else {
+        const record = (catalog.layouts || []).find(
+          (l) => l.id === tagTarget.id,
+        );
+        if (record) Object.assign(record, saved);
+      }
+      $("tagsDialog").close();
+      if ($("composeSituationDialog").open) refreshDecisionTags();
+      if ($("workspaceToolsDialog").open) refreshLayoutTags();
+      renderLibrary();
+      notify("Tags saved.");
+    },
+    { sync: false, refreshCatalog: false },
+  );
+};
+function refreshDecisionTags() {
+  const record = (catalog.decisionStates || []).find(
+    (d) => d.id === $("composeDecisionState").value,
+  );
+  $("composeStateTags").replaceChildren(tagList(record?.tags || []));
+  $("editDecisionTags").disabled = !record;
+}
+$("composeDecisionState").onchange = refreshDecisionTags;
+$("editDecisionTags").onclick = () =>
+  editTags(
+    "decision-state",
+    (catalog.decisionStates || []).find(
+      (d) => d.id === $("composeDecisionState").value,
+    ),
+  );
+$("libraryTag").onchange = () => {
+  if ($("libraryTag").value) selectedTags.add($("libraryTag").value);
+  renderLibrary();
+};
 function renderLibrary() {
   const folder = $("libraryGroup").value,
     origin = $("libraryOrigin").value,
     query = $("librarySearch").value.trim().toLowerCase();
+  const tagCounts = new Map();
+  for (const situation of catalog.situations)
+    for (const tag of situationTags(situation))
+      tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1);
+  $("libraryTag").replaceChildren(option("", "Add tag filter…"));
+  const tagGroups = new Map();
+  for (const [tag, count] of [...tagCounts].sort(([a], [b]) =>
+    a.localeCompare(b),
+  )) {
+    if (selectedTags.has(tag)) continue;
+    const type = tagType(tag);
+    if (!tagGroups.has(type)) {
+      const group = document.createElement("optgroup");
+      group.label = type.charAt(0).toUpperCase() + type.slice(1);
+      tagGroups.set(type, group);
+      $("libraryTag").append(group);
+    }
+    tagGroups.get(type).append(option(tag, tagLabel(tag) + " (" + count + ")"));
+  }
+  const filters = $("activeTagFilters");
+  filters.replaceChildren();
+  filters.hidden = !selectedTags.size;
+  for (const tag of selectedTags) {
+    const remove = button(tagLabel(tag) + " ×", () => {
+      selectedTags.delete(tag);
+      renderLibrary();
+    });
+    remove.className = "tag-chip";
+    remove.dataset.tagType = tagType(tag);
+    remove.title = tag;
+    remove.setAttribute("aria-label", "Remove tag filter " + tag);
+    filters.append(remove);
+  }
+  if (selectedTags.size)
+    filters.append(
+      button("Clear tags", () => {
+        selectedTags.clear();
+        renderLibrary();
+      }),
+    );
   const filtered = catalog.situations.filter(
     (s) =>
+      [...selectedTags].every((tag) => situationTags(s).includes(tag)) &&
       (!query ||
-        `${s.name} ${s.group || ""} ${s.presentation?.viewpoint || ""}`
+        `${s.name} ${s.description || ""} ${s.group || ""} ${situationTags(s).join(" ")}`
           .toLowerCase()
           .includes(query)) &&
       (!origin || s.origin === origin) &&
@@ -1033,17 +1407,39 @@ function renderLibrary() {
     }
     const card = el("article", "situation-card"),
       text = el("div", "situation-info");
-    text.append(
-      el("h3", "", s.name),
+    const heading = el("div", "situation-heading");
+    const name = el("h3", "", s.name);
+    name.title = s.name;
+    heading.append(
+      name,
+      tagList(situationTags(s), (tag) => {
+        selectedTags.add(tag);
+        renderLibrary();
+      }),
+    );
+    const description = el("details", "situation-description");
+    const descriptionSummary = el("summary");
+    descriptionSummary.setAttribute("aria-label", "Description for " + s.name);
+    descriptionSummary.append(
       el(
-        "p",
+        "span",
         "",
-        human(s.summary.phase) +
-          " - Round " +
-          s.summary.round +
-          (s.summary.decision ? " - " + human(s.summary.decision) : ""),
+        s.description ||
+          `${human(s.summary.phase)}, round ${s.summary.round}. ${s.summary.decision ? human(s.summary.decision) + "." : "Saved game moment."}`,
       ),
     );
+    description.append(
+      descriptionSummary,
+      el(
+        "p",
+        "situation-context",
+        human(s.summary.phase) +
+          " · Round " +
+          s.summary.round +
+          (s.summary.decision ? " · " + human(s.summary.decision) : ""),
+      ),
+    );
+    text.append(heading, description);
     const selection = el("input");
     selection.type = "checkbox";
     selection.checked = reviewSelection.has(s.id);
@@ -1079,6 +1475,20 @@ function renderLibrary() {
     secondary.append(
       exportLink,
       button("Move", () => organizeSituation(s)),
+      button("Edit tags", () => editTags("situation", s)),
+      button("Edit Decision State tags", () =>
+        editTags("decision-state", {
+          id: s.decisionStateId,
+          name: "Decision State for " + s.name,
+          origin:
+            s.origin === "library"
+              ? "library"
+              : (catalog.decisionStates || []).find(
+                  (d) => d.id === s.decisionStateId,
+                )?.origin,
+          tags: s.decisionStateTags || [],
+        }),
+      ),
       button("Open on device", () => void openDevice(s.id)),
     );
     if (s.origin !== "library")
@@ -1166,20 +1576,103 @@ $("reviewClearSelection").onclick = () => {
   reviewSelection.clear();
   renderLibrary();
 };
-$("reviewStart").onclick = () =>
+let reviewDraft = [];
+function renderReviewDraft() {
+  $("reviewSetupEntries").replaceChildren(
+    ...reviewDraft.map((entry, index) => {
+      const row = el("div", "review-entry-setup");
+      row.append(el("strong", "", entry.name));
+      const select = el("select");
+      select.setAttribute("aria-label", "Presentation for " + entry.name);
+      fill(select, [
+        ["", "Default presentation"],
+        ...(catalog.presentations || []).map((p) => [p.id, p.name]),
+      ]);
+      select.value = entry.presetId;
+      select.onchange = () => (entry.presetId = select.value);
+      const actions = el("div", "entry-actions");
+      actions.append(
+        button("Add another inspection", () => {
+          reviewDraft.splice(index + 1, 0, { ...entry });
+          renderReviewDraft();
+        }),
+        button("Remove", () => {
+          reviewDraft.splice(index, 1);
+          renderReviewDraft();
+        }),
+      );
+      const details = el("details");
+      details.append(el("summary", "", "Specific card (this inspection only)"));
+      const card = el("input");
+      card.placeholder = "Card ID, e.g. noble_blade";
+      card.setAttribute("aria-label", "Specific card for " + entry.name);
+      card.value = entry.cardId || "";
+      card.oninput = () => (entry.cardId = card.value.trim());
+      const mode = el("select");
+      mode.setAttribute("aria-label", "Card action for " + entry.name);
+      fill(mode, [
+        ["inspectedCard", "Inspect card"],
+        ["selectedCard", "Select planning card"],
+      ]);
+      mode.value = entry.cardAction || "inspectedCard";
+      mode.onchange = () => (entry.cardAction = mode.value);
+      details.append(card, mode);
+      row.append(select, details, actions);
+      return row;
+    }),
+  );
+  $("reviewSetupForm").querySelector('[type="submit"]').disabled =
+    !reviewDraft.length;
+}
+$("reviewStart").onclick = () => {
+  reviewDraft = catalog.situations
+    .filter((s) => reviewSelection.has(s.id))
+    .map((s) => ({
+      situationId: s.id,
+      name: s.name,
+      presetId: $("inspectionPresentation").value,
+    }));
+  renderReviewDraft();
+  $("reviewSetupDialog").showModal();
+};
+$("reviewSetupForm").onsubmit = (event) => {
+  event.preventDefault();
   void task("Starting review…", async () => {
-    const ids = catalog.situations
-      .filter((s) => reviewSelection.has(s.id))
-      .map((s) => s.id);
+    const entries = reviewDraft.map(
+      ({ situationId, presetId, cardId, cardAction }) => {
+        const template = (catalog.presentations || []).find(
+          (p) => p.id === presetId,
+        );
+        return {
+          situationId,
+          ...(template || cardId
+            ? {
+                presentation: {
+                  schema: 2,
+                  sessionState: {
+                    ...template?.state?.sessionState,
+                    ...(cardId
+                      ? { [cardAction || "inspectedCard"]: cardId }
+                      : {}),
+                  },
+                },
+              }
+            : {}),
+        };
+      },
+    );
     const result = await call("review-runs/start", {
-      ids,
+      entries,
       name: $("reviewName").value,
       performedBy: "human",
-      slots: configs,
+      slots: configs.length ? configs : catalog.presets.Current,
     });
+    $("reviewSetupDialog").close();
     navigate("compare");
     return result;
   });
+};
+
 for (const [id, direction] of [
   ["reviewPrevious", -1],
   ["reviewNext", 1],
@@ -1223,7 +1716,8 @@ function renderSettings() {
       catalog.settings?.comparatorRef || "mobile-migration",
     ],
     ["Frontend checkout", catalog.settings?.frontend],
-    ["Backend checkout", catalog.settings?.backend],
+    ["Game backend checkout", catalog.settings?.backend],
+    ["Bot decision checkout", catalog.settings?.botBackend],
     ["Userscript checkout", catalog.settings?.patch],
     [
       "Ports",
@@ -1249,7 +1743,7 @@ function updateStatus() {
           ? "Setup changed. Load to apply."
           : count
             ? `${count} ${count === 1 ? "view" : "views"} / clocks frozen`
-            : "Start a View to choose a Situation.");
+            : "Choose a quickstart or a comparison Layout.");
   $("connection").textContent =
     running || state.busy ? "Working locally" : "Connected";
   $("connectionDot").classList.remove("offline");
@@ -1323,8 +1817,8 @@ async function refreshConnection() {
     if (!initialized) {
       if (state.windows?.length && !state.busy) syncViews();
       else {
-        $("preset").value = "Current";
-        setPreset();
+        configs = [];
+        $("count").value = "0";
         draftSetup = false;
       }
       if (state.situationId) $("situation").value = state.situationId;
@@ -1346,12 +1840,23 @@ async function refreshConnection() {
     checking = false;
   }
 }
+function inspectionInstruction() {
+  const preset = (catalog.presentations || []).find(
+    (p) => p.id === $("inspectionPresentation").value,
+  );
+  return preset ? { presentation: preset.state } : {};
+}
 async function loadComparison() {
-  applyingWorkspace = $("workspaceToolsDialog").open;
+  // Opening a Situation from the library also works before choosing a Layout.
+  if (!configs.length) {
+    $("preset").value = "Current";
+    setPreset();
+  }
   $("workspaceToolsDialog").close();
   return task("Loading comparison…", async () => {
     state = await call("load", {
       situationId: $("situation").value,
+      ...inspectionInstruction(),
       slots: configs,
       ...($("preset").value !== "__custom"
         ? {
@@ -1366,7 +1871,54 @@ async function loadComparison() {
     notify("Comparison loaded.");
   });
 }
-$("preset").onchange = setPreset;
+for (const option of document.querySelectorAll("[data-start-layout]")) {
+  option.onclick = () => {
+    customSetup = false;
+    $("preset").value = option.dataset.startLayout;
+    setPreset();
+    const placeholder = el("option", "", "Choose a Situation…");
+    placeholder.value = "";
+    $("situation").prepend(placeholder);
+    $("situation").value = "";
+    controls();
+    $("situation").focus();
+  };
+}
+$("startOver").onclick = () => {
+  customSetup = false;
+  configs = [];
+  $("count").value = "0";
+  draftSetup = false;
+  render();
+  controls();
+};
+$("customStart").onclick = () => {
+  customSetup = true;
+  $("preset").value = "Current";
+  setPreset();
+  controls();
+};
+for (const option of document.querySelectorAll("[data-quickstart]")) {
+  option.onclick = () =>
+    void task("Starting 2v2 against bots…", async () => {
+      const result = await call("quickstart", {
+        id: option.dataset.quickstart,
+      });
+      if (result.device) {
+        await openDevice.showPrepared(result.device);
+        notify("Device ready. Scan the QR code to play your team.");
+      } else {
+        state = result.comparison;
+        syncViews();
+        $("situation").value = state.situationId;
+        notify("2v2 ready. Autoswitch follows your team's decisions.");
+      }
+    });
+}
+$("preset").onchange = () => {
+  setPreset();
+  refreshLayoutTags();
+};
 $("count").onchange = () => {
   draftSetup = true;
   render();
@@ -1377,14 +1929,39 @@ $("situation").onchange = () => {
   updateStatus();
   controls();
 };
-$("workspaceTools").onclick = () => $("workspaceToolsDialog").showModal();
+function refreshLayoutTags() {
+  const record = (catalog.layouts || []).find(
+    (l) => l.name === $("preset").value,
+  );
+  $("layoutTags").replaceChildren(tagList(record?.tags || []));
+  $("editLayoutTags").disabled = !record;
+}
+$("editLayoutTags").onclick = () =>
+  editTags(
+    "layout",
+    (catalog.layouts || []).find((l) => l.name === $("preset").value),
+  );
+let toolsDraft = null;
+$("workspaceTools").onclick = () => {
+  toolsDraft = {
+    configs: structuredClone(configs),
+    draftSetup,
+    situation: $("situation").value,
+  };
+  refreshLayoutTags();
+  $("workspaceToolsDialog").showModal();
+};
+
 $("workspaceToolsDialog").addEventListener("close", () => {
-  if (!applyingWorkspace && draftSetup && state.windows?.length) {
-    syncViews();
+  if (toolsDraft && !running) {
+    configs = toolsDraft.configs;
+    $("count").value = configs.length;
+    draftSetup = toolsDraft.draftSetup;
+    $("situation").value = toolsDraft.situation;
     render();
     updateStatus();
   }
-  applyingWorkspace = false;
+  toolsDraft = null;
 });
 $("load").onclick = loadComparison;
 $("reset").onclick = () => task("Resetting views…", () => call("reset"));
@@ -1394,6 +1971,10 @@ $("clear").onclick = () =>
     async () => {
       await call("clear");
       state.windows = [];
+      configs = [];
+      $("count").value = "0";
+      draftSetup = false;
+      customSetup = false;
       for (const live of liveViews.values()) live.destroy();
       liveViews.clear();
     },
@@ -1405,23 +1986,17 @@ $("composeSituation").onclick = () => {
     $("composeDecisionState"),
     (catalog.decisionStates || []).map((d) => [d.id, d.name]),
   );
-  fill($("composePresentation"), [
-    ["", "Default Board / Follow view"],
-    ...(catalog.presentations || []).map((p) => [p.id, p.name]),
-  ]);
+
   $("composeSituationName").value = "";
+  refreshDecisionTags();
   $("composeSituationDialog").showModal();
 };
 $("composeSituationForm").onsubmit = (event) => {
   event.preventDefault();
   void task("Creating Situation…", async () => {
-    const template = (catalog.presentations || []).find(
-      (p) => p.id === $("composePresentation").value,
-    );
     const s = await call("situation/compose", {
       name: $("composeSituationName").value,
       decisionStateId: $("composeDecisionState").value,
-      ...(template ? { presentation: template.state } : {}),
     });
     $("composeSituationDialog").close();
     await reloadCatalog();
@@ -1429,11 +2004,30 @@ $("composeSituationForm").onsubmit = (event) => {
     notify("Situation created.");
   });
 };
+function saveTagDefaults() {
+  const kind = $("saveKind").value;
+  const view = state.windows?.[Number($("saveFrom").value)];
+  const situation =
+    catalog.situations.find((s) => s.id === view?.situationId) ||
+    selectedSituation();
+  const tags =
+    kind === "setup"
+      ? (catalog.layouts || []).find((l) => l.name === $("preset").value)?.tags
+      : kind === "decision-state"
+        ? situation?.decisionStateTags
+        : situation?.tags;
+  $("saveTags").value = (tags || []).join(", ");
+}
+$("saveFrom").onchange = saveTagDefaults;
 $("saveKind").onchange = () => {
   $("saveFrom").closest("label").hidden = $("saveKind").value === "setup";
+  $("saveTagsField").hidden = $("saveKind").value === "presentation";
+  $("presentationChangeField").hidden = $("saveKind").value !== "presentation";
+  saveTagDefaults();
 };
 $("save").onclick = () => {
   $("name").value = "";
+  $("saveTags").value = (selectedSituation()?.tags || []).join(", ");
   $("saveKind").onchange();
   $("saveDialog").showModal();
 };
@@ -1445,16 +2039,29 @@ $("saveForm").onsubmit = (event) => {
   $("saveDialog").close();
   void task("Saving situation…", async () => {
     if ($("saveKind").value === "presentation") {
-      await call("presentation/save", { name, index });
+      await call("presentation/save", {
+        name,
+        index,
+        field: $("presentationChange").value,
+      });
       notify("Presentation saved separately.");
       return;
     }
     if ($("saveKind").value === "setup") {
-      await call("layout/save", { name, slots: configs });
+      await call("layout/save", {
+        name,
+        slots: configs,
+        tags: parseTags($("saveTags").value),
+      });
       notify("Layout saved in Workspace tools.");
       return;
     }
-    const s = await call("save", { name, index, kind: $("saveKind").value });
+    const s = await call("save", {
+      name,
+      index,
+      kind: $("saveKind").value,
+      tags: parseTags($("saveTags").value),
+    });
     if ($("saveKind").value === "decision-state") {
       await reloadCatalog();
       notify(
@@ -1642,8 +2249,28 @@ $("stop").onclick = async () => {
     showError(error);
   }
 };
+if (editorOnlyIndex !== null) {
+  editorBootstrap = await new Promise((resolve) => {
+    const ready = (event) => {
+      if (
+        event.origin !== location.origin ||
+        event.source !== window.parent ||
+        event.data?.type !== "lab-editor-context"
+      )
+        return;
+      window.removeEventListener("message", ready);
+      resolve(event.data.context);
+    };
+    window.addEventListener("message", ready);
+    window.parent.postMessage({ type: "lab-editor-ready" }, location.origin);
+  });
+}
 await refreshConnection();
-setInterval(() => void refreshConnection(), 1500);
+void openEmbeddedEditor();
+setInterval(async () => {
+  await refreshConnection();
+  void openEmbeddedEditor();
+}, 1500);
 
 document.addEventListener("visibilitychange", () => {
   if (initialized) render();
@@ -1666,7 +2293,14 @@ document.addEventListener(
   true,
 );
 
-openDevice = initDevicePanel({ selectedSituation, task, call, read, notify });
+openDevice = initDevicePanel({
+  selectedSituation,
+  inspection: inspectionInstruction,
+  task,
+  call,
+  read,
+  notify,
+});
 
 initElementReportPanel({ read, call, notify, onSaved: reloadCatalog });
 
@@ -1676,8 +2310,21 @@ reviewHistory = initReviewsPanel({
   task,
   navigate,
   getCatalog: () => catalog,
+  canManage: () => !running && !state.busy && !disconnected,
+  onChanged: () => reportsPanel?.refresh(true),
   canRun: () =>
     !running && !state.busy && !state.reviewRun?.active && !disconnected,
   showError,
 });
 void reviewHistory.refresh();
+reportsPanel = initReportsPanel({
+  read,
+  call,
+  onChanged: () => reviewHistory?.refresh(),
+  canManage: () => !running && !state.busy && !disconnected,
+});
+if (editorOnlyIndex === null) void reportsPanel.refresh();
+setInterval(() => {
+  if (currentPage === "reports" && !document.hidden)
+    void reportsPanel.refresh();
+}, 5000);

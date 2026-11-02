@@ -79,6 +79,8 @@ test("device links scope HTTP/WS to a clone, inject reporting, generate QR and r
   try {
     const view = await devices.open({
       situationId: "fixture",
+      viewpoint: situation.presentation.viewpoint,
+      presentation: situation.presentation,
       slot: {
         source: "live",
         seat: "hero_arien",
@@ -328,8 +330,8 @@ test("device links scope HTTP/WS to a clone, inject reporting, generate QR and r
       ),
     );
     assert.ok(
-      reports[0].provenance.presentationResolution.warnings.some((w) =>
-        w.includes("no 2d adapter"),
+      reports[0].provenance.presentationResolution.warnings.some(
+        (w) => w.includes("render") && w.includes("skipped"),
       ),
     );
     assert.equal(reports[1].comment, "Make this clearer");

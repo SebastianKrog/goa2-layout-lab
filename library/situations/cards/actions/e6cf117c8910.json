@@ -1,63 +1,9 @@
 {
-  "schema": 2,
+  "schema": 3,
   "kind": "situation",
   "id": "e6cf117c8910",
-  "name": "Arien - choose an action for Noble Blade",
+  "name": "Arien: Noble Blade action choice",
   "decisionStateId": "909f432e6ec8c56bbe2b787c2de92f2fa3c0aae0d1ab7ba96647a931b3488b22",
-  "presentation": {
-    "schema": 2,
-    "sessionState": {
-      "render": "2d",
-      "pane": "board",
-      "gamePath": "/game/77ea1196b07e",
-      "scroll": [],
-      "windowScroll": {
-        "x": 0,
-        "y": 0
-      },
-      "camera": {
-        "mode": "2d",
-        "k": 1,
-        "x": 0,
-        "y": 0
-      },
-      "inspectedCard": null,
-      "altHeld": false,
-      "selectedCard": null,
-      "inspectedHero": null,
-      "deckOpen": false,
-      "modes": {
-        "2d": {
-          "render": "2d",
-          "pane": "board",
-          "storage": {},
-          "gamePath": "/game/77ea1196b07e",
-          "scroll": [],
-          "windowScroll": {
-            "x": 0,
-            "y": 0
-          },
-          "camera": {
-            "mode": "2d",
-            "k": 1,
-            "x": 0,
-            "y": 0
-          },
-          "inspectedCard": null,
-          "altHeld": false,
-          "selectedCard": null,
-          "inspectedHero": null,
-          "deckOpen": false
-        }
-      }
-    },
-    "userState": {},
-    "viewpoint": "hero_arien",
-    "adapter": {
-      "uiMode": "desktop",
-      "render": "2d"
-    }
-  },
   "summary": {
     "phase": "RESOLUTION",
     "round": 1,
@@ -66,18 +12,9 @@
   },
   "backend_revision": "740ec5bbfa1aaadcf05b0df06d93ab3187e5de9a",
   "saved_at": 1792335650.5995512,
-  "migration": {
-    "sourceId": "e6cf117c8910",
-    "sourceSlot": "0"
-  },
   "provenance": {
     "kind": "capture",
-    "references": {
-      "base": "a3c5e0a46b35a42cd6e054512ce3dbc6a61a579c",
-      "script": "ad1eed5427b91b8daaebb56c4ceafda01db5f7de"
-    },
     "script_checksum": "90b2973fe9d63f5e6befa7bf292ddf208d8524f19cc4eec90c1b2525ca89dddc",
-    "source_slot": 0,
     "fixture": {
       "case": "choose-action",
       "recipe": "scripts/create-simple-situations.py",
@@ -89,5 +26,11 @@
         "selectedCard": null
       }
     }
-  }
+  },
+  "tags": [
+    "hero:arien",
+    "topic:actions",
+    "topic:cards"
+  ],
+  "description": "Arien: Noble Blade action choice. Waiting for hero_arien."
 }

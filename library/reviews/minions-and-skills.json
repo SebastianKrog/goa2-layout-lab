@@ -1,0 +1,100 @@
+{
+  "schema": 2,
+  "kind": "review",
+  "id": "a2ea5892c7504a06af7c9b60",
+  "revision": 1,
+  "name": "Defense previews - minions and skills",
+  "entries": [
+    {
+      "schema": 1,
+      "kind": "review-entry",
+      "id": "6e681c8dd82a46d98383d7ca",
+      "situationId": "1e21d49cee63",
+      "viewpoint": "hero_brogan",
+      "presentation": {
+        "schema": 2,
+        "sessionState": {
+          "pane": "board"
+        }
+      }
+    },
+    {
+      "schema": 1,
+      "kind": "review-entry",
+      "id": "22c7932fbf0a42fb89aa1cdd",
+      "situationId": "09f923ecb882",
+      "viewpoint": "hero_brogan",
+      "presentation": {
+        "schema": 2,
+        "sessionState": {
+          "pane": "board"
+        }
+      }
+    },
+    {
+      "schema": 1,
+      "kind": "review-entry",
+      "id": "d7024f679d764abaa0254c75",
+      "situationId": "3cb21fef32c2",
+      "viewpoint": "hero_brogan",
+      "presentation": {
+        "schema": 2,
+        "sessionState": {
+          "pane": "board"
+        }
+      }
+    },
+    {
+      "schema": 1,
+      "kind": "review-entry",
+      "id": "f80023441d9940b9a42659fc",
+      "situationId": "62d0357b6921",
+      "viewpoint": "hero_brogan",
+      "presentation": {
+        "schema": 2,
+        "sessionState": {
+          "pane": "board"
+        }
+      }
+    },
+    {
+      "schema": 1,
+      "kind": "review-entry",
+      "id": "78719dd3c9e14cc3b189593f",
+      "situationId": "ebbcf4546730",
+      "viewpoint": "hero_emmitt",
+      "presentation": {
+        "schema": 2,
+        "sessionState": {
+          "pane": "board"
+        }
+      }
+    },
+    {
+      "schema": 1,
+      "kind": "review-entry",
+      "id": "1f4a6d16dfa6417ca5095a79",
+      "situationId": "4c8454116ae1",
+      "viewpoint": "hero_tigerclaw",
+      "presentation": {
+        "schema": 2,
+        "sessionState": {
+          "pane": "board"
+        }
+      }
+    },
+    {
+      "schema": 1,
+      "kind": "review-entry",
+      "id": "e238b7ce2e664a50a7d2f26c",
+      "situationId": "432df020a8b7",
+      "viewpoint": "hero_dodger",
+      "presentation": {
+        "schema": 2,
+        "sessionState": {
+          "pane": "board"
+        }
+      }
+    }
+  ]
+}

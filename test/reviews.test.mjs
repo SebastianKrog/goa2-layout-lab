@@ -41,7 +41,13 @@ async function fixture(t) {
       { id: "old-a", config },
       { id: "old-b", config: { ...config, source: "comparator" } },
     ],
-    sync: { setMode: async (mode) => events.push(["sync", mode]) },
+    sync: {
+      mode: "api",
+      prepareMode: async (mode) => () => {
+        c.sync.mode = mode;
+        events.push(["sync", mode]);
+      },
+    },
     api: async (route, body) => {
       let s;
       if (body?.from) {
@@ -84,6 +90,7 @@ async function fixture(t) {
       events.push(["device-prepare", s.id]);
       return [
         {
+          session: {},
           clone: { game_id: "new-device" },
           oldClone: { game_id: "old-device" },
           config: plan(config).config,
@@ -117,7 +124,11 @@ test("review restores every view, keeps sources, groups evidence by captured ste
   await assert.rejects(() => r.start({ ids: ["missing"] }), /missing/);
   assert.equal(c.windows[0].id, "old-a");
   const status = await r.start({
-    ids: ["first", "second"],
+    entries: ["first", "second"].map((situationId) => ({
+      situationId,
+      viewpoint: moments[situationId].presentation.viewpoint,
+      presentation: moments[situationId].presentation,
+    })),
     name: "Review <script>alert(1)</script>",
   });
   assert.equal(status.total, 2);
@@ -212,7 +223,11 @@ test("failed replacement leaves old views and queue position intact and closes o
 test("past reviews survive restart, rerun original snapshots, and edited runs leave earlier evidence untouched", async (t) => {
   const f = await fixture(t);
   const original = await f.r.start({
-    ids: ["first", "second"],
+    entries: ["first", "second"].map((situationId) => ({
+      situationId,
+      viewpoint: f.moments[situationId].presentation.viewpoint,
+      presentation: f.moments[situationId].presentation,
+    })),
     name: "Original review",
   });
   await f.r.step({ id: original.id, index: 0, direction: 1 });
@@ -341,6 +356,110 @@ for (const failure of ["provenance", "definition", "persist"])
       "failed persistence leaves no orphan definition",
     );
   });
+
+test("repeated Situation inspections freeze independent Presentation instructions and reset every View on navigation", async (t) => {
+  const f = await fixture(t);
+  for (const s of Object.values(f.moments)) delete s.presentation;
+  const before = JSON.stringify(f.moments);
+  const presentation = {
+    schema: 2,
+    viewpoint: "hero_arien",
+    sessionState: { pane: "hand", selectedCard: "card" },
+    userState: {},
+  };
+  const run = await f.r.start({
+    name: "Same moment, two inspections",
+    slots: [config, { ...config, uiMode: "desktop", profile: "desktop" }],
+    entries: [
+      {
+        situationId: "first",
+        presentation,
+        presentationsByInterface: {
+          desktop: { schema: 2, sessionState: { pane: "board" } },
+        },
+      },
+      { situationId: "first" },
+    ],
+  });
+  assert.equal(f.c.windows[0].presentation.sessionState.pane, "hand");
+  assert.equal(f.c.windows[1].presentation.sessionState.pane, "board");
+  const entries = f.r.current.entries;
+  assert.notEqual(entries[0].entryId, entries[1].entryId);
+  assert.equal(entries[0].kind, "review-entry");
+  presentation.sessionState.pane = "deck";
+  assert.equal(entries[0].presentation.sessionState.pane, "hand");
+  const definition = JSON.parse(
+    await fs.readFile(
+      f.r.definitions.path(run.reviewId, run.reviewRevision),
+      "utf8",
+    ),
+  );
+  assert.equal(definition.entries[0].presentation.sessionState.pane, "hand");
+  assert.equal(definition.entries[0].situationId, "first");
+  await f.r.step({ id: run.id, index: 0, direction: 1 });
+  for (const w of f.c.windows) {
+    assert.equal(w.presentation.sessionState.pane, "board");
+    assert.equal(w.presentation.sessionState.selectedCard, null);
+  }
+  assert.equal(JSON.stringify(f.moments), before);
+  await f.r.end();
+  await f.r.rerun({ id: run.id });
+  assert.equal(f.c.windows[0].presentation.sessionState.pane, "hand");
+  assert.equal(f.r.current.entries[1].presentation, undefined);
+  await f.r.end();
+});
+
+test("explicit current-library reruns follow the port ID map without rewriting historical Review definitions", async (t) => {
+  const f = await fixture(t);
+  const original = await f.r.start({ ids: ["first"] });
+  await f.r.end();
+  const definitionFile = f.r.definitions.path(
+    original.reviewId,
+    original.reviewRevision,
+  );
+  const originalBytes = await fs.readFile(definitionFile, "utf8");
+  f.moments.replacement = { ...f.moments.first, id: "replacement" };
+  delete f.moments.first;
+  const restarted = new Reviews(f.c, f.devices || f.r.devices, {
+    root: f.root,
+    situationMappings: { first: "replacement" },
+  });
+  await restarted.rerun({ id: original.id, inputs: "library" });
+  assert.equal(restarted.current.entries[0].situation.id, "replacement");
+  assert.equal(await fs.readFile(definitionFile, "utf8"), originalBytes);
+  await restarted.end();
+});
+
+test("Review Runs freeze synchronization and reruns restore that policy", async (t) => {
+  const { r, c } = await fixture(t);
+  c.sync.mode = "api-clicks";
+  await r.start({ ids: ["first"], name: "Sync policy" });
+  const run = r.current;
+  assert.equal(run.layout.synchronization, "api-clicks");
+  await r.end();
+  c.sync.mode = "none";
+  await r.rerun({ id: run.id });
+  assert.equal(c.sync.mode, "api-clicks");
+  assert.equal(r.current.layout.synchronization, "api-clicks");
+});
+test("failed staged synchronization preserves games, mode and saved Review history", async (t) => {
+  const { r, c, events } = await fixture(t);
+  const old = c.windows;
+  c.sync.mode = "api";
+  c.sync.prepareMode = async () => {
+    throw Error("bridge preparation failed");
+  };
+  await assert.rejects(
+    r.start({ ids: ["first"], synchronization: "api-clicks" }),
+    /bridge preparation failed/,
+  );
+  assert.equal(c.windows, old);
+  assert.equal(c.sync.mode, "api");
+  assert.equal(r.current, null);
+  assert.ok(
+    !events.some(([kind, id]) => kind === "close" && id.startsWith("old")),
+  );
+});
 
 
 test("agentic Runs retain performer metadata and human reruns are independently labeled", async (t) => {

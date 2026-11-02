@@ -11,13 +11,16 @@
       <a class="brand" href="#compare">Layout lab</a>
       <nav aria-label="Workspace">
         <button class="nav-item active" data-page="compare">
-          Compare <span id="navCount">1</span>
+          Compare <span id="navCount">0</span>
         </button>
         <button class="nav-item" data-page="situations">
           Situations <span id="savedCount">0</span>
         </button>
         <button class="nav-item" data-page="reviews">
           Reviews <span id="reviewHistoryCount">0</span>
+        </button>
+        <button class="nav-item" data-page="reports">
+          Reports <span id="reportsCount">0</span>
         </button>
         <button class="nav-item" data-page="settings">Settings</button>
       </nav>
@@ -37,9 +40,81 @@
       <section id="comparePage" class="page">
         <h1 class="sr-only">Compare</h1>
         <section
+          id="startScreen"
+          class="start-screen"
+          aria-label="Start a workspace"
+        >
+          <h2>Working tree quickstarts</h2>
+          <p>
+            Play a fresh 2v2 game against ISMCTS bots. You control the red team;
+            autoswitch follows your two heroes. The blue team plays itself.
+          </p>
+          <div class="start-options">
+            <button class="start-card" data-quickstart="desktop">
+              <strong>Desktop</strong><span>1 View · working tree · 2v2</span>
+            </button>
+            <button class="start-card" data-quickstart="portrait">
+              <strong>Mobile portrait</strong
+              ><span>1 View · working tree · 2v2</span>
+            </button>
+            <button class="start-card" data-quickstart="device">
+              <strong>Device</strong
+              ><span>Play on your phone · link + QR code</span>
+            </button>
+          </div>
+          <h2>Compare main vs working tree</h2>
+          <p>Choose a Layout, then a Situation to load into both Views.</p>
+          <div class="start-options">
+            <button
+              class="start-card"
+              data-start-layout="Desktop · Main vs working tree"
+            >
+              <strong>2 desktop Views</strong><span>Main + working tree</span>
+            </button>
+            <button
+              class="start-card"
+              data-start-layout="Mobile portrait · Main vs working tree"
+            >
+              <strong>2 mobile portrait Views</strong
+              ><span>Main + working tree</span>
+            </button>
+            <button
+              class="start-card"
+              data-start-layout="Mobile landscape · Main vs working tree"
+            >
+              <strong>2 mobile landscape Views</strong
+              ><span>Main + working tree</span>
+            </button>
+          </div>
+          <button id="customStart" class="quiet">Other Layouts…</button>
+        </section>
+        <section
+          id="workspaceToolbar"
+          hidden
           class="setup-panel workspace-toolbar"
           aria-label="Comparison setup"
         >
+          <div class="primary-load-controls">
+            <label
+              >Layout<select id="preset" aria-label="Layout"></select
+            ></label>
+            <label class="situation-field"
+              >Situation<select
+                id="situation"
+                aria-label="Saved situation"
+              ></select
+            ></label>
+            <label
+              >Presentation<select
+                id="inspectionPresentation"
+                aria-label="Inspection presentation"
+              >
+                <option value="">Default presentation</option>
+              </select></label
+            >
+            <button class="primary" id="load">Load all views</button>
+            <button id="startOver" class="quiet" hidden>Back</button>
+          </div>
           <div class="setup-bottom">
             <div class="setup-actions">
               <button id="reportElement" aria-pressed="false" class="primary">
@@ -76,7 +151,7 @@
           Browser preview uses streamed frames. For animations, use the Layout
           lab desktop window.
         </p>
-        <div class="view-workspace">
+        <div class="view-workspace" hidden>
           <div id="slots" class="slots one"></div>
           <button
             id="addView"
@@ -110,7 +185,7 @@
             >Search<input
               id="librarySearch"
               type="search"
-              placeholder="Name, hero or folder"
+              placeholder="Name, hero, folder or tag"
               aria-label="Find situations"
           /></label>
           <label
@@ -125,9 +200,20 @@
               <option value="local">Local drafts</option>
             </select></label
           >
+          <label
+            >Tags<select id="libraryTag" aria-label="Filter situations by tag">
+              <option value="">Add tag filter…</option>
+            </select></label
+          >
           <span class="muted" id="libraryResults" role="status"></span>
         </div>
 
+        <div
+          id="activeTagFilters"
+          class="tag-list"
+          hidden=""
+          aria-label="Active tag filters"
+        ></div>
         <div class="review-selection" aria-label="Review selection">
           <label class="check-button"
             ><input
@@ -153,8 +239,17 @@
       <section id="reviewsPage" class="page" hidden="">
         <header class="page-header">
           <h1>Reviews</h1>
-          <label><input type="checkbox" id="reviewShowAgentic" /> Show agentic reviews</label>
-          <button id="reviewHistoryRefresh">Refresh</button>
+          <div class="history-tools">
+            <label><input type="checkbox" id="reviewShowAgentic" /> Show agentic reviews</label>
+            <select id="reviewHistoryStatus" aria-label="Review archive filter">
+              <option value="active">Current</option>
+              <option value="archived">Archived</option>
+              <option value="all">All</option></select
+            ><button id="reviewArchiveAll">Archive all</button
+            ><button id="reviewDeleteArchive" class="danger">
+              Delete archive</button
+            ><button id="reviewHistoryRefresh">Refresh</button>
+          </div>
         </header>
         <p class="library-note">
           Run a previous review again, or edit its situation queue. Each run
@@ -170,8 +265,68 @@
         </p>
         <div id="reviewsList" class="review-history-list"></div>
       </section>
+      <section id="reportsPage" class="page" hidden>
+        <header class="page-header">
+          <h1>Reports</h1>
+          <div class="history-tools">
+            <button id="reportsArchiveAll">Archive all</button
+            ><button id="reportsDeleteArchive" class="danger">
+              Delete archive</button
+            ><button id="reportsRefresh">Refresh</button>
+          </div>
+        </header>
+        <div class="report-filters">
+          <label
+            >Search<input
+              id="reportSearch"
+              type="search"
+              placeholder="Comment, situation, review or source"
+          /></label>
+          <label
+            >Type<select id="reportKind">
+              <option value="">All types</option>
+              <option value="element">Element reports</option>
+              <option value="device">Device reports</option>
+              <option value="capture">Captures</option>
+              <option value="html-css">HTML &amp; CSS</option>
+            </select></label
+          >
+          <label
+            >Activity<select id="reportReview">
+              <option value="">All reviews</option>
+              <option value="__none">Outside reviews</option>
+            </select></label
+          >
+          <label
+            >Show<select id="reportStatus">
+              <option value="active">Current</option>
+              <option value="archived">Archived</option>
+              <option value="all">All</option>
+            </select></label
+          >
+          <span id="reportResults" class="muted"></span>
+        </div>
+        <p id="reportsWarning" role="status"></p>
+        <p id="reportsEmpty" class="library-note">Loading reports…</p>
+        <div id="reportsList" class="reports-list"></div>
+      </section>
       <section id="settingsPage" class="page" hidden="">
         <header class="page-header"><h1>Settings</h1></header>
+        <details class="settings-card">
+          <summary>Reporting session</summary>
+          <p id="reportSessionCurrent" class="muted"></p>
+          <label
+            >Session name<input
+              id="reportSessionName"
+              maxlength="100"
+              placeholder="Lab session"
+          /></label>
+          <button id="reportSessionStart">New session</button>
+          <p class="muted">
+            Group new reports into a separate activity without restarting the
+            lab. Reports already captured keep their original session.
+          </p>
+        </details>
         <section class="settings-card">
           <h2>Current build</h2>
           <div class="inline-form">
@@ -238,12 +393,13 @@
         </button>
       </div>
       <p>
-        Start a separate playable copy of this situation. Scan the QR code on
-        another device on the same Wi-Fi.
+        Open this situation on another device on the same Wi-Fi. A matching
+        running game joins the synchronized group at its current progress.
       </p>
       <form id="deviceForm">
         <label
           >Frontend<select id="deviceSource">
+            <option value="main">Main</option>
             <option value="live">Live working tree</option>
             <option value="comparator">Current build</option>
             <option value="base">Base</option>
@@ -394,6 +550,34 @@
         </div>
       </form>
     </dialog>
+    <dialog
+      id="reviewSetupDialog"
+      class="modal"
+      aria-labelledby="reviewSetupTitle"
+    >
+      <form id="reviewSetupForm">
+        <div class="dialog-heading">
+          <h2 id="reviewSetupTitle">Start Review</h2>
+          <button
+            type="button"
+            class="icon-button"
+            data-close="reviewSetupDialog"
+            aria-label="Close review setup"
+          >
+            ×
+          </button>
+        </div>
+        <p>
+          Use the chosen Layout. Set an optional Presentation for each
+          inspection; Situations remain unchanged.
+        </p>
+        <div id="reviewSetupEntries"></div>
+        <div class="dialog-footer">
+          <button type="button" data-close="reviewSetupDialog">Cancel</button
+          ><button type="submit" class="primary">Start Review</button>
+        </div>
+      </form>
+    </dialog>
     <dialog id="saveDialog" class="modal" aria-labelledby="saveDialogTitle">
       <div class="dialog-heading">
         <h2 id="saveDialogTitle">Save</h2>
@@ -409,11 +593,9 @@
       <form id="saveForm">
         <label
           >Save as<select id="saveKind">
-            <option value="situation">
-              Situation (Decision State + Presentation)
-            </option>
+            <option value="situation">Situation (game moment)</option>
             <option value="decision-state">Decision State (game only)</option>
-            <option value="presentation">Presentation template</option>
+            <option value="presentation">Presentation (session change)</option>
             <option value="setup">Layout (views and settings)</option>
           </select></label
         >
@@ -425,6 +607,24 @@
             placeholder="e.g. Arien choosing a target"
             autocomplete="off" /></label
         ><label>From view<select id="saveFrom"></select></label>
+        <label id="presentationChangeField" hidden
+          >Session change<select id="presentationChange">
+            <option value="pane">Open the current panel</option>
+            <option value="gold">Select gold card</option>
+            <option value="upgradeA">Inspect Tier 2 upgrade A</option>
+            <option value="upgradeB">Inspect Tier 2 upgrade B</option>
+            <option value="publicSpells">View public spells</option></select
+          ><small
+            >Only this change is saved. Card targets use roles, not
+            hero-specific IDs.</small
+          ></label
+        >
+        <label id="saveTagsField"
+          >Tags<input
+            id="saveTags"
+            maxlength="1600"
+            placeholder="Comma-separated, e.g. planning, arien"
+        /></label>
         <div class="dialog-footer">
           <button type="submit" class="primary">Save</button>
         </div>
@@ -439,11 +639,13 @@
         <label
           >Decision State<select id="composeDecisionState" required=""></select
         ></label>
-        <label
-          >Presentation template<select id="composePresentation">
-            <option value="">Default Board / Follow view</option>
-          </select></label
-        >
+        <div class="compact-tags">
+          <span id="composeStateTags" class="tag-list"></span
+          ><button type="button" class="quiet" id="editDecisionTags">
+            Edit Decision State tags
+          </button>
+        </div>
+
         <p>
           Templates are copied into the Situation; editing a template later will
           not change this moment.
@@ -452,6 +654,26 @@
           <button type="button" data-close="composeSituationDialog">
             Cancel</button
           ><button type="submit" class="primary">Create Situation</button>
+        </div>
+      </form>
+    </dialog>
+    <dialog id="tagsDialog" class="modal" aria-labelledby="tagsTitle">
+      <form id="tagsForm">
+        <h2 id="tagsTitle">Edit tags</h2>
+        <p id="tagsRecordName"></p>
+        <p id="tagsInheritedNote" class="muted" hidden=""></p>
+        <label
+          >Tags<input
+            id="tagsInput"
+            maxlength="1600"
+            placeholder="Comma-separated tags"
+        /></label>
+        <p class="muted">
+          Use short names separated by commas. Spaces become dashes.
+        </p>
+        <div class="dialog-footer">
+          <button type="button" data-close="tagsDialog">Cancel</button
+          ><button type="submit" class="primary">Save tags</button>
         </div>
       </form>
     </dialog>
@@ -619,18 +841,18 @@
         </button>
       </div>
       <details class="advanced-setup" open="">
-        <summary>Load a Situation and Layout</summary>
+        <summary>Advanced Layout settings</summary>
         <div class="setup-fields">
-          <label class="situation-field"
-            >Situation<select
-              id="situation"
-              aria-label="Saved situation"
-            ></select
-          ></label>
-          <label>Layout<select id="preset" aria-label="Layout"></select></label>
+          <div class="compact-tags">
+            <span id="layoutTags" class="tag-list"></span
+            ><button type="button" class="quiet" id="editLayoutTags">
+              Edit Layout tags
+            </button>
+          </div>
           <label class="count-field"
             >Views<select id="count" aria-label="Views">
-              <option value="1" selected="">1 view</option>
+              <option value="0" hidden selected>No Views</option>
+              <option value="1">1 view</option>
               <option value="2">2 views</option>
               <option value="3">3 views</option>
             </select></label
@@ -643,7 +865,6 @@
             </select></label
           >
         </div>
-        <button class="primary" id="load">Load all views</button>
       </details>
       <fieldset class="tool-view-selection">
         <legend>Include Views</legend>

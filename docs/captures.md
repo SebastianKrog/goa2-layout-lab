@@ -94,7 +94,7 @@ execute exported scripts. It works offline when the entire report folder is copi
 For agents or terminal use:
 
 ```sh
-npm run extract -- --indexes=1,2 --mode=element --selector="[data-pane='hand']" --out=./hand-review
+npm run extract -- --indexes=0,1 --mode=element --selector="[data-pane='hand']" --out=./hand-review
 ```
 
 For a whole-document investigation when needed:
@@ -139,8 +139,8 @@ browser sessions are started by the extraction command.
 
 ### Verify element capture and CSS extraction
 
-`npm run test:element-tools` starts an isolated headless browser desk on ports
-5700–5703/10700 and tests the shared card-selection, action-choice and discard
+`npm run test:element-tools` starts an isolated headless browser desk on
+its configured service ports and tests the shared card-selection, action-choice and discard
 situations against committed Comparator and the userscript Target. It exports
 Individual/Combine images, checks portable offline viewers, tests selector failures
 and Nth/Union crops, and exports full/active/element HTML/CSS. It checks game hashes
@@ -172,9 +172,8 @@ npm run test:mobile-elements -- --case=m2-defense,m4-arien
 
 `--case=` accepts comma-separated case-name prefixes. Use `--profile=landscape`
 or a comma-separated subset of `portrait,compact,landscape` for a focused rerun;
-omitting it collects all three. The runner uses isolated
-ports 5900–5903 and backend port 10900 by default; the corresponding
-`GOA2_LAB_*_PORT` environment variables can override them. Other checkout/ref
+omitting it collects all three. Use
+the [complete isolated port configuration](setup.md#isolate-an-acceptance-desk). Other checkout/ref
 settings come from the normal launcher configuration. It starts a headless
 browser desk and closes its owned services after collection.
 
@@ -198,7 +197,7 @@ files with filesystem-change invalidation. Restarting the lab clears these
 in-memory caches. File edits, moves, additions and deletions remain visible without
 a restart. Game clones receive isolated copies of cached checkpoints.
 
-Browser captures settle independent views concurrently; native embedded capture
+Browser captures settle isolated View pages concurrently; native embedded capture
 keeps its required serialization. New situations still open fresh game views and
 wait for their game state, camera, fonts and assets. The first load also starts and
 prepares its required frontend services, so it can take longer than later loads.

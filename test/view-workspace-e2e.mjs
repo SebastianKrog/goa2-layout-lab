@@ -40,9 +40,10 @@ try {
       });
   desk.on("pageerror", (e) => console.error("Desk page error:", e.message));
   if (!native) await desk.goto(origin);
-  await desk.locator(".slot").waitFor();
-  assert.equal(await desk.locator(".slot").count(), 1);
+  await desk.locator("#startScreen").waitFor();
+  assert.equal(await desk.locator(".slot").count(), 0);
   assert.equal((await api("status")).windows.length, 0);
+  await desk.locator("#customStart").click();
   await desk
     .locator(".slot")
     .getByRole("button", { name: "Start", exact: true })
@@ -142,10 +143,19 @@ try {
   await desk.locator("#editor[open]").waitFor();
   assert.equal(await desk.locator("#editorSubmit").textContent(), "Save");
   await desk.locator("#viewAdvanced summary").click();
-  await desk.locator("#editorAdvancedFields input").fill("Edited view");
+  await desk
+    .getByRole("textbox", { name: "View name", exact: true })
+    .fill("Edited view");
+  await desk
+    .getByLabel("View tags", { exact: true })
+    .fill("Phone, Workspace QA");
   await desk.locator("#editorSubmit").click();
   await desk.locator("#editor").waitFor({ state: "hidden", timeout: 180000 });
   await idle();
+  assert.deepEqual((await api("status")).windows[1].config.tags, [
+    "phone",
+    "workspace-qa",
+  ]);
   assert.deepEqual(
     (await api("status")).windows.map((w) => w.gameId),
     status.windows.map((w) => w.gameId),

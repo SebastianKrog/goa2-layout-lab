@@ -1,0 +1,24 @@
+{
+  "id": "69fc0d04c54f",
+  "name": "Misa defending with Matter of Honor active",
+  "description": "Misa defending with Matter of Honor active. Attack 6; defense needed 6. Waiting for Misa; no defense submitted. Levels: Arien 1, Hanu 1, Misa 2, Tigerclaw 1; Matter of Honor +3 Defense plus the mandatory paired Power Shot +1 Defense item; attack resolves at Initiative 8 after Misa at 9.",
+  "backend_revision": "c4750787e620388a093683cc5b8518b437f1c2a3",
+  "saved_at": 1792734796.4552279,
+  "provenance": {
+    "kind": "ui-fabrication"
+  },
+  "summary": {
+    "phase": "RESOLUTION",
+    "round": 1,
+    "decision": "SELECT_CARD_OR_PASS",
+    "responder": "hero_misa"
+  },
+  "schema": 3,
+  "kind": "situation",
+  "decisionStateId": "5ca65844b631ef6bd53954ea3d957eac0efdab30e86abc3ebe628b9b693956db",
+  "tags": [
+    "topic:abilities-and-effects",
+    "topic:cards",
+    "topic:defense"
+  ]
+}

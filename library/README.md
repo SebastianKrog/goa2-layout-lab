@@ -4,21 +4,34 @@ Reusable game moments and View setups shipped with the lab.
 
 ```text
 library/
-  situations/       # named Decision State reference + Presentation
+  situations/       # named game-only Decision State references
   decision-states/  # exact engine checkpoints, shared by Situations
   layouts/          # View settings and synchronization; no checkpoint
+  presentations.json # reusable session changes; no game state
 ```
 
 ## Use it
 
 Open **Situations**, search or filter by folder, and choose **Open situation**.
-The saved Presentation restores the Viewpoint, open panels, selected cards, and
-supported preferences. The current Layout keeps its sources, devices, and renderers.
-Choose **Follow situation** to use the saved Viewpoint.
+Choose a Layout first. Loading a Situation keeps its sources, devices and renderers.
+Use optional Presentation instructions for panels, card roles and public spells.
+Choose Viewpoint separately. Without a chosen Layout, Open situation uses one
+desktop working-tree View.
 
 Select several Situations and **Start review** to inspect them in order.
 See [terminology](../docs/terminology.md), [workspace](../docs/workspace.md),
 and [reviews](../docs/reviews.md).
+
+Each Situation has a content-based name and a short description. Expand the
+description in the list for the saved condition and phase/decision context.
+Names describe the game moment rather than milestone numbers.
+
+## Tags
+
+Use **Tags** in Situations to combine filters; matching uses all selected tags,
+including tags inherited from the Decision State. **More → Edit tags** changes
+a Situation’s own labels. See [tags](../docs/tags.md) for conventions and editing
+Views, Layouts, and Decision States.
 
 ## Coverage
 

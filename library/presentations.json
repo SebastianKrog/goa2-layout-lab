@@ -1,0 +1,100 @@
+[
+  {
+    "schema": 2,
+    "id": "200c258f9fd7716bce8d6ea9",
+    "name": "Open Hand",
+    "state": {
+      "schema": 2,
+      "sessionState": {
+        "pane": "hand"
+      }
+    }
+  },
+  {
+    "schema": 2,
+    "id": "ef07cb2ac2cc51413966233e",
+    "name": "Open Heroes",
+    "state": {
+      "schema": 2,
+      "sessionState": {
+        "pane": "heroes"
+      }
+    }
+  },
+  {
+    "schema": 2,
+    "id": "1bc36f448f167f0209d500be",
+    "name": "Open Deck",
+    "state": {
+      "schema": 2,
+      "sessionState": {
+        "pane": "deck"
+      }
+    }
+  },
+  {
+    "schema": 2,
+    "id": "de51a638fe9b3eca7a6e875a",
+    "name": "Open Log",
+    "state": {
+      "schema": 2,
+      "sessionState": {
+        "pane": "log"
+      }
+    }
+  },
+  {
+    "schema": 2,
+    "id": "35e4a648c0f6a7ef1b0907a9",
+    "name": "Select Gold card",
+    "state": {
+      "schema": 2,
+      "sessionState": {
+        "selectedCard": {
+          "role": "gold"
+        }
+      }
+    }
+  },
+  {
+    "schema": 2,
+    "id": "eeb07b4fa5888a4e5543b33e",
+    "name": "Inspect Tier 2 upgrade A",
+    "state": {
+      "schema": 2,
+      "sessionState": {
+        "inspectedCard": {
+          "role": "upgrade",
+          "tier": 2,
+          "branch": "A"
+        }
+      }
+    }
+  },
+  {
+    "schema": 2,
+    "id": "5256d19603fc0bbc292a21d6",
+    "name": "Inspect Tier 2 upgrade B",
+    "state": {
+      "schema": 2,
+      "sessionState": {
+        "inspectedCard": {
+          "role": "upgrade",
+          "tier": 2,
+          "branch": "B"
+        }
+      }
+    }
+  },
+  {
+    "schema": 2,
+    "id": "295b482e66fcfd3b695c364d",
+    "name": "View public spells",
+    "state": {
+      "schema": 2,
+      "sessionState": {
+        "publicSpells": true
+      }
+    }
+  }
+]

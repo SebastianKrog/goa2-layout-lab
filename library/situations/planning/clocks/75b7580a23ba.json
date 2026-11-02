@@ -1,24 +1,9 @@
 {
-  "schema": 2,
+  "schema": 3,
   "kind": "situation",
   "id": "75b7580a23ba",
-  "name": "M3 presentation - shell-finished",
+  "name": "Game over: red team wins",
   "decisionStateId": "63eaf528425d351b1770af678748303121ae9ef0bdb4d1e4537a07f34b31d6ac",
-  "presentation": {
-    "schema": 2,
-    "sessionState": {
-      "pane": "board",
-      "selectedCard": null,
-      "inspectedCard": null
-    },
-    "userState": {},
-    "viewpoint": "hero_arien",
-    "restoration": "defaulted; no historical Session State was saved",
-    "adapter": {
-      "uiMode": "desktop",
-      "render": "2d"
-    }
-  },
   "summary": {
     "phase": "GAME_OVER",
     "round": 1,
@@ -27,10 +12,6 @@
   },
   "backend_revision": "740ec5bbfa1aaadcf05b0df06d93ab3187e5de9a",
   "saved_at": 1792477609.670815,
-  "migration": {
-    "sourceId": "75b7580a23ba",
-    "sourceSlot": "0"
-  },
   "provenance": {
     "kind": "ui-fabrication",
     "fixture": {
@@ -39,5 +20,10 @@
       "seed": 20261019,
       "purpose": "UI display comparison; not a game-rule test"
     }
-  }
+  },
+  "tags": [
+    "topic:clocks",
+    "topic:planning"
+  ],
+  "description": "Game over: red team wins. Load in any Layout to inspect the game state."
 }

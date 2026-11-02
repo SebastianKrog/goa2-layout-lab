@@ -17577,5 +17577,20 @@
     "rollback_actor_id": null,
     "hero_names": {},
     "replay_log": []
-  }
+  },
+  "tags": [
+    "hero:arien",
+    "hero:brogan",
+    "hero:emmitt",
+    "hero:gydion",
+    "hero:hanu",
+    "hero:razzle",
+    "hero:silverarrow",
+    "hero:snorri",
+    "hero:tigerclaw",
+    "hero:wasp",
+    "phase:planning",
+    "topic:planning",
+    "topic:status"
+  ]
 }

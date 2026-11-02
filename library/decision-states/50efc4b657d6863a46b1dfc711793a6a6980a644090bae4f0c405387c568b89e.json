@@ -13944,5 +13944,12 @@
     "rollback_actor_id": "hero_takahide",
     "hero_names": {},
     "replay_log": []
-  }
+  },
+  "tags": [
+    "decision:select-card",
+    "hero:takahide",
+    "hero:wasp",
+    "phase:resolution",
+    "topic:heroes"
+  ]
 }

@@ -1,24 +1,9 @@
 {
-  "schema": 2,
+  "schema": 3,
   "kind": "situation",
   "id": "eebbbbab698b",
-  "name": "Emmitt - choose a second card with ultimate",
+  "name": "Emmitt: second planning card",
   "decisionStateId": "633fdde751ebbfbeed81bf032b049b0c29fd717340bfc3fdfd290e42a3aeab77",
-  "presentation": {
-    "schema": 2,
-    "sessionState": {
-      "pane": "board",
-      "selectedCard": null,
-      "inspectedCard": null
-    },
-    "userState": {},
-    "viewpoint": "hero_emmitt",
-    "restoration": "defaulted; no historical Session State was saved",
-    "adapter": {
-      "uiMode": "desktop",
-      "render": "2d"
-    }
-  },
   "summary": {
     "phase": "PLANNING",
     "round": 1,
@@ -27,10 +12,6 @@
   },
   "backend_revision": "740ec5bbfa1aaadcf05b0df06d93ab3187e5de9a",
   "saved_at": 1792348820.1116471,
-  "migration": {
-    "sourceId": "eebbbbab698b",
-    "sourceSlot": "0"
-  },
   "provenance": {
     "kind": "ui-fabrication",
     "fixture": {
@@ -44,5 +25,10 @@
         "responder": null
       }
     }
-  }
+  },
+  "tags": [
+    "hero:emmitt",
+    "topic:heroes"
+  ],
+  "description": "Emmitt: second planning card. Load in any Layout to inspect the game state."
 }

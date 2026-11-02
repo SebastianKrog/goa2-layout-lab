@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { capturePresentation, showPane, inspectHero } from "./presentation.mjs";
 export const ACTIONS = [
   "SUBMIT_INPUT",
@@ -129,7 +130,7 @@ export function installBridge({ mode, cheats, actions }) {
 export class Synchronizer {
   constructor(comparison) {
     this.comparison = comparison;
-    this.mode = "none";
+    this.mode = "api";
     this.cheats = false;
     this.error = null;
     this.skipped = 0;
@@ -138,6 +139,45 @@ export class Synchronizer {
     this.actionClicks = new Set();
     this.snapshots = new WeakMap();
     this.busy = () => false;
+  }
+  participants() {
+    return [...this.comparison.windows, ...(this.external?.() || [])];
+  }
+  groupKey(source) {
+    return (source.syncGroup ||= randomUUID());
+  }
+  targets(source) {
+    if (this.mode === "none") return [source];
+    const id = this.groupKey(source);
+    return this.participants().filter((w) => this.groupKey(w) === id);
+  }
+  botPolicies(targets) {
+    const bots = {};
+    for (const win of targets)
+      for (const [hero, kind] of Object.entries(
+        win.config.bots || win.bots || {},
+      )) {
+        if (bots[hero] && bots[hero] !== kind)
+          throw Error(
+            `Conflicting bot policies for ${hero} in synchronized Views.`,
+          );
+        bots[hero] = kind;
+      }
+    const seats = targets[0]?.clone?.seats;
+    if (
+      seats &&
+      (Object.keys(bots).some((hero) => !Object.hasOwn(seats, hero)) ||
+        (Object.keys(bots).length &&
+          Object.keys(bots).length >= Object.keys(seats).length))
+    )
+      throw Error("Use roster heroes and leave at least one hero manual.");
+    return bots;
+  }
+  setBots(source, bots) {
+    for (const win of this.targets(source)) {
+      win.config.bots = structuredClone(bots);
+      if (Object.hasOwn(win, "bots")) win.bots = win.config.bots;
+    }
   }
   status() {
     return {
@@ -174,37 +214,58 @@ export class Synchronizer {
         ),
     );
   }
-  async setMode(mode) {
+  async prepareMode(
+    mode,
+    participants = this.participants(),
+    { bridges = false } = {},
+  ) {
     if (!["none", "api", "api-clicks"].includes(mode))
       throw Error("Unknown synchronization mode");
-    await this.queue;
+    const plans = [];
     if (mode !== "none") {
-      if (
-        this.comparison.windows.some(
-          (w) => Object.keys(w.config.bots || {}).length,
-        )
-      )
-        throw Error(
-          "Turn off bots in every view before synchronizing. Bot games advance independently.",
+      const seen = new Set();
+      for (const source of participants) {
+        const id = this.groupKey(source);
+        if (seen.has(id)) continue;
+        seen.add(id);
+        const targets = participants.filter((w) => this.groupKey(w) === id);
+        const bots = this.botPolicies(targets);
+        const states = await Promise.all(
+          targets.map((w) =>
+            this.comparison.api("/games/" + w.clone.game_id, undefined, "GET"),
+          ),
         );
-      if (this.comparison.windows.length < 2)
-        throw Error("Load at least two views before synchronizing.");
-      const states = await Promise.all(
-        this.comparison.windows.map((w) =>
-          this.comparison.api("/games/" + w.clone.game_id, undefined, "GET"),
-        ),
-      );
-      if (new Set(states.map((s) => s.hash)).size !== 1)
-        throw Error(
-          "Games have diverged. Reset all to the same situation before synchronizing.",
-        );
+        if (new Set(states.map((s) => s.hash)).size !== 1)
+          throw Error(
+            "Games have diverged. Reset all to the same situation before synchronizing.",
+          );
+        plans.push({ targets, bots });
+      }
     }
-    this.mode = mode;
-    this.error = null;
-    this.skipped = 0;
-    this.actionClicks.clear();
-    for (const w of this.comparison.windows)
+    for (const w of participants.filter((w) => w.page && !w.page.isClosed())) {
       this.snapshots.set(w, await capturePresentation(w.page, w.config.render));
+      if (bridges)
+        await w.page.evaluate((mode) => {
+          const b = window.__GOA2_LAB_SYNC__;
+          if (b) b.mode = mode;
+        }, mode);
+    }
+    return () => {
+      for (const { targets, bots } of plans)
+        for (const w of targets) {
+          w.config.bots = structuredClone(bots);
+          if (Object.hasOwn(w, "bots")) w.bots = w.config.bots;
+        }
+      this.mode = mode;
+      this.error = null;
+      this.skipped = 0;
+      this.actionClicks.clear();
+    };
+  }
+  async setMode(mode) {
+    await this.queue;
+    const commit = await this.prepareMode(mode);
+    commit();
     await this.updateBridges();
     return this.status();
   }
@@ -214,7 +275,11 @@ export class Synchronizer {
     return this.status();
   }
   receive(win, event) {
-    if (this.mode === "none" || !this.comparison.windows.includes(win))
+    if (event.kind === "click" && !win.page) return Promise.resolve();
+    if (
+      (this.mode === "none" && !event.independent) ||
+      !this.participants().includes(win)
+    )
       return Promise.resolve();
     if (event.kind === "action" && event.clickId)
       this.actionClicks.add(win.clone.game_id + ":" + event.clickId);
@@ -222,17 +287,16 @@ export class Synchronizer {
     const mode = this.mode;
     const work = this.queue
       .then(async () => {
-        if (this.mode !== mode || !this.comparison.windows.includes(win))
-          return;
+        if (this.mode !== mode || !this.participants().includes(win)) return;
         if (this.busy())
           throw Error(
             "Wait for the comparison operation to finish before playing.",
           );
         if (event.kind === "action") {
           await this.comparison.api("/synchronize", {
-            games: this.comparison.windows.map((w) => w.clone.game_id),
+            games: this.targets(win).map((w) => w.clone.game_id),
             source: win.clone.game_id,
-            actor: win.config.seat,
+            actor: event.actor || win.config.seat,
             message: event.message,
           });
         } else if (event.kind === "click" && mode === "api-clicks") {
@@ -244,7 +308,7 @@ export class Synchronizer {
       .catch(async (error) => {
         this.mode = "none";
         this.error = "Synchronization stopped: " + error.message;
-        if (event.kind === "action")
+        if (event.kind === "action" && win.page)
           await win.page
             .evaluate(
               ({ message, detail }) =>
@@ -266,8 +330,8 @@ export class Synchronizer {
       ),
       previous = this.snapshots.get(source);
     this.snapshots.set(source, current);
-    for (const dest of this.comparison.windows) {
-      if (dest === source) continue;
+    for (const dest of this.targets(source)) {
+      if (dest === source || !dest.page) continue;
       dest.page.__labSyncReplaying = true;
       await dest.page.evaluate(() => {
         window.__GOA2_LAB_SYNC__.replaying = true;

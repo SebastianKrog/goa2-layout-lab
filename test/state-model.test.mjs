@@ -46,7 +46,8 @@ test("Presentation inheritance, explicit resets, Viewpoint and independent prefe
   };
   const followed = resolveView(
     { ...config, presentationDefaults: defaults },
-    situation,
+    {},
+    situation.presentation,
   );
   assert.equal(followed.config.seat, "hero_snorri");
   assert.equal(followed.presentation.pane, "hand");
@@ -74,7 +75,7 @@ test("Presentation inheritance, explicit resets, Viewpoint and independent prefe
   );
   assert.equal(explicit.config.seat, "spectator");
   assert.equal(explicit.presentation.selectedCard, null);
-  assert.equal(explicit.presentation.pane, "hand");
+  assert.equal(explicit.presentation.pane, "heroes");
   assert.equal(explicit.presentation.storage["goa2:board-brightness"], null);
   const raw = adapterPresentation(
     resolvePresentation(defaults, situation.presentation, { pane: "deck" }),
@@ -84,7 +85,7 @@ test("Presentation inheritance, explicit resets, Viewpoint and independent prefe
   assert.equal(raw.selectedCard, "one");
   assert.equal(
     resolveView(config, situation, { pane: "heroes" }).config.seat,
-    "hero_snorri",
+    "hero_arien",
   );
   assert.equal(
     toPresentation({ storage: { "goa2-token": "secret", "goa2.locale": "en" } })
@@ -253,7 +254,6 @@ test("working-tree evidence hashes served bytes and never labels local modificat
   assert.deepEqual(nested.excludedDirectories, ["nested/"]);
   assert.equal(nested.files.length, 2);
   assert.equal(nested.dirty, true);
-
   await fs.writeFile(path.join(root, "code.js"), "changed again");
   assert.notEqual(
     (await checkoutEvidence(root)).workingTreeHash,

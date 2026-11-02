@@ -14,13 +14,15 @@ The combined strip is unlabelled pixels in capture order. The HTML captions and 
 
 ## Capture the actual views
 
-Set up and verify the comparison first. Keep hands off during capture. Use at least two selected views. POST /api/capture {indexes:[0,1]} captures two; [0,1,2] captures three. Omitting indexes captures all windows. Indexes are zero-based.
+Set up and verify the comparison first. Keep hands off during capture. The endpoint accepts one to three selected Views; pairwise diffs need at least two.
+The portable comparison helper requires two or three. POST /api/capture {indexes:[0,1]} captures two; [0,1,2] captures three. Omitting indexes captures all windows. Indexes are zero-based.
 
 The endpoint waits for game/camera readiness, fonts, network idle, visible image decoding and successive settled images. It disables CSS animations/caret in screenshots, not all JavaScript/WebGL animation. A continually animated frame may fail to settle; use the live viewer for motion review or deliberately stop at a real stable state. Do not hide failed assets or inject synthetic game state to force success. Frozen wall time/clock values do not stop animation frames.
 
 The response is {id,url,diverged}, with URL /reports/<id>/index.html. Artifacts are under the lab's ignored .layout-lab/reports/<id>/. Original screenshots retain emulated viewport dimensions, not the desk card's Fit scale. The report includes originals, side-by-side.png, report.json, index.html and compatible pairwise diff PNGs.
 
-Capture errors can leave a partial report directory. Require a successful response and completed report.json/index.html before treating it as an artifact set. Restore warnings are in metadata/captions and must still be reviewed; the capture endpoint does not reject every restoration warning automatically. The bundled helper rejects selected-view warnings before capture.
+Capture errors can leave a partial report directory. Require a successful response and completed report.json/index.html before treating it as an artifact set. Restore warnings are in metadata/captions and must still be reviewed; the capture endpoint does not reject every restoration warning automatically. The bundled helper prints nonblocking Presentation warnings and rejects render/asset
+errors, live sources and inactive Targets. Review warnings against the inspection goal.
 
 ## Element crops
 
@@ -48,11 +50,11 @@ userscript discard UI, for example, hides `[data-m2-discard-source]` and paints
 userscript choices respectively. Hidden source buttons may still appear in a CSS
 extraction, but must not be used to claim a successful visible screenshot crop.
 
-From the lab root, the portable helper can export the two migration views:
+From the lab root, the portable helper can export two explicitly loaded Views:
 
 ```sh
-node agent/skills/goa2-compare-views/scripts/capture-comparison.mjs --origin http://127.0.0.1:3300 --indexes 1,2 --selector ".your-control" --match individual --out ./new-individual-review
-node agent/skills/goa2-compare-views/scripts/capture-comparison.mjs --origin http://127.0.0.1:3300 --indexes 1,2 --selector ".your-control" --match combine --out ./new-combined-review
+node agent/skills/goa2-compare-views/scripts/capture-comparison.mjs --origin http://127.0.0.1:3277 --indexes 0,1 --selector ".your-control" --match individual --out ./new-individual-review
+node agent/skills/goa2-compare-views/scripts/capture-comparison.mjs --origin http://127.0.0.1:3277 --indexes 0,1 --selector ".your-control" --match combine --out ./new-combined-review
 ```
 
 Use `--match nth --occurrence 2` to select just the second visible match.
@@ -65,14 +67,14 @@ CSS bounds and pixel bounds. Crops preserve device scale and aren't resized to
 match. Different sizes disable pairwise overlays/diffs. A numbered match can
 refer to different semantic items across different layouts; verify content.
 Cropped reports' window-N.png files contain the crops; omit crop for original
-full-viewport evidence. See the README crop section for clipping scope/limits.
+full-viewport evidence. See [the capture guide](../../../../docs/captures.md#crop-captures-to-elements) for clipping scope/limits.
 
 ## Portable export helper
 
 Run the bundled skill script using Node 22+ from any directory. Use the selected skill's scripts/ directory. For lab work, prefer this repository's version over an older installed copy:
 
 ```sh
-node /path/to/goa2-compare-views/scripts/capture-comparison.mjs --origin http://127.0.0.1:3300 --out /path/to/new-export --indexes 0,1 --base-sha BASE_SHA --compare-sha COMPARE_SHA
+node /path/to/goa2-compare-views/scripts/capture-comparison.mjs --origin http://127.0.0.1:3277 --out /path/to/new-export --indexes 0,1 --base-sha BASE_SHA --compare-sha COMPARE_SHA
 ```
 
 For the three-view version use --indexes 0,1,2 and --script-sha SCRIPT_SHA. Supply full 40-character SHAs. --help describes arguments. The output directory must not exist. The helper checks loaded refs, selected view diagnostics, live-source use, target activation and state equality, requests the lab report and downloads the complete static set. It leaves the desk running. It needs no additional packages or private tokens. It only accepts a loopback HTTP desk origin.

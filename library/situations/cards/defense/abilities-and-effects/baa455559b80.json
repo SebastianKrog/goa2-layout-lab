@@ -1,0 +1,24 @@
+{
+  "id": "baa455559b80",
+  "name": "Noble Blade with a +1 Attack item",
+  "description": "Noble Blade with a +1 Attack item. Attack 5; defense needed 5. Waiting for Brogan; no defense submitted. Attack item: slippery_ground; Levels: Arien 2, Hanu 1, Brogan 1, Tigerclaw 1",
+  "backend_revision": "c4750787e620388a093683cc5b8518b437f1c2a3",
+  "saved_at": 1792734787.1336658,
+  "provenance": {
+    "kind": "ui-fabrication"
+  },
+  "summary": {
+    "phase": "RESOLUTION",
+    "round": 1,
+    "decision": "SELECT_CARD_OR_PASS",
+    "responder": "hero_brogan"
+  },
+  "schema": 3,
+  "kind": "situation",
+  "decisionStateId": "d73a239808cfee1f16f275e1d0b86d4b954f8a30e853dde8f476e9200a93fd9c",
+  "tags": [
+    "topic:abilities-and-effects",
+    "topic:cards",
+    "topic:defense"
+  ]
+}

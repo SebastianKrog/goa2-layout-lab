@@ -13765,5 +13765,12 @@
     "rollback_actor_id": "hero_snorri",
     "hero_names": {},
     "replay_log": []
-  }
+  },
+  "tags": [
+    "decision:select-option",
+    "hero:snorri",
+    "hero:wasp",
+    "phase:resolution",
+    "topic:heroes"
+  ]
 }

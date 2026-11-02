@@ -65,6 +65,7 @@ try {
   await page
     .locator("#situation option[value='a00000000001']")
     .waitFor({ state: "attached" });
+  await page.locator("#customStart").click();
   await page.locator("#workspaceTools").click();
   await page.locator("#situation").selectOption("a00000000001");
   await page.locator("#preset").selectOption("Play solo");
@@ -79,7 +80,7 @@ try {
   let status = await api("status");
   assert.equal(status.windows.length, 1);
   assert.equal(await page.locator(".slots.one .slot").count(), 1);
-  assert.equal(await page.locator("#synchronize").isDisabled(), true);
+  assert.equal(await page.locator("#synchronize").isDisabled(), false);
   assert.equal(await page.locator("#capture").isEnabled(), true);
   const original = (await api("views"))[0].state.hash;
   const gameId = status.windows[0].gameId;
@@ -126,6 +127,7 @@ try {
   await idle();
   views = await api("views");
   assert.equal(views.length, 2);
+  await api("synchronize", { mode: "none" });
   const manualHash = views[0].state.hash;
   await edit(1);
   await page.locator("#viewBotPreset").selectOption("heuristic");
@@ -141,14 +143,14 @@ try {
     Object.values(views[1].config.bots).every((kind) => kind === "heuristic"),
     true,
   );
-  assert.equal(await page.locator("#synchronize").isDisabled(), true);
+  assert.equal(await page.locator("#synchronize").isDisabled(), false);
   const rejected = await fetch(origin + "/api/synchronize", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ mode: "api" }),
   });
   assert.equal(rejected.ok, false);
-  assert.match((await rejected.json()).error, /Turn off bots/);
+  assert.match((await rejected.json()).error, /diverged/);
   assert.deepEqual(errors, []);
   await fs.writeFile(
     path.join(out, "acceptance.json"),
@@ -159,7 +161,7 @@ try {
         keepsGameOnChange: true,
         singleCapture: true,
         independentViews: true,
-        synchronizationGuard: true,
+        divergenceGuard: true,
         browserErrors: errors,
       },
       null,

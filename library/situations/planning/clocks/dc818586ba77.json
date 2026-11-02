@@ -1,24 +1,9 @@
 {
-  "schema": 2,
+  "schema": 3,
   "kind": "situation",
   "id": "dc818586ba77",
-  "name": "M3 presentation - shell-paused",
+  "name": "Clock: game paused",
   "decisionStateId": "bad658c5766f67fa760991a49621573afe37d98be6d4452ef5346f203923c0d7",
-  "presentation": {
-    "schema": 2,
-    "sessionState": {
-      "pane": "board",
-      "selectedCard": null,
-      "inspectedCard": null
-    },
-    "userState": {},
-    "viewpoint": "hero_arien",
-    "restoration": "defaulted; no historical Session State was saved",
-    "adapter": {
-      "uiMode": "desktop",
-      "render": "2d"
-    }
-  },
   "summary": {
     "phase": "PLANNING",
     "round": 1,
@@ -27,10 +12,6 @@
   },
   "backend_revision": "740ec5bbfa1aaadcf05b0df06d93ab3187e5de9a",
   "saved_at": 1792477606.9844952,
-  "migration": {
-    "sourceId": "dc818586ba77",
-    "sourceSlot": "0"
-  },
   "provenance": {
     "kind": "ui-fabrication",
     "fixture": {
@@ -39,5 +20,11 @@
       "seed": 20261019,
       "purpose": "UI display comparison; not a game-rule test"
     }
-  }
+  },
+  "tags": [
+    "hero:clock",
+    "topic:clocks",
+    "topic:planning"
+  ],
+  "description": "Clock: game paused. Load in any Layout to inspect the game state."
 }

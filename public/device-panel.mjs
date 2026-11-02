@@ -1,5 +1,6 @@
 export function initDevicePanel({
   selectedSituation,
+  inspection = () => ({}),
   task,
   call,
   read,
@@ -25,7 +26,7 @@ export function initDevicePanel({
       .filter((s) => s.id !== "spectator")
       .map(
         (s) =>
-          `${s.name}: ${s.id === view.config.seat ? "You" : names[view.bots?.[s.id] || "manual"]}`,
+          `${s.name}: ${s.id === view.config.seat || (view.config.autoSwitchManualOnly && !view.bots?.[s.id]) ? "You" : names[view.bots?.[s.id] || "manual"]}`,
       )
       .join(" | ");
     $("deviceLink").hidden = false;
@@ -125,6 +126,8 @@ export function initDevicePanel({
               )
             : {};
         const view = await call("device-open", {
+          ...inspection(),
+          viewpoint: $("deviceSeat").value,
           bots,
           situationId,
           slot: {
@@ -154,7 +157,13 @@ export function initDevicePanel({
       botKinds = (options.botKinds || []).filter((kind) =>
         ["random", "heuristic", "ismcts"].includes(kind),
       );
+      $("deviceForm").hidden = false;
       choices.clear();
+      if (options.bots) {
+        $("deviceBotPreset").value = "custom";
+        for (const seat of seats)
+          choices.set(seat.id, options.bots[seat.id] || "manual");
+      }
       $("deviceSeat").replaceChildren(
         ...options.seats.map((seat) => {
           const option = document.createElement("option");
@@ -163,6 +172,12 @@ export function initDevicePanel({
           return option;
         }),
       );
+      if (options.preferredSeat && !options.bots?.[options.preferredSeat])
+        $("deviceSeat").value = options.preferredSeat;
+      else if (options.bots)
+        $("deviceSeat").value =
+          seats.find((s) => s.id !== "spectator" && !options.bots[s.id])?.id ||
+          "spectator";
       renderBots();
       $("deviceLink").hidden = true;
       await refresh();
@@ -173,5 +188,12 @@ export function initDevicePanel({
     }
   };
   $("openDevice").onclick = () => void open();
+  open.showPrepared = async (view) => {
+    // A quickstart already has its roster and controllers; show the QR directly.
+    $("deviceForm").hidden = true;
+    showLink(view);
+    await refresh();
+    $("deviceDialog").showModal();
+  };
   return open;
 }

@@ -8,7 +8,8 @@
 GitHub/
   goa2-layout-lab/          # this standalone tool, dependencies and local data
   goa2-frontend/            # Git revisions, models and live working tree
-  goa2-backend/             # game engine
+  goa2-backend/             # regular game engine
+  goa2-backend-bots/        # optional separate bot decision service
   goa2-mobile-2d-patch/     # optional userscript target
 ```
 
@@ -17,6 +18,22 @@ reports and backend recovery files stay in this repo's ignored `.layout-lab/`
 directory. Native Linux/macOS also keep service caches there. The Windows-to-WSL
 adapter keeps service caches on WSL's Linux filesystem as described below.
 Live-view Vite dependency caches use the frontend's ignored `node_modules/`.
+
+## Separate bot decisions
+
+Views always use `GOA2_LAB_BACKEND` (normally `../goa2-backend`). Random,
+Simple and ISMCTS decisions come from one lazily started service using
+`GOA2_LAB_BOT_BACKEND` (normally `../goa2-backend-bots`, branch `bots-upstream`).
+It has its own Python environment, cache and port (`GOA2_LAB_BOTS_PORT`, default
+8110). Ordinary comparison use does not start it. No neural/training dependencies
+are needed and neither product repository needs edits.
+
+The lab sends a transient checkpoint for each bot decision, receives a command,
+then applies it through normal game handlers to the synchronized group. A changed
+checkpoint or controller policy invalidates an in-flight result. Clones never
+start autonomous bot workers. Synchronization defaults to API requests; None is
+an explicit choice for independent game progression. Device shares join the
+matching current group; quickstarts create fresh groups.
 
 ## Start
 
@@ -40,9 +57,9 @@ node node_modules/playwright/cli.js install chromium
 
 The VS Code task **Layout lab: Start** runs the same command.
 The desk opens at **http://localhost:3200** with no situation loaded. Select a
-situation through the view's **Start** overlay when ready. Use the right-hand **Add view** rail to clone its current state without resetting it. Starting the desk alone does not prepare
+quickstart or comparison Layout on the start screen, then a Situation for comparisons. Use the right-hand **Add view** rail to clone its current state without resetting it. Starting the desk alone does not prepare
 frontend sources or create game clones. To load one explicitly at startup, use
-`npm run compare -- --situation=<saved-situation-id>`; `--preset` selects its views.
+`npm run compare -- --situation=<saved-situation-id>`; `--preset` selects that explicit startup load's Views. Without `--situation`, it does not open Views.
 The situation ID is in its JSON file or the desk catalog.
 
 The first explicit load extracts the pinned Git
@@ -148,28 +165,56 @@ npm run compare -- --env-file=.env.layout-lab
 CLI reference/preset flags override environment values. Shell environment takes
 precedence over the env file. `npm run compare -- --help` lists launcher options.
 
-| Setting                  | Environment variable                                                                                                  | Default                                                              |
-| ------------------------ | --------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
-| Display                  | `GOA2_LAB_DISPLAY`                                                                                                    | `embedded` (native); optional `browser`, `windows`                   |
-| Frozen base              | `GOA2_LAB_BASE_REF`                                                                                                   | [Pinned Base](workspace.md#sources-and-presets)                      |
-| Frozen userscript        | `GOA2_LAB_SCRIPT_REF`                                                                                                 | [Pinned Target](workspace.md#sources-and-presets)                    |
-| Comparator branch/commit | `GOA2_LAB_COMPARATOR_REF`                                                                                             | `mobile-migration`                                                   |
-| Initial comparison       | `GOA2_LAB_PRESET`                                                                                                     | `current` (one Live View); also `mobile`, `desktop-2d`, `desktop-3d` |
-| Service ports            | `GOA2_LAB_DESK_PORT`, `GOA2_LAB_BASE_PORT`, `GOA2_LAB_COMPARATOR_PORT`, `GOA2_LAB_LIVE_PORT`, `GOA2_LAB_BACKEND_PORT` | 3200, 3101, 3100, 3102, 8100                                         |
+| Setting                  | Environment variable                                                                         | Default                                                                             |
+| ------------------------ | -------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| Display                  | `GOA2_LAB_DISPLAY`                                                                           | `embedded` (native); optional `browser`, `windows`                                  |
+| Frozen base              | `GOA2_LAB_BASE_REF`                                                                          | [Pinned Base](workspace.md#sources-and-presets)                                     |
+| Frozen userscript        | `GOA2_LAB_SCRIPT_REF`                                                                        | [Pinned Target](workspace.md#sources-and-presets)                                   |
+| Comparator branch/commit | `GOA2_LAB_COMPARATOR_REF`                                                                    | `mobile-migration`                                                                  |
+| Explicit startup Layout  | `GOA2_LAB_PRESET`                                                                            | `current` when `--situation` is supplied; also `mobile`, `desktop-2d`, `desktop-3d` |
+| Main reference           | `GOA2_LAB_MAIN_REF`                                                                          | `origin/HEAD`, then local `main`/`master`                                           |
+| Bot checkout             | `GOA2_LAB_BOT_BACKEND`                                                                       | `../goa2-backend-bots`                                                              |
+| Game/backend ports       | `GOA2_LAB_BACKEND_PORT`, `GOA2_LAB_BOTS_PORT`                                                | 8100, 8110                                                                          |
+| Frontend ports           | `GOA2_LAB_COMPARATOR_PORT`, `GOA2_LAB_BASE_PORT`, `GOA2_LAB_LIVE_PORT`, `GOA2_LAB_MAIN_PORT` | 3100, 3101, 3102, 3103                                                              |
+| Desk/device ports        | `GOA2_LAB_DESK_PORT`, `GOA2_LAB_DEVICE_PORT`                                                 | 3200, 3300                                                                          |
 
-Frozen refs resolve once at startup and cannot be changed through the API.
+Main, Base and script refs resolve once at startup. Comparator can be explicitly
+refreshed through the desk/API without changing those frozen refs.
 Set references in the launcher/env file. Use the same env/port settings when
 stopping the desk. Runtime and checkout path overrides are described above.
 
+## Isolate an acceptance desk
+
+Set all seven service ports, plus the device port when testing shares. For example,
+in PowerShell before launching an owned test desk:
+
+```powershell
+$env:GOA2_LAB_DESK_PORT = '3277'
+$env:GOA2_LAB_BACKEND_PORT = '8177'
+$env:GOA2_LAB_BOTS_PORT = '8178'
+$env:GOA2_LAB_COMPARATOR_PORT = '3177'
+$env:GOA2_LAB_BASE_PORT = '3178'
+$env:GOA2_LAB_LIVE_PORT = '3179'
+$env:GOA2_LAB_MAIN_PORT = '3180'
+$env:GOA2_LAB_DEVICE_PORT = '3377'
+```
+
+Use the same environment for requests and shutdown. On POSIX hosts export the same
+variables. Check availability first; these example ports are not reserved. Do not
+use 3300 for a desk while retaining the default device gateway on that port.
+
 ## Processes and troubleshooting
 
-| Process              | Port |
-| -------------------- | ---- |
-| Committed Comparator | 3100 |
-| Base / Target        | 3101 |
-| Optional Live source | 3102 |
-| Isolated backend     | 8100 |
-| Comparison desk      | 3200 |
+| Process                   | Port |
+| ------------------------- | ---- |
+| Committed Comparator      | 3100 |
+| Base / Target             | 3101 |
+| Optional Live source      | 3102 |
+| Main source               | 3103 |
+| Regular game backend      | 8100 |
+| Lazy bot decision service | 8110 |
+| LAN device gateway        | 3300 |
+| Comparison desk           | 3200 |
 
 The desk starts only the sources required by the selected configuration. It
 reports occupied ports without killing their owners. **Settings → Diagnostics &
@@ -185,3 +230,26 @@ npm run compare -- --stop
 
 Shutdown closes browser contexts and only the process groups launched by
 this desk. It leaves existing normal development servers alone.
+
+### Lab search budget
+
+ISMCTS uses a 10-second decision budget (with the search engine's cooperative
+90% cutoff), up to 200 iterations and a two-game-turn continuation horizon.
+A turn is one planning/resolution cycle for the table, including rollover from
+turn four to turn one of the next round; it is not one input choice or a full
+round. The selected root edge counts toward this horizon.
+Card effects are initialized in the bot service
+so simulated actions use their registered implementations.
+This override belongs to the isolated lab bot service; production backend bounds
+remain unchanged. A deadline returns completed search visits when available,
+otherwise the lab falls back to Simple.
+
+The lab's heuristic evaluator adds small positioning bonuses using plain hex
+range and printed ranges of remaining red/gold cards. Setup ranks as follows:
+minion in range with a red/gold card left (0.12), hero in range (0.08), then
+minion in range without one (0.04). Only the best opportunity counts. Adjacent
+friendly melee/heavy minion cover adds 0.005; enemy ranged-minion exposure within
+two hexes subtracts 0.01. These do not stack and remain below a kill's material
+value. Hidden enemy hands, special effects, immunity and line of sight are not
+consulted. This scorer is injected through the bots checkout's optional leaf
+evaluator argument; production game-backend code is unchanged.

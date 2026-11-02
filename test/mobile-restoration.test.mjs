@@ -37,7 +37,7 @@ test("desktop and phone restore nested spell inspections and decision-context ch
       if (route.startsWith("/review/snapshot?")) return structuredClone(saved);
       if (route.startsWith("/situations/"))
         throw Error("Mutable library must never be read");
-      if (route === "/health") return {};
+      if (route === "/capabilities") return { botKinds: [] };
       if (route === "/clone")
         return {
           game_id: "frozen",
@@ -71,7 +71,6 @@ test("desktop and phone restore nested spell inspections and decision-context ch
         },
         presentation: {
           schema: 2,
-          viewpoint: "hero_arien",
           sessionState: raw,
           userState: {},
         },
@@ -83,6 +82,7 @@ test("desktop and phone restore nested spell inspections and decision-context ch
       const link = await devices.open({
         situationId: "frozen",
         slot: config,
+        presentation: saved.presentation,
         reviewSnapshot: { reviewId: "a".repeat(24), index: 0 },
       });
       assert.equal(link.config.seat, "hero_arien");

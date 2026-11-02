@@ -1,0 +1,24 @@
+{
+  "id": "8cba5dd05cc6",
+  "name": "Flanking Ballista prevents primary defense actions",
+  "description": "Flanking Ballista prevents primary defense actions. Attack 7; defense needed 7. Waiting for Emmitt; no defense submitted. Levels: Tigerclaw 5, Hanu 1, Emmitt 1, Brogan 1",
+  "backend_revision": "c4750787e620388a093683cc5b8518b437f1c2a3",
+  "saved_at": 1792734794.9452338,
+  "provenance": {
+    "kind": "ui-fabrication"
+  },
+  "summary": {
+    "phase": "RESOLUTION",
+    "round": 1,
+    "decision": "SELECT_CARD_OR_PASS",
+    "responder": "hero_emmitt"
+  },
+  "schema": 3,
+  "kind": "situation",
+  "decisionStateId": "44cce53ea9970e3334d1783f8114586ede0b16ca2a4846dba1bb40d9876c98fe",
+  "tags": [
+    "topic:abilities-and-effects",
+    "topic:cards",
+    "topic:defense"
+  ]
+}

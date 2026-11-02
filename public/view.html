@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>GoA2 View</title>
+    <link rel="stylesheet" href="/desk.css" />
+    <style>
+      html,
+      body {
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+      }
+      body {
+        display: flex;
+        flex-direction: column;
+        background: #10151e;
+      }
+      #surface {
+        flex: 1;
+        min-height: 0;
+        display: flex;
+      }
+      .live-stage {
+        flex: 1;
+        height: 100% !important;
+        min-height: 0 !important;
+      }
+      #viewHeader {
+        flex: none;
+        background: #fff;
+        color: #26332d;
+      }
+      .view-editor-frame {
+        position: fixed;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        border: 0;
+        z-index: 100;
+        background: #f4f5f4;
+      }
+      #controls {
+        flex: none;
+        background: #f4f5f4;
+        color: #26332d;
+        border-top: 1px solid var(--line);
+      }
+      .slot-footer {
+        margin: 0;
+        flex-wrap: wrap;
+        padding: 10px;
+      }
+      #waiting {
+        margin: auto;
+        color: #b9c8df;
+      }
+      #controls:empty {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="viewHeader"></div>
+    <div id="surface"><p id="waiting">Waiting for the lab…</p></div>
+    <div id="viewWarnings" class="view-warning" hidden></div>
+    <div id="controls"></div>
+    <script type="module" src="/view-window.mjs"></script>
+  </body>
+</html>

@@ -1,24 +1,9 @@
 {
-  "schema": 2,
+  "schema": 3,
   "kind": "situation",
   "id": "09fa8b1ac243",
-  "name": "M3 presentation - snorri-played-history-runes",
+  "name": "Snorri: played card history with runes",
   "decisionStateId": "d67c02a0e755c44d2ed940bfe765aea5694c3643973610ec46829339437c4f78",
-  "presentation": {
-    "schema": 2,
-    "sessionState": {
-      "pane": "board",
-      "selectedCard": null,
-      "inspectedCard": null
-    },
-    "userState": {},
-    "viewpoint": "hero_snorri",
-    "restoration": "defaulted; no historical Session State was saved",
-    "adapter": {
-      "uiMode": "desktop",
-      "render": "2d"
-    }
-  },
   "summary": {
     "phase": "PLANNING",
     "round": 1,
@@ -27,10 +12,6 @@
   },
   "backend_revision": "740ec5bbfa1aaadcf05b0df06d93ab3187e5de9a",
   "saved_at": 1792477603.1889505,
-  "migration": {
-    "sourceId": "09fa8b1ac243",
-    "sourceSlot": "0"
-  },
   "provenance": {
     "kind": "ui-fabrication",
     "fixture": {
@@ -39,5 +20,11 @@
       "seed": 20261019,
       "purpose": "UI display comparison; not a game-rule test"
     }
-  }
+  },
+  "tags": [
+    "hero:snorri",
+    "topic:heroes",
+    "topic:history"
+  ],
+  "description": "Snorri: played card history with runes. Load in any Layout to inspect the game state."
 }

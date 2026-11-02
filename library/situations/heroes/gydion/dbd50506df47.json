@@ -1,24 +1,9 @@
 {
-  "schema": 2,
+  "schema": 3,
   "kind": "situation",
   "id": "dbd50506df47",
-  "name": "Gydion - choose a spell for Cantrip",
+  "name": "Gydion: Cantrip spell choice",
   "decisionStateId": "9e5bb028f1e6709990f8d085ffdb3631e32202afccf866d21decf3d9b50ecc45",
-  "presentation": {
-    "schema": 2,
-    "sessionState": {
-      "pane": "board",
-      "selectedCard": null,
-      "inspectedCard": null
-    },
-    "userState": {},
-    "viewpoint": "hero_gydion",
-    "restoration": "defaulted; no historical Session State was saved",
-    "adapter": {
-      "uiMode": "desktop",
-      "render": "2d"
-    }
-  },
   "summary": {
     "phase": "RESOLUTION",
     "round": 1,
@@ -27,10 +12,6 @@
   },
   "backend_revision": "740ec5bbfa1aaadcf05b0df06d93ab3187e5de9a",
   "saved_at": 1792348819.7776542,
-  "migration": {
-    "sourceId": "dbd50506df47",
-    "sourceSlot": "0"
-  },
   "provenance": {
     "kind": "ui-fabrication",
     "fixture": {
@@ -44,5 +25,10 @@
         "responder": "hero_gydion"
       }
     }
-  }
+  },
+  "tags": [
+    "hero:gydion",
+    "topic:heroes"
+  ],
+  "description": "Gydion: Cantrip spell choice. Waiting for hero_gydion."
 }

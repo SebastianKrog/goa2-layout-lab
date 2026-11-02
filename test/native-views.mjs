@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import http from "node:http";
 import fs from "node:fs/promises";
 import path from "node:path";
+import { deskFixture } from "./fixtures/desk-interface.mjs";
 import { PNG } from "pngjs";
 import { NativeDesktop } from "../desktop/driver.mjs";
 import { DATA, TOOL, PROFILES } from "../src/config.mjs";
@@ -11,6 +12,28 @@ const desktop = new NativeDesktop(),
   contexts = [],
   pages = [];
 const server = http.createServer(async (req, res) => {
+  const pathname = new URL(req.url, "http://localhost").pathname;
+  if (
+    [
+      "/view.html",
+      "/view-window.mjs",
+      "/tag-ui.mjs",
+      "/tags.mjs",
+      "/live.mjs",
+      "/desk.css",
+    ].includes(pathname)
+  ) {
+    res.setHeader(
+      "content-type",
+      pathname.endsWith(".mjs")
+        ? "text/javascript"
+        : pathname.endsWith(".css")
+          ? "text/css"
+          : "text/html",
+    );
+    res.end(await fs.readFile(path.join(TOOL, "public", pathname.slice(1))));
+    return;
+  }
   if (req.url === "/native.mjs") {
     res.setHeader("content-type", "text/javascript");
     res.end(await fs.readFile(path.join(TOOL, "public/native.mjs")));
@@ -164,6 +187,255 @@ try {
   );
   assert.equal(position.y, -144);
   await desktop.root.evaluate(() => v[1].zoom(true));
+  // Reparent an existing live surface, retaining emulation, input and captures.
+  const detachedId = contexts[1].nativeId;
+  const popupEvent = desktop.app.waitForEvent("window");
+  await desktop.root.evaluate(async (id) => {
+    window.actions = [];
+    window.layoutLabDesktop.onWindowAction((payload) =>
+      window.actions.push(payload),
+    );
+    await window.layoutLabDesktop.toggleWindow({
+      index: 1,
+      id,
+      title: "View B",
+    });
+    window.layoutLabDesktop.windowContent({
+      index: 1,
+      nativeId: id,
+      gameId: "test",
+      config: { source: "live" },
+      viewport: { width: 390, height: 844 },
+      fit: true,
+      title: "View B",
+      footer:
+        '<div class="slot-footer"><button data-window-control="edit">Edit view</button><button data-window-control="window">Return to lab</button><select data-window-control="scale" aria-label="Scale"><option value="fit">Fit</option><option value="actual">100%</option></select></div>',
+    });
+  }, detachedId);
+  const popup = await popupEvent;
+  await popup.waitForSelector('[data-window-control="window"]');
+  await waitFor(
+    () =>
+      desktop.app.evaluate((_, id) => {
+        const item = lab.views.get(id);
+        return (
+          item.owner !== lab.root &&
+          item.host.getVisible() &&
+          !!item.externalLayout
+        );
+      }, detachedId),
+    "detached placement",
+  );
+  assert.equal(
+    await pages[1].evaluate(() => localStorage.getItem("isolation")),
+    "1",
+  );
+  assert.equal(await pages[1].evaluate(() => innerWidth), 390);
+  await popup.getByRole("combobox", { name: "Scale" }).selectOption("actual");
+  await desktop.root.waitForFunction(() =>
+    actions.some((a) => a.control === "scale"),
+  );
+  await desktop.app.evaluate((_, id) => {
+    const item = lab.views.get(id);
+    for (const type of ["mouseDown", "mouseUp"])
+      item.view.webContents.sendInputEvent({
+        type,
+        x: Math.round(250 * item.scale),
+        y: Math.round(125 * item.scale),
+        button: "left",
+        clickCount: 1,
+      });
+  }, detachedId);
+  await waitFor(() => pages[1].evaluate(() => clicked === 2), "detached input");
+  const detachedShot = PNG.sync.read(await pages[1].screenshot());
+  assert.deepEqual([detachedShot.width, detachedShot.height], [390, 844]);
+  await desktop.app.evaluate(() =>
+    lab.viewWindows.windows.get(1).window.setSize(700, 650),
+  );
+  await delay(150);
+  assert.equal(await pages[1].evaluate(() => innerWidth), 390);
+  // Updating the slot adopts a replacement surface into the same shell.
+  const replacement = await desktop.newContext(PROFILES.portrait);
+  contexts.push(replacement);
+  const replacementPage = await replacement.newPage();
+  await replacementPage.goto(origin + "/guest?replacement");
+  await contexts[1].close();
+  await desktop.root.evaluate(
+    (id) =>
+      window.layoutLabDesktop.windowContent({
+        index: 1,
+        nativeId: id,
+        gameId: "replacement",
+        config: { source: "live" },
+        viewport: { width: 390, height: 844 },
+        fit: true,
+        title: "View B",
+        footer:
+          '<div class="slot-footer"><button data-window-control="window">Return to lab</button></div>',
+      }),
+    replacement.nativeId,
+  );
+  await waitFor(
+    () =>
+      desktop.app.evaluate((_, id) => {
+        const item = lab.views.get(id);
+        return (
+          item.owner !== lab.root &&
+          item.host.getVisible() &&
+          !!item.externalLayout
+        );
+      }, replacement.nativeId),
+    "replacement follows separate window",
+  );
+  await desktop.app.evaluate(() =>
+    lab.viewWindows.windows.get(1).window.close(),
+  );
+  await waitFor(
+    () =>
+      desktop.app.evaluate(
+        (_, id) => lab.views.get(id).owner === lab.root,
+        replacement.nativeId,
+      ),
+    "return to lab",
+  );
+  assert.equal(await replacementPage.isClosed(), false);
+  // A subsequent normal layout reclaims the returned surface.
+  await desktop.app.evaluate(
+    (_, id) =>
+      lab.layout([
+        {
+          id,
+          index: 1,
+          x: 0,
+          y: 80,
+          width: 390,
+          height: 600,
+          offsetX: 0,
+          offsetY: 0,
+          scale: 0.7,
+          visible: true,
+        },
+      ]),
+    replacement.nativeId,
+  );
+  assert.ok(
+    await desktop.app.evaluate(
+      (_, id) => lab.views.get(id).host.getVisible(),
+      replacement.nativeId,
+    ),
+  );
+  console.log(
+    "PASS: separate window controls, native input, captures, resizing, slot replacement and close-to-return",
+  );
+  // Exercise the real desk and its control relay, without backend services.
+  const fixture = await deskFixture(desktop.root.context(), { views: 2 });
+  fixture.state.windows[0].nativeId = replacement.nativeId;
+  fixture.state.windows[1].nativeId = contexts[2].nativeId;
+  await desktop.open("http://desk.test/", true);
+  await desktop.root
+    .locator('.slot [data-window-control="window"]')
+    .first()
+    .waitFor();
+  await waitFor(
+    () =>
+      desktop.app.evaluate(
+        (_, id) => lab.views.get(id).slot === 0,
+        replacement.nativeId,
+      ),
+    "desk slot placement",
+  );
+  const detachedEvent = desktop.app.waitForEvent("window");
+  await desktop.root
+    .locator('.slot[data-index="0"]')
+    .getByRole("button", { name: "Open in window" })
+    .click();
+  const detachedDesk = await detachedEvent;
+  await detachedDesk.getByRole("button", { name: "Return to lab" }).waitFor();
+  await detachedDesk
+    .getByRole("checkbox", { name: "Include in capture" })
+    .uncheck();
+  await desktop.root.waitForFunction(
+    () => !document.querySelector('[data-capture-index="0"]').checked,
+  );
+  await detachedDesk
+    .getByRole("combobox", { name: "Scale view A" })
+    .selectOption("actual");
+  await waitFor(
+    () =>
+      desktop.app.evaluate(
+        (_, id) => lab.views.get(id).scale === 1,
+        replacement.nativeId,
+      ),
+    "detached 100% scale",
+  );
+  await detachedDesk.getByRole("button", { name: "Edit view" }).click();
+  const localEditor = detachedDesk.frameLocator(".view-editor-frame");
+  await localEditor.locator("#editor[open]").waitFor();
+  await localEditor.locator("#editor [data-close=editor]").last().click();
+  await detachedDesk
+    .locator(".view-editor-frame")
+    .waitFor({ state: "detached" });
+  await detachedDesk
+    .getByRole("combobox", { name: "View A actions" })
+    .selectOption({ label: "Swap with View B" });
+  await desktop.root.waitForFunction(
+    () => document.querySelector(".slot").dataset.index === "1",
+  );
+  assert.equal(
+    await detachedDesk
+      .getByRole("combobox", { name: "View A actions" })
+      .inputValue(),
+    "",
+  );
+  assert.ok(
+    await desktop.app.evaluate(
+      (_, id) =>
+        lab.views.get(id).owner === lab.viewWindows.windows.get(0).window,
+      replacement.nativeId,
+    ),
+  );
+  // Shared navigation remains available in the main lab.
+  await desktop.root.locator('[data-page="situations"]').click();
+  await detachedDesk
+    .getByRole("combobox", { name: "Scale view A" })
+    .selectOption("fit");
+  await waitFor(
+    () =>
+      desktop.app.evaluate(
+        (_, id) => lab.views.get(id).scale !== 1,
+        replacement.nativeId,
+      ),
+    "controls while browsing library",
+  );
+  const thumbnail = await desktop.app.evaluate(async ({ desktopCapturer }) => {
+    const win = lab.viewWindows.windows.get(0).window;
+    win.show();
+    win.focus();
+    const sources = await desktopCapturer.getSources({
+      types: ["window"],
+      thumbnailSize: { width: 1200, height: 1000 },
+    });
+    return sources
+      .find((s) => s.name === win.getTitle())
+      ?.thumbnail.toPNG()
+      .toString("base64");
+  });
+  if (thumbnail)
+    await fs.writeFile(
+      path.join(DATA, "native-view-window.png"),
+      Buffer.from(thumbnail, "base64"),
+    );
+  await detachedDesk.getByRole("button", { name: "Return to lab" }).click();
+  await desktop.root.waitForFunction(
+    () =>
+      !document
+        .querySelector('.slot[data-index="0"]')
+        .classList.contains("detached"),
+  );
+  assert.equal(await replacementPage.isClosed(), false);
+  console.log(
+    "PASS: real native desk control relay, library navigation and return-to-lab",
+  );
   const evidence = {
     verifiedAt: new Date().toISOString(),
     platform: process.platform,
@@ -172,6 +444,8 @@ try {
     independentStorage: true,
     phoneViewport: { width: 390, height: 844 },
     nativeInput: true,
+    separateWindows: true,
+    detachedControlRelay: true,
     originalSizeCaptures: true,
   };
   await fs.writeFile(

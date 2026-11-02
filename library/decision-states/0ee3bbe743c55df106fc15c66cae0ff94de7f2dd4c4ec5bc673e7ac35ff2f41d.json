@@ -12424,5 +12424,16 @@
     "hero_names": {},
     "replay_log": []
   },
-  "tags": []
+  "tags": [
+    "hero:arien",
+    "hero:brogan",
+    "hero:gydion",
+    "hero:hanu",
+    "phase:planning",
+    "topic:cards",
+    "topic:heroes",
+    "topic:inspection",
+    "topic:references",
+    "topic:spells"
+  ]
 }

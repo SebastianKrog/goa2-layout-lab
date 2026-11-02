@@ -1,107 +1,110 @@
-# Lab terminology and saved state
+# Lab terminology and flow
 
-These terms describe the current state model. See [storage and contracts](state-model.md)
-for implementation details and the [completed design record](plans/situation-model-refactor.md)
-for the refactor decisions.
+Choose a quickstart to play, or choose a **Layout** and then a **Situation** to
+compare interfaces. Optional **Presentation** instructions describe what to open
+or select. Loading another Situation keeps the chosen View configuration.
 
-| Term           | One responsibility                                                   | Examples                                                                                     |
-| -------------- | -------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| Decision State | Exact resumable engine checkpoint.                                   | Game data, pending decision, execution stack, rollback/replay and deterministic state.       |
-| Session State  | Temporary UI state that does not advance the game.                   | Open menu, selected/inspected card, hero inspection, camera, scroll.                         |
-| User State     | Supported persistent UI preferences.                                 | Card size, brightness, display and sound settings.                                           |
-| Viewpoint      | Player or spectator whose information is shown.                      | Arien, Hanu, spectator; independent of the hero currently acting.                            |
-| Presentation   | Viewpoint + Session State + User State.                              | Snorri viewing Hand with a particular card selected and small cards enabled.                 |
-| Situation      | Named Decision State reference + Presentation.                       | A reproducible moment someone should inspect. Several Situations can share a Decision State. |
-| View           | One running game/browser instance in the lab.                        | Views A/B/C can advance independently.                                                       |
-| View settings  | How one View runs and displays its Situation.                        | Source, renderer, UI mode, device profile, bots, auto switch and explicit overrides.         |
-| Layout         | Reusable arrangement of configured Views and synchronization policy. | One phone view or two equally sized comparison views. Contains no checkpoint.                |
-| Comparison     | Activity of examining Views together with selected versions.         | Live mobile versus a pinned desktop commit.                                                  |
-| Review         | Named, ordered inspection queue with immutable revisions.            | A collection of Situations to inspect in sequence.                                           |
-| Review Run     | One execution of a Review revision.                                  | Frozen moments, resolved settings, progress and collected reports.                           |
-| Report         | Capture-time evidence, attached to a Run entry when applicable.      | Screenshots, element HTML/CSS, comment, actual Presentation and revision information.        |
+## State and inspection
 
-A locally selected card belongs to Session State; a submitted card choice belongs
-to Decision State. Bots are View controllers. Auto switch changes the effective
-Viewpoint without rewriting the saved Situation. Synchronization relates Views.
+| Term           | One responsibility                                                                                         |
+| -------------- | ---------------------------------------------------------------------------------------------------------- |
+| Decision State | Exact resumable engine checkpoint, including pending requests, execution stack and deterministic state.    |
+| Situation      | Named game moment referencing a Decision State, with description and tags. Contains no UI state or Layout. |
+| Viewpoint      | Player or spectator whose information a View displays. Does not identify who must act.                     |
+| Actor          | Hero performing the current game action.                                                                   |
+| Responder      | Hero eligible to answer a pending request; can differ from the actor, or include several heroes.           |
+| Session State  | Temporary UI state: open panel, selection, inspection, camera and scroll.                                  |
+| User State     | Supported UI preferences such as card size, brightness and sound.                                          |
+| Presentation   | Small, explicit Session State changes, such as Open Hand, select Gold Card or View public spells.          |
 
-## Starting and editing Views
+Selecting a planning card locally changes Session State; committing it changes
+Decision State. A defense prompt can have an attacker as actor and defender as
+responder. Viewpoint determines which private information the user can see.
+Auto switch follows eligible responders by changing Viewpoint; it never plays moves.
 
-The empty desk defaults to one Live working-tree View, Desktop UI and 2D renderer.
-It does not start a game or historical build until **Start**. Choose a Situation
-and adjust the overlay, then **Start** or **Cancel**. Sources are prepared without
-switching the user's regular repository branches.
+## Views and execution
 
-The full-height **Add view** rail is on the right. Views share available width
-equally. A new View inherits the selected View's current game progress and
-Presentation; it does not reset existing games. Start/Cancel creates or removes
-the pending panel. **Edit view** uses Save/Cancel. **Reset this view** returns to
-that View's own starting Decision State and Presentation. Replacements are prepared
-before current Views are retired, so a failed open preserves the current game.
+| Term                 | One responsibility                                                                                                     |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Source               | Frontend code selection: Main, Base, Comparator commit, Live working tree or Base plus userscript Target.              |
+| Interface            | Desktop or native mobile UI, configured by `uiMode`.                                                                   |
+| Renderer             | 2D or 3D game rendering, independent of Interface and viewport dimensions.                                             |
+| Device profile       | Emulated viewport dimensions and input capabilities, such as portrait phone or desktop.                                |
+| View                 | One isolated browser context and game clone with its own Viewpoint and UI state. Game commands synchronize by default. |
+| View settings        | Source, Interface, Renderer, Device profile, Viewpoint and configured controller policies.                             |
+| Layout               | Reusable configured Views and synchronization policy. Contains no Situation or checkpoint.                             |
+| Game group           | Runtime identity linking clones that receive the same game commands and bot decisions while synchronized.              |
+| Bot decision service | Separate, lazy service computing one command from a checkpoint. The regular game backend applies it.                   |
+| Quickstart           | Launch action creating a fresh working-tree game with predefined controllers and display settings.                     |
+| Comparison           | Inspection of a Situation in a chosen Layout, optionally with Presentation instructions.                               |
 
-**Interface preset** selects a supported combination of **Renderer** (2D/3D) and
-**UI mode** (desktop/mobile). Separate fields and Presentation templates are
-under **Advanced settings**; bot policy and automatic Viewpoint changes are
-under **Controllers and auto switch**. Individual bot assignments expand on demand. These
-settings are separate from Layout.
-Device profiles specify viewport dimensions and input emulation. Physical devices
-retain their actual screen/input environment, which reports capture separately.
-**Workspace tools** holds Layout loading, synchronization, capture crops, HTML/CSS
-extraction, reset and close actions. **View tools** within Edit view includes
-removal and per-View operations. The current desk supports one to three Views and one configured backend service
-with isolated game instances per View.
+Browser storage and menus remain isolated when game commands synchronize. The same
+Situation can start multiple unrelated game groups; Situation ID does not identify
+a live game. Controller changes apply to the group in synchronized modes and to one
+View in None mode. A saved Layout stores controller choices, not running bot workers.
 
-## Defaults, Situations and overrides
+A separate window or physical device is another place to display a View. Detaching
+a desk View retains its identity and controls; swapping positions changes arrangement.
+Neither action changes the game. A device share joins matching current progress by
+default; an independent share or quickstart creates a new group.
 
-Resolve each Presentation field from application defaults, then Layout defaults,
-then the Situation, then explicit View overrides. **Viewpoint: Follow situation**
-removes the Viewpoint override; choosing a player/spectator explicitly pins it.
-Missing fields inherit. A JSON null resets a field to its adapter default: Board
-for the pane, no selected card, removal of a saved preference, spectator for an
-explicitly reset Viewpoint. An unspecified saved Viewpoint follows the View default.
+## Reviews and evidence
 
-Presentation restores through semantic adapters without submitting game actions.
-Unsupported controls produce warnings. Reports distinguish intended and effective
-Presentation and record overrides rather than claiming exact restoration after a
-fallback. User State uses the supported keys in `src/state-contract.json`; credentials
-and unrelated local storage are excluded. Device preference overrides are scoped
-to the tab and review revision. Reloading the same step retains edits; changing steps starts with the saved settings and
-application defaults. Personal device preferences remain unchanged.
+| Term         | One responsibility                                                                                                   |
+| ------------ | -------------------------------------------------------------------------------------------------------------------- |
+| Review entry | One inspection with its own identity: Situation reference, optional Viewpoint and Presentation instructions.         |
+| Review       | Named ordered entries with immutable revisions.                                                                      |
+| Review Run   | One execution freezing game snapshots, entry instructions, Layout, source evidence, progress and reports.            |
+| Report       | Capture-time evidence and comment, including game state, actual UI state, View settings, revisions and warnings.     |
+| Lab session  | Reporting activity group for reports outside a Review Run. Created when the desk starts; New session is in Settings. |
 
-## Saving and reuse
+A Lab session groups reports; a game group synchronizes gameplay; Session State
+belongs to the UI. These are separate identities. Repeated Review entries may use
+the same Situation with different inspection instructions. Previous/Next restores
+the frozen step across desk and shared-device Views. Reviews use manual controllers
+and disable auto switch while retaining the selected synchronization mode.
 
-**Save...** offers:
+## Default flow
 
-- **Situation:** exact Decision State plus captured Presentation from the selected View.
-- **Decision State:** game-only checkpoint, reusable through **Create from Decision State** in Situations.
-- **Presentation template:** reusable Presentation values. Applying a template preserves game progress; it opens a replacement browser context so preferences apply before frontend startup.
-- **Layout:** view arrangement/settings/defaults/overrides and synchronization, with no checkpoint.
+The empty desk opens no Views. It offers working-tree **2v2 quickstarts** for
+Desktop, Mobile portrait and Device: RED is manual, BLUE uses ISMCTS, and auto
+switch follows manual teammates. Device returns a link and QR code.
 
-Create from Decision State optionally copies a Presentation template into a new
-Situation. Subsequent edits to that template do not change the saved Situation.
-A Run similarly freezes its inputs so library edits do not rewrite previous results.
+Comparison shortcuts pair **Main vs working tree** in two desktop, mobile portrait
+or mobile landscape Views. Choose a Situation before loading. **Other Layouts…**
+provides saved/custom arrangements. Opening a library Situation uses the chosen
+Layout, falling back to Current, one desktop working-tree View, when none is chosen.
 
-Shared Situations live under `library/situations/<folder>/`; their Decision States live
-under `library/decision-states/`. Local drafts and Decision States use the corresponding
-folders inside ignored `.layout-lab/`. Decision State IDs are hashes of exact
-checkpoint content. Python owns checkpoint serialization and cloning by reference,
-including large integers. UI code must not round-trip checkpoints through JS numbers.
-Presentation templates live in `.layout-lab/presentation-templates.json`; Layouts
-in `.layout-lab/layouts.json` and optional shared `library/layouts/` and local `.layout-lab/layouts/` directories.
+**Add view** copies current progress and UI into another clone in the same group.
+Selecting a different Situation explicitly starts a separate game. View editors use
+Start/Cancel for new Views and Save/Cancel for changes; staging failures preserve
+existing games. Separate windows retain their controls and follow the same slot.
 
-## Porting older situations
+## Presentation resolution
 
-Runtime accepts composed Situations only. Use the [offline porting tool](state-model.md#porting-older-situations)
-for older bundles; it preserves exact Decision States, maps Presentation variants
-and separates suggested Layouts. It cannot recover UI state that was never saved.
+Presentations contain only requested changes. Viewpoint is a separate View setting
+or inspection `viewpoint` field. Full UI snapshots remain internal cloning/report
+evidence; reusable presets exclude preferences, renderer, camera and game URLs.
 
-## API
+Reusable presets target roles: `selectedCard: {role: "gold"}` or
+`inspectedCard: {role: "upgrade", tier: 2, branch: "A"}`. Add `color` when several
+upgrade paths match. `publicSpells: true` uses the viewing hero when applicable,
+otherwise the sole spellcaster. Exact card IDs are allowed on Review entries and
+ad hoc requests, rather than reusable presets.
 
-- `POST /api/views/add {config,fromIndex}` clones current progress and Presentation; `{config,situationId}` starts a saved moment. Optional `index` replaces one View.
-- `POST /api/configure {index,update}` changes settings while preserving progress. Use `uiMode`, not `layout`, in View configuration.
-- `POST /api/save {index,name,kind?}` saves a Situation; `kind:"decision-state"` saves game-only state.
-- `POST /api/situation/compose {decisionStateId,name,presentation?}` creates a Situation from an existing Decision State.
-- `POST /api/presentation/save {index,name}` saves a template; `/api/presentation/apply {index,id}` applies its copied state.
-- `POST /api/layout/save {name,slots,synchronization?}` saves a Layout. `POST /api/load {situationId,layoutId}` restores a Situation with it; explicit `slots` can configure an ad hoc arrangement.
-- `GET /api/catalog` lists Situations, Decision States, templates and Layouts.
+Common, interface-specific and per-View instructions merge in that order. Fresh
+loads begin with normal View defaults; applying a preset to a running View changes
+it in place. Missing controls/cards and ambiguous targets warn without failing the
+load or submitting a decision. Warnings appear on Views/devices and in evidence.
+Preset values are copied into entries so later preset edits do not change a Review.
 
-See [Review queues and Runs](reviews.md) for inspection and report APIs.
+## Saving
+
+- **Situation:** name an exact game moment, without menus or preferences.
+- **Decision State:** save the checkpoint alone.
+- **Presentation:** save one reusable session change.
+- **Layout:** save configured Views and synchronization, without game state.
+
+**Create from Decision State** names an existing checkpoint. Tags describe records
+without changing checkpoint identity. See [storage and API contracts](state-model.md),
+[workspace controls](workspace.md), [Reviews](reviews.md) and [tags](tags.md).

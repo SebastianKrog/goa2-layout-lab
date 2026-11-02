@@ -9,7 +9,12 @@ Produce a comparison tied to exact frontend revisions and one reproducible situa
 
 ## State boundaries and current desk
 
-Follow [the canonical terminology](../../../docs/terminology.md): Decision State = exact game checkpoint; Presentation = Viewpoint + Session State + supported User State; Situation = Decision State + Presentation; View = playable instance; Layout = configured view arrangement and synchronization. Save Situation captures the complete moment. Save Decision State is game-only; Presentation templates and Layouts are reusable independently. Use `uiMode` for desktop/mobile, distinct from 2D/3D renderer. Viewpoint follows the Situation unless an explicit `overrides.viewpoint` pins it. Runtime accepts only the new model; old fixtures are ported with the offline migration tool, not a restore checkbox. The empty desk defaults to one Live working-tree View. Start/Add/Edit preserve existing progress on cancellation or failed staging.
+Follow [the canonical terminology](../../../docs/terminology.md) and
+[storage/API contracts](../../../docs/state-model.md). Choose a Layout, then a
+Situation. Situations contain game state only; menus and selections belong to small Presentation changes. Configure Viewpoint
+separately and leave preferences on the View. Save reusable role-based changes
+as Presentations. Use `uiMode` for desktop/mobile, distinct from renderer.
+Start/Add/Edit preserve existing games on cancellation or failed staging.
 
 ## Establish the comparison
 
@@ -17,23 +22,27 @@ Locate goa2-layout-lab and the configured frontend/backend/userscript checkouts.
 
 Use the existing shared library/situations/ library. If the requested moment is missing, use the available goa2-ui-situations skill to fabricate/save it, then return here. Choose the actual chooser's seat; a defender/discarding hero can differ from the active actor. Record the situation ID/path and exact visual condition.
 
-Use [references/setup-and-viewer.md](references/setup-and-viewer.md) for launch/ref selection, one/two/three-slot APIs, saved presentation handling, synchronization and human handoff. Preserve an existing user's games/viewpoints before replacing their comparison. An owned instance on distinct ports usually avoids that replacement. Do not stop another desk or normal dev servers.
+Use [references/setup-and-viewer.md](references/setup-and-viewer.md) for launch/ref selection, one/two/three-slot APIs, separate inspection instructions, synchronization and human handoff. Preserve an existing user's games/viewpoints before replacing their comparison. An owned instance on distinct ports usually avoids that replacement. Do not stop another desk or normal dev servers.
 
 ## Align the views
 
 For commit/layout parity, keep the checkpoint, seat, device dimensions, renderer, camera, panel, scroll, selection and inspection equivalent where the layouts support them. Two desktop 2D or two desktop 3D views are valid. Different viewpoints can be useful intentionally; label them and avoid attributing their expected differences to the commits.
 
-Current tool limits matter: Base slots require the desktop shell; native mobile is available on Comparator/Live only when the selected commit supports it. Target requires 2D and the desktop shell and must actually activate at the chosen viewport. A desktop/3D comparison can use a separate phone/2D target as its third slot, but unequal dimensions cannot be overlaid or pixel-diffed. Do not silently present unsupported layouts as equivalent native mobile views.
+Current tool limits matter: Base slots require the desktop shell; native mobile is available on Main/Comparator/Live when the selected commit supports it.
+Main without native mobile falls back to desktop at the requested dimensions with
+a warning; record the effective interface. Pin Main via `--main-ref` when comparing
+two committed native-mobile sources. Target requires 2D and the desktop shell and must actually activate at the chosen viewport. A desktop/3D comparison can use a separate phone/2D target as its third slot, but unequal dimensions cannot be overlaid or pixel-diffed. Do not silently present unsupported layouts as equivalent native mobile views.
 
-Loading applies the composed Situation without replacing the chosen Layout. Use `uiMode` for desktop/mobile and `overrides.viewpoint` for deliberately pinned players; otherwise Viewpoint follows the Situation. Use None sync while arranging independent UI state; API requests can keep game actions aligned, and API + clicks can mirror supported UI controls. Match camera/panels explicitly; click synchronization is not a substitute for that.
+Loading applies the named game moment and optional inspection instructions without replacing the chosen Layout. Use `uiMode` for desktop/mobile and `overrides.viewpoint` for deliberately pinned players; otherwise Viewpoint follows the configured defaults. API requests is the default: game actions stay aligned while menus/cameras remain independent. Use None only for intentional independent game progression; API + clicks can mirror supported UI controls. Match camera/panels explicitly; click synchronization is not a substitute for that.
 
-Check actual status/views: correct loaded SHAs, committed sources, expected phase/decision/seat, same normalized game hash, intended panel/selection/camera, scriptActive for Target, and no restore/render/asset errors. Keep Cheats hidden. Frozen wall time does not freeze animation frames. Do not answer a pending game choice to make a screenshot look complete.
+Check actual status/views: correct loaded SHAs, committed sources, expected phase/decision/seat, same normalized game hash, intended panel/selection/camera, scriptActive for Target, and no render/asset errors. Inspect nonblocking restoration warnings against
+the intended condition; a loaded View does not prove that every UI change applied. Keep Cheats hidden. Frozen wall time does not freeze animation frames. Do not answer a pending game choice to make a screenshot look complete.
 
 ## Export images or a static viewer
 
 Read [references/captures-and-diffs.md](references/captures-and-diffs.md). The lab capture endpoint produces originals, side-by-side.png, all compatible pairwise diffs, report.json and an HTML overlay viewer. Prefer this path to screenshots of the desk's scaled previews. Inspect the actual output images before reporting them ready.
 
-The bundled [scripts/capture-comparison.mjs](scripts/capture-comparison.mjs) captures an already-prepared local desk, checks requested exact SHAs, rejects live sources/inactive targets/restore errors, and downloads a self-contained report into a new directory. It does not start a desk, load a situation, change refs, synchronize clicks or close the viewer. Use --help and the reference examples. It requires Node with built-in fetch, and no skill-local packages.
+The bundled [scripts/capture-comparison.mjs](scripts/capture-comparison.mjs) captures an already-prepared local desk, checks requested exact SHAs, rejects live sources/inactive targets/render errors and prints nonblocking Presentation warnings, and downloads a self-contained report into a new directory. It does not start a desk, load a situation, change refs, synchronize clicks or close the viewer. Use --help and the reference examples. It requires Node with built-in fetch, and no skill-local packages.
 
 Assess both implementations against intended behavior; the userscript Target can contain errors. Classify meaningful differences as a native issue, target issue, deliberate difference, or unresolved setup/coverage gap. A sampled evidence run does not establish complete milestone acceptance.
 
@@ -94,15 +103,18 @@ This is separate from the paired HTML/CSS extraction command's two-view limit.
 
 ## Review several situations
 
+To plan coverage and prepare a Run for a UI change, use
+[goa2-review-ui-change](../goa2-review-ui-change/SKILL.md). It selects existing
+Situations first and fills only missing coverage.
+
 For a manual inspection queue, use the Situations checkboxes, **Select filtered**
 and **Start review**, or the review API in [Review queues](../../../docs/reviews.md).
-Keep frontend sources fixed while the review restores each snapshot's compatible
+Keep frontend sources fixed while the review restores each entry's compatible
 Presentation and Viewpoint. Previous/Next advances all desk and shared device
 views. Existing Capture, element, device and HTML/CSS tools write under the review
 collection automatically; keep report drafts attached to their capture step.
 Finish or discard drafts before navigating. Review controllers are manual and
-auto switch is disabled. Do not claim saved presentation restoration for plain
-Situations with no presentation metadata.
+auto switch is disabled. Do not claim Presentation restoration when the entry supplied no instructions.
 
 The **Reviews** tab lists persisted runs and statistics. **Run again** preserves
 the original snapshots in a fresh collection; **Edit and run** retains selected
@@ -119,3 +131,12 @@ When only artifacts were requested, stop only the diagnostic instance you starte
 ## Deliver
 
 Link the combined PNG, requested diff(s), individual crops, source/style exports and report viewer as appropriate, with a compact reproduction record: exact revisions, situation, slots and any unavailable features or viewpoint/state mismatches. For a live handoff, state which process is left running and how to stop it. Distinguish source-inspected capability from what was actually opened/exported on the current revisions.
+
+## Small Presentation changes
+
+Presentations are sparse session alterations, not UI snapshots. Reusable presets target
+roles (`{role:"gold"}`, `{role:"upgrade",tier:2,branch:"A",color:"RED"}`), panels or
+`publicSpells:true`. Put exact card IDs only on Review entries or ad hoc comparison
+requests. Keep `viewpoint` separate. Do not capture preferences, game URLs or renderer
+identity into a preset. Application warnings mean the Situation/View remains usable;
+inspect the actual result and include those warnings in the handoff.

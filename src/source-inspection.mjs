@@ -1,3 +1,4 @@
+import { writeReportSummary } from "./reports.mjs";
 import { capturePresentation } from "./presentation.mjs";
 import { presentationEvidence } from "./presentation-model.mjs";
 import { reviewAttribution } from "./report.mjs";
@@ -399,6 +400,7 @@ export async function extractSources(
   const report = {
     schema: 3,
     review: reviewAttribution(collection),
+    session: comparison.reportSession?.() || null,
     id,
     capturedAt: new Date().toISOString(),
     sourceEvidence: (await comparison.services?.provenance?.()) || null,
@@ -454,6 +456,7 @@ export async function extractSources(
     ...(await fs.readdir(dir)),
   ];
   await fs.writeFile(path.join(dir, "comparison.json"), JSON.stringify(report));
+  await writeReportSummary(dir, report);
   await fs.writeFile(
     path.join(dir, "changes.json"),
     JSON.stringify(computedChanges(...views.map((v) => v.snapshot))),

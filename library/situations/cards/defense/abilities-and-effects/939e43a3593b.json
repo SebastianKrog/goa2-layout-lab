@@ -1,0 +1,24 @@
+{
+  "id": "939e43a3593b",
+  "name": "Poison marker reduces Brogan Defense by two",
+  "description": "Poison marker reduces Brogan Defense by two. Attack 4; defense needed 4. Waiting for Brogan; no defense submitted. Poisoned Dart marker -2 on Brogan; Levels: Arien 1, Hanu 1, Brogan 1, Tigerclaw 5",
+  "backend_revision": "c4750787e620388a093683cc5b8518b437f1c2a3",
+  "saved_at": 1792734798.0070086,
+  "provenance": {
+    "kind": "ui-fabrication"
+  },
+  "summary": {
+    "phase": "RESOLUTION",
+    "round": 1,
+    "decision": "SELECT_CARD_OR_PASS",
+    "responder": "hero_brogan"
+  },
+  "schema": 3,
+  "kind": "situation",
+  "decisionStateId": "4da4b59c78d7debd9d094edbc14f82d6cde0901808098060f216bf463527c5ae",
+  "tags": [
+    "topic:abilities-and-effects",
+    "topic:cards",
+    "topic:defense"
+  ]
+}

@@ -1,35 +1,32 @@
 # GoA2 Layout Lab
 
-**1.0** · [Changelog](CHANGELOG.md)
+**Released: 1.0 · In development: 1.0.1** · [Changelog](CHANGELOG.md)
 
-Guards of Atlantis II is designed by [Artyom Nichipurov](https://boardgamegeek.com/boardgamedesigner/90916/artyom-nichipurov) and published by [Wolff Designa](https://wolffdesigna.com/).
-
-This local workspace lets you compare game-interfaces on the [goa2.frontend.pedroliv.dev](https://goa2.frontend.pedroliv.dev/) platform, reproduce exact game moments, and collect useful reports. Start with one View of your current frontend, then add up to two more, or test on your device.
-
-Depends on [goa2-backend](https://github.com/PedroVIOliv/goa2-backend) and [goa2-frontend](https://github.com/PedroVIOliv/goa2-frontend-portfolio) by [PedroVIOliv](https://github.com/PedroVIOliv) with automation from [ludoroo's fork](https://github.com/ludoroo/goa2-backend).
+A local workspace for comparing Guards of Atlantis II interfaces, reproducing
+game moments, and collecting useful reports. Start with a bot quickstart or choose
+a comparison Layout and Situation. No Views open until you choose.
 
 ![The lab showing Board and Hand views of the same game moment](docs/assets/interface.png)
 
-_Two independent phone Views in the browser desk, using the live frontend._
+_Captured 2026-10-22: two phone Views in browser mode, after loading a Situation._
 
 ## What you can do
 
 - Compare live edits, pinned frontend commits, and a userscript reference in 2D or 3D.
-- Save reproducible Situations, including the viewing player, open panels, selected cards, and supported preferences.
+- Reuse game-only Situations across Layouts, with optional Presentation presets for menus, card roles and public spells.
 - Open a Situation on a physical device using a link or QR code, and play against Random, Simple, or ISMCTS bots.
 - Inspect a queue of Situations, report elements across Views, and collect screenshots, HTML/CSS, comments, and revision evidence.
-- **Automated agents** can use the included skills for precise evaluations of UI-changes through comparisons of rendering, HTML and/or CSS.
-- For human review, ask an agent to prepare a relevant Review Run for you.
 
 ## Start
 
 Keep the frontend and backend checkouts alongside this repository:
 
 ```text
-shared-repositories/
+GitHub/
   goa2-layout-lab/
   goa2-frontend/
   goa2-backend/
+  goa2-backend-bots/     # optional separate bot decision service
   goa2-mobile-2d-patch/   # optional userscript comparison
 ```
 
@@ -47,8 +44,9 @@ The launcher installs lab dependencies on first use and opens the native desk.
 The desk is served at **http://localhost:3200**. Game services are isolated from
 your regular development servers.
 
-1. Press **Start**, choose a Situation, and keep or adjust the default Live View.
-2. Use **Add view** to copy the current moment into another independent View.
+1. Pick a working-tree **2v2 quickstart** (Desktop, Mobile portrait or Device), or a **main vs working tree** comparison (two desktop, portrait or landscape Views). Comparisons ask for a **Situation** before loading; Presentation is optional.
+   Quickstarts put ISMCTS bots on the blue team and autoswitch between your red-team heroes. Bots use a separate decision-service checkout; Views keep the regular backend. Device opens a link and QR code.
+2. Use **Add view** to copy the current moment into another View. Game actions synchronize by default; menus and cameras stay independent.
 3. Use **Save…** to save a Situation or Layout, **Report element** to flag a
    problem, or **Capture** to export images.
 4. For a sequence, select Situations and press **Start review**. Previous/Next
@@ -62,16 +60,21 @@ overrides, launcher options, caching, and troubleshooting.
 
 ## How the pieces fit
 
-[![Decision State, Situation, Presentation, Layout, and View settings](docs/assets/decision-state.png)](docs/assets/decision-state.png)
+A **Situation** names an exact **Decision State**, independent of the interface.
+A **Layout** chooses configured **Views**. Optional **Presentation** instructions
+change menus and card selections; Viewpoint is configured separately. A **Review entry** combines a Situation
+with those instructions; each **Review Run** freezes the inputs and collects reports.
 
-[Editable diagram in Canva](https://www.canva.com/d/nJcSsJiK__TqhAK) ·
-[Precise definitions and resolution rules](docs/terminology.md)
+```mermaid
+flowchart LR
+  Layout --> Views
+  Situation --> Views
+  Presentation[Optional Presentation] --> Views
+  Entry[Review entry] --> Situation
+  Entry --> Presentation
+```
 
-A **Situation** combines an exact **Decision State** with a **Presentation**
-(Viewpoint, Session State, and User State). A **View** runs an independent copy.
-A **Layout** keeps View settings and synchronization separate from the saved
-game moment. A **Review Run** freezes a queue of Situations and collects its
-reports.
+See [precise definitions and resolution rules](docs/terminology.md).
 
 ## Guides
 
@@ -82,8 +85,10 @@ reports.
 | Export screenshots, crops, diffs, or HTML/CSS            | [Captures and source inspection](docs/captures.md)                              |
 | Test on a phone or play against bots                     | [Devices and bots](docs/device-testing.md)                                      |
 | Report an element across Views                           | [Element reports](docs/element-reporting.md)                                    |
+| Browse reports, organize archives and reporting sessions | [Reports and activity groups](docs/reports.md)                                  |
 | Inspect queues and rerun earlier reviews                 | [Reviews and evidence](docs/reviews.md)                                         |
 | Understand saved state or port old Situations            | [Terminology](docs/terminology.md) · [Storage and porting](docs/state-model.md) |
+| Tag and filter Situations                                | [Tags](docs/tags.md)                                                            |
 | Browse the shared fixtures                               | [Situation library](library/README.md)                                          |
 
 ## Development
@@ -96,5 +101,5 @@ See [testing](docs/testing.md) for browser/native acceptance checks,
 [AGENTS.md](AGENTS.md) for repository skills, and
 [plans](docs/plans/README.md) for design records and remaining work.
 
-This is the first stable release. See the [changelog](CHANGELOG.md)
-for its scope and [release workflow](docs/releases.md) for versioning.
+See the [changelog](CHANGELOG.md) for released and unreleased changes, and the
+[release workflow](docs/releases.md) for versioning.

@@ -1,4 +1,8 @@
-import { mobileRestorationPlan } from "/__device/presentation-plan.js";
+import {
+  resolveCardTarget,
+  publicSpellHero,
+} from "/__device/session-changes.js";
+import { mobileRestorationPlan, restoreMobilePane, devicePresentationWarnings } from "/__device/presentation-plan.js";
 // ==UserScript==
 // @name GoA2 Layout lab device reporter
 // @description Injected only by the layout lab's device-view server.
@@ -32,7 +36,7 @@ async function restore() {
     await until(() => window.GOA2Mobile2D);
   }
   const intended = window.__GOA2_DEVICE__.intendedPresentation;
-  const warnings = [...(intended?.warnings || [])];
+  const warnings = devicePresentationWarnings(intended, presentation, config);
   if (intended?.viewpoint && intended.viewpoint !== config.seat)
     warnings.push(
       `Viewpoint ${intended.viewpoint} is unavailable; displaying ${config.seat}.`,
@@ -102,21 +106,64 @@ async function restore() {
       warnings.push(`${name} content is displayed inline on this Interface`);
       return;
     }
-    const current = document.querySelector('[data-pane][aria-pressed="true"]');
-    if (name === "board") {
-      if (current) current.click();
-    } else if (current?.dataset.pane !== name)
-      (await until(() => visible(`[data-pane="${CSS.escape(name)}"]`))).click();
-    await until(
-      () =>
-        (document.querySelector('[data-pane][aria-pressed="true"]')?.dataset
-          .pane || "board") === name,
-    );
+    await restoreMobilePane(name, { until, visible });
   };
-  if (presentation.selectedCard)
+  await attempt("Pane", () => pane(presentation.pane || "board"));
+  const changes = { ...presentation };
+  for (const key of ["selectedCard", "inspectedCard"]) {
+    if (!changes[key] || typeof changes[key] === "string") continue;
+    const target = changes[key];
+    changes[key] = null;
+    await attempt(key, async () => {
+      await pane(key === "selectedCard" ? "hand" : "deck");
+      changes[key] = resolveCardTarget(
+        target,
+        window.__GOA2_LAB_STATE__?.view,
+        config.seat,
+        [...document.querySelectorAll("[data-lab-card]")]
+          .filter((e) => e.getClientRects().length)
+          .map((e) => e.dataset.labCard),
+      );
+    });
+  }
+  if (changes.publicSpells)
+    await attempt("Public spells", async () => {
+      const heroId = publicSpellHero(
+        window.__GOA2_LAB_STATE__?.view,
+        config.seat,
+        changes.publicSpells,
+      );
+      await pane("heroes");
+      if (config.uiMode === "mobile") {
+        const button = await until(
+          () => visible(`[data-lab-open-spells="${CSS.escape(heroId)}"]`),
+          2000,
+        );
+        button.click();
+        await until(() =>
+          visible(`[data-lab-mobile-spells="${CSS.escape(heroId)}"]`),
+        );
+      } else if (config.source === "target") {
+        const bridge = window.GOA2Mobile2D?.__labInspection;
+        if (!bridge)
+          throw Error("Public spells are unavailable in this interface.");
+        bridge.set({ selectedHeroCard: { heroId, spells: true } });
+      } else {
+        const hero = Object.values(window.__GOA2_LAB_STATE__.view.teams)
+          .flatMap((t) => t.heroes)
+          .find((h) => h.id === heroId);
+        const cards = (hero.cast_spells || [])
+          .map((card) => visible(`[data-lab-card="${CSS.escape(card.id)}"]`))
+          .filter(Boolean);
+        if (!cards.length)
+          throw Error("Public spells are unavailable in this interface.");
+        cards[0].scrollIntoView({ block: "nearest" });
+      }
+    });
+  if (changes.selectedCard)
     await attempt("Selected card", async () => {
       const state = window.__GOA2_LAB_STATE__;
-      const cardId = presentation.selectedCard;
+      const cardId = changes.selectedCard;
       if (
         state.view.phase !== "PLANNING" ||
         !Object.values(state.view.teams)
@@ -131,7 +178,7 @@ async function restore() {
         await until(() => visible(`[data-lab-card="${CSS.escape(cardId)}"]`))
       ).click();
     });
-  await attempt("Pane", () => pane(presentation.pane || "board"));
+
   if (presentation.camera && presentation.camera.mode === config.render)
     await attempt("Camera", async () => {
       const bridge = await until(
@@ -177,11 +224,20 @@ async function restore() {
         window.__GOA2_LAB_INSPECTED_HERO__ = presentation.inspectedHero;
       }
     });
-  if (presentation.inspectedCard)
+  if (changes.inspectedCard)
     await attempt("Card hover inspection", async () => {
       const card = await until(() =>
-        visible(`[data-lab-card="${CSS.escape(presentation.inspectedCard)}"]`),
+        visible(`[data-lab-card="${CSS.escape(changes.inspectedCard)}"]`),
       );
+      if (config.uiMode === "mobile") {
+        const preview = visible(
+          `[data-lab-inspect-card="${CSS.escape(changes.inspectedCard)}"]`,
+        );
+        if (!preview)
+          throw Error("A safe card-preview control is unavailable.");
+        preview.click();
+        return;
+      }
       card.dataset.labHover = "true";
       card.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
     });
@@ -221,6 +277,18 @@ async function restore() {
     config.render,
   );
   window.__GOA2_DEVICE_RESTORE_WARNINGS__ = warnings;
+  if (warnings.length) {
+    const notice = document.createElement("details");
+    notice.dataset.labPresentationWarnings = "";
+    notice.style.cssText =
+      "position:fixed;left:8px;bottom:8px;z-index:2147483646;max-width:min(340px,85vw);padding:8px;background:#fff7dc;color:#5b4100;border:1px solid #d6ae45;border-radius:6px;font:12px system-ui";
+    const summary = document.createElement("summary");
+    summary.textContent = `Presentation: ${warnings.length} warning${warnings.length === 1 ? "" : "s"}`;
+    const text = document.createElement("div");
+    text.textContent = warnings.join("\n");
+    notice.append(summary, text);
+    document.body.append(notice);
+  }
 }
 
 function makeMovable(button, movable = button) {
@@ -421,6 +489,33 @@ async function mount() {
     capturing = false,
     saving = false,
     saved = false;
+  const draftKey = `goa2-device-report-draft:${window.__GOA2_DEVICE__.storageScope || location.pathname}`;
+  let draftStored = true;
+  try {
+    const draft = JSON.parse(sessionStorage.getItem(draftKey));
+    if (draft) {
+      capture = draft.capture;
+      comment.value = draft.comment || "";
+      if (capture) image.src = capture.screenshot;
+    }
+  } catch {
+    /* Storage is optional until a draft needs navigation protection. */
+  }
+  function storeDraft() {
+    try {
+      if (hasDraft())
+        sessionStorage.setItem(
+          draftKey,
+          JSON.stringify({ capture, comment: comment.value }),
+        );
+      else sessionStorage.removeItem(draftKey);
+      draftStored = true;
+    } catch {
+      draftStored = false;
+      $("error").textContent =
+        "Draft could not be stored. Save or discard it before switching viewpoints.";
+    }
+  }
   makeMovable($("launch"), $("bubble"));
   async function post(action, payload) {
     const response = await fetch(`/__device/${action}`, {
@@ -444,7 +539,7 @@ async function mount() {
   let reviewState = null,
     navigating = false;
   function hasDraft() {
-    return !saved && !!(capture || comment.value.trim());
+    return !saved && !!comment.value.trim();
   }
   function updateReviewControls() {
     const review = reviewState?.reviewRun;
@@ -462,12 +557,28 @@ async function mount() {
       const response = await fetch("/__device/review");
       if (!response.ok) return;
       reviewState = await response.json();
+      if (window.__GOA2_LAB_SYNC__ && reviewState.synchronization)
+        window.__GOA2_LAB_SYNC__.mode = reviewState.synchronization;
       updateReviewControls();
+      if (reviewState.warning)
+        $("reviewError").textContent = reviewState.warning;
+      const target = new URL(reviewState.url, location.href);
+      const current = new URL(location.href);
+      // Bootstrap may already describe the new seat while this document still
+      // has the previous seat's URL (reloads and navigation races).
+      const changedView =
+        target.pathname !== current.pathname ||
+        ["token"].some(
+          (key) =>
+            target.searchParams.get(key) !== current.searchParams.get(key),
+        );
       if (
-        reviewState.revision !== window.__GOA2_DEVICE__.revision &&
+        (reviewState.revision !== window.__GOA2_DEVICE__.revision ||
+          changedView) &&
         !capturing &&
         !saving &&
-        !hasDraft()
+        !dialog.open &&
+        !(hasDraft() && !draftStored)
       )
         location.replace(reviewState.url);
     } catch {
@@ -492,15 +603,27 @@ async function mount() {
   }
   $("previous").onclick = () => void reviewStep(-1);
   $("next").onclick = () => void reviewStep(1);
-  await reviewPoll();
-  const reviewTimer = setInterval(() => void reviewPoll(), 1200);
-  addEventListener("pagehide", () => clearInterval(reviewTimer), {
-    once: true,
+  let reviewTimer;
+  const resumePolling = () => {
+    clearInterval(reviewTimer);
+    reviewTimer = setInterval(() => void reviewPoll(), 1200);
+    void reviewPoll();
+  };
+  addEventListener("pagehide", () => clearInterval(reviewTimer));
+  addEventListener("pageshow", resumePolling);
+  addEventListener("online", () => void reviewPoll());
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") resumePolling();
   });
+  // A new document has no capture in progress. Release an abandoned capture
+  // pause; its immutable evidence and any stored draft remain available.
+  await post("report-discard", {}).catch(() => {});
+  resumePolling();
   $("launch").addEventListener("click", async () => {
     if (dialog.open) return;
     if (capturing || (capture && !saved)) {
       dialog.showModal();
+      update();
       return;
     }
     capturing = true;
@@ -519,7 +642,7 @@ async function mount() {
     const frameWidth = innerWidth,
       frameHeight = innerHeight;
     const viewportLock = document.createElement("style");
-    viewportLock.textContent = `[data-mobile-pane]{width:${frameWidth}px!important;height:${frameHeight}px!important;--mobile-viewport-height:${frameHeight}px!important}`;
+    viewportLock.textContent = `[data-mobile-pane]:not([data-mobile-pane] [data-mobile-pane]){width:${frameWidth}px!important;height:${frameHeight}px!important;--mobile-viewport-height:${frameHeight}px!important}`;
     document.head.append(viewportLock);
     // Show feedback on the first frame, before screenshot rendering.
     const windowPosition = { x: scrollX, y: scrollY };
@@ -539,7 +662,7 @@ async function mount() {
     );
     const restoreAdapters = captureAdapters();
     try {
-      const [moment, screenshot] = await Promise.all([
+      const results = await Promise.allSettled([
         post("capture", {
           presentation: capturePresentation(config.render),
           restoreWarnings: window.__GOA2_DEVICE_RESTORE_WARNINGS__ || [],
@@ -552,6 +675,8 @@ async function mount() {
           preferredFontFormat: "woff2",
           backgroundColor: getComputedStyle(document.body).backgroundColor,
           filter: (node) => {
+            if (node.dataset?.labPresentationWarnings !== undefined)
+              return false;
             if (node === host) return false;
             // Invisible pane/deck subtrees can contain thousands of nodes.
             if (node instanceof HTMLElement) {
@@ -562,7 +687,11 @@ async function mount() {
           },
         }),
       ]);
+      const failed = results.find((result) => result.status === "rejected");
+      if (failed) throw failed.reason;
+      const [moment, screenshot] = results.map((result) => result.value);
       capture = { id: moment.id, screenshot };
+      storeDraft();
       image.src = screenshot;
       $("status").textContent = "Screenshot ready.";
       window.__GOA2_DEVICE_CAPTURE_MS__ = Math.round(
@@ -573,11 +702,23 @@ async function mount() {
       $("status").textContent =
         "Capture failed. Close and tap Report to try again.";
     } finally {
+      // Both jobs must settle before releasing the game, including when only
+      // one fails. Otherwise the screenshot could span different game states.
       capturing = false;
+      await post("report-discard", {}).catch((error) => {
+        $("error").textContent = error.message;
+      });
+      if (!dialog.open && !hasDraft()) capture = null;
+      storeDraft();
       viewportLock.remove();
       restoreAdapters();
       update();
     }
+  });
+  dialog.addEventListener("close", () => {
+    if (!capturing && !hasDraft()) capture = null;
+    storeDraft();
+    void reviewPoll();
   });
   $("cancel").onclick = () => dialog.close();
   $("discard").onclick = async () => {
@@ -590,13 +731,17 @@ async function mount() {
     }
     capture = null;
     comment.value = "";
+    storeDraft();
     dialog.close();
     updateReviewControls();
   };
   dialog.addEventListener("cancel", (event) => {
     if (saving) event.preventDefault();
   });
-  comment.oninput = update;
+  comment.oninput = () => {
+    storeDraft();
+    update();
+  };
   $("save").onclick = async () => {
     if (!capture || capturing || saving || saved) return;
     saving = true;
@@ -608,6 +753,7 @@ async function mount() {
         comment: comment.value,
       });
       saved = true;
+      storeDraft();
       $("status").textContent = `Saved in layout lab. Situation: ${result.id}`;
       $("editor").hidden = true;
       $("save").hidden = true;

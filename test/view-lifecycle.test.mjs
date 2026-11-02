@@ -65,12 +65,12 @@ test("replacing a view opens its independent situation first and keeps the old g
   assert.equal(c.windows[0], old);
   assert.ok(!calls.some((call) => call.closed));
 });
-test("saving a Situation composes Presentation while a Decision State save remains game-only", async () => {
+test("saving either a Situation or Decision State never captures UI state", async () => {
   const { c, calls } = fixture();
   c.windows = [
     {
       config,
-      situation: situation("first"),
+      situation: { ...situation("first"), tags: ["tactical"] },
       clone: { game_id: "a" },
       page: {
         evaluate: async () => ({
@@ -88,14 +88,9 @@ test("saving a Situation composes Presentation while a Decision State save remai
       body: {
         game_id: "a",
         name: "Decision",
+        tags: ["tactical"],
         provenance: { kind: "capture", source_situation: "first" },
         kind: "situation",
-        presentation: {
-          schema: 2,
-          viewpoint: config.seat,
-          sessionState: { pane: "hand", selectedCard: "card" },
-          userState: { "goa2:board-brightness": "0.8" },
-        },
       },
     },
   ]);

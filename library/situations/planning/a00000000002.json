@@ -1,19 +1,9 @@
 {
-  "schema": 2,
+  "schema": 3,
   "kind": "situation",
   "id": "a00000000002",
-  "name": "Timed planning - all players ready",
+  "name": "Timed planning: all players ready",
   "decisionStateId": "e03f46f9218a97c8640028bc57dda7f9967545263c5d4d77e9cbbbd016a1c099",
-  "presentation": {
-    "schema": 2,
-    "sessionState": {
-      "pane": "board",
-      "selectedCard": null,
-      "inspectedCard": null
-    },
-    "userState": {},
-    "restoration": "defaulted; no historical Session State was saved"
-  },
   "summary": {
     "phase": "PLANNING",
     "round": 1,
@@ -22,12 +12,12 @@
   },
   "backend_revision": "740ec5bbfa1aaadcf05b0df06d93ab3187e5de9a",
   "saved_at": 1792275745.9159217,
-  "migration": {
-    "sourceId": "a00000000002",
-    "sourceSlot": "0"
-  },
   "provenance": {
     "kind": "starter",
     "timed": true
-  }
+  },
+  "tags": [
+    "topic:planning"
+  ],
+  "description": "Timed planning: all players ready. Load in any Layout to inspect the game state."
 }

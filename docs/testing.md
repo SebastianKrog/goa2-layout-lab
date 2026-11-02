@@ -1,377 +1,147 @@
 # Testing the layout lab
 
-Run commands from the repository root unless a snippet explicitly changes directory.
-Use the configured backend Python environment. On this Windows installation, use
-Windows Chromium with the configured WSL services. Give acceptance desks distinct
-ports and stop only their owned services; preserve existing developer sessions.
+Run commands from the lab root. Use the configured host/runtime: on this Windows
+installation, Windows Chromium/native desk with the configured WSL services.
+Preserve developer games. Real acceptance checks submit QA actions/reports; use
+an owned desk with the [complete isolated port configuration](setup.md#isolate-an-acceptance-desk)
+and stop only its services. Never treat a command listed here as a recorded pass.
+
+## Core checks
 
 ```sh
 npm test
-python test/situations_test.py
 ```
 
-Backend integration checks use the sibling backend environment:
+This includes isolated desk UI tests using real public files and mocked API data,
+plus contracts, storage, controllers, report management and orchestration. They do
+not establish real game rendering or physical-device acceptance.
+
+Run Python checks with the lab source and regular backend available on the import
+path. The full suite also needs the maintained bot checkout's classic dependencies
+and pytest; use its installed environment rather than adding neural dependencies.
+For the default sibling layout, PowerShell:
+
+```powershell
+$env:PYTHONPATH = "$PWD/src;$PWD/../goa2-backend-bots/src"
+../goa2-backend-bots/.venv/Scripts/python.exe -m pytest test -q
+```
+
+On POSIX use `:` between import paths and the configured Python executable.
+The full suite needs the bot checkout’s `goa2` package as well as `automata`; do not
+put the regular backend ahead of it on this process’s import path.
+The regular-backend integration can be checked without the bot environment:
 
 ```sh
 cd ../goa2-backend
 uv run --locked python ../goa2-layout-lab/test/backend_test.py
 ```
 
-For browser automation/CI diagnostics without opening desktop windows:
+For documentation changes, check relative links, Markdown formatting, code examples
+against current routes, and skill frontmatter. Runtime suites are needed when
+behavior changes, not to certify prose edits.
 
-```sh
-npm run compare -- --headless --no-open --no-auto-load
-```
+## Real workspace and state checks
 
-The explicit browser acceptance suite requires a separately marked instance:
+These scripts start their own desks unless marked **attached** below. Supply
+isolated ports even for runners with older built-in port defaults. Use browser
+mode for automation; native checks need a display. Preparation can be slow on a
+cold cache: check logs before starting another instance.
+
+| Command                                               | Scope                                                                                                                 |
+| ----------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `node test/view-workspace-e2e.mjs`                    | Start/Cancel, Add/Edit, current-state copies, Reset and sizing.                                                       |
+| `node test/independent-comparison-e2e.mjs`            | Game-only Situation loading, mixed interfaces, separate inspection instructions and Main comparisons.                 |
+| `node test/session-changes-e2e.mjs`                   | Generic Gold selection, Open Hand in place, unavailable targets and public spells.                                    |
+| `node test/quickstarts-e2e.mjs`                       | Desktop/mobile/device quickstarts and the three Main vs working-tree Layouts; `--comparisons-only` limits scope.      |
+| `node test/detached-bots-e2e.mjs`                     | Regular game backend, one separate bot service, shared decisions and desk/device human actions.                       |
+| `node test/device-autoswitch-e2e.mjs`                 | Five real phone reloads and planning-commit navigation on one owned game; use the regular backend and isolated ports. |
+| `node test/autoswitch-e2e.mjs --display=browser`      | Viewpoint following without extra game actions.                                                                       |
+| `node test/reviews-e2e.mjs`                           | Review navigation and report attribution.                                                                             |
+| `node test/review-history-e2e.mjs`                    | History, frozen/current-library reruns and edited revisions.                                                          |
+| `node test/element-report-e2e.mjs --display=embedded` | Native picker, div images, HTML/CSS and report persistence; browser mode also supported.                              |
+| `npm run test:native`                                 | Native surfaces, input, animation, storage isolation and separate-window control relay.                               |
+| `npm run test:native-e2e`                             | Real game pages in the native desk.                                                                                   |
+| `npm run test:streams`                                | Streamed input using isolated browser fixtures; no game backend.                                                      |
+
+Quickstarts now use BLUE ISMCTS opponents with heuristic policy/value and default
+search settings. Set `GOA2_LAB_BACKEND` to the regular checkout and
+`GOA2_LAB_BOT_BACKEND` to the separate maintained bot checkout. Supplying the bot
+checkout as the frontend's game backend no longer describes the architecture.
+Main without a native mobile shell retains phone dimensions, falls back to desktop
+and records a warning. Game synchronization defaults to API; menus remain independent.
+
+### Attached acceptance runners
+
+The following checks use an already running owned desk and may replace its games.
+For marked verification runners start it with:
 
 ```sh
 npm run compare -- --headless --no-open --no-auto-load --verification
-# In a second terminal on the same host/runtime:
-node test/e2e.mjs
 ```
 
-It refuses to attach to an ordinary interactive desk. It creates clearly named
-acceptance situations, exercises real phone and desktop 3D views, and writes its
-evidence to `.layout-lab/acceptance.json`. Its Live CSS probe restores the exact
-original content afterward.
+Use the same ports/runtime in the second terminal. `npm run test:e2e`,
+`npm run test:embedded` and `npm run test:sync` attach to that verification desk.
+The general acceptance writes `.layout-lab/acceptance.json`; its temporary Live CSS
+probe restores the original bytes. `npm run test:ui` now runs the isolated desk UI
+suite and requires no game services.
 
-With that instance still running, check the dashboard and standalone report controls:
+`node test/device-e2e.mjs`, `npm run test:device-bots` and
+`node test/play-bots-e2e.mjs` also use an owned running desk. They submit QA reports
+or moves and can leave a test share ready. The play-bots runner requires an empty
+desk and covers one View, mixed policies, manual switching and independent games.
+Use [device verification](device-testing.md#verification) for their exact effects.
 
-```sh
-node test/desk-ui.mjs
-node test/presentation-e2e.mjs
-```
+## Frontend regression runners
 
-The upgrade Confirm tap-target regression owns a separate headless verification desk
-(default ports 3500-3503 and 8500) and tests the configured frontend working tree:
+These use real checkpoints and the configured frontend, usually Live versus the
+pinned userscript Target. Each owns its diagnostic services. Source settings and
+Presentation instructions belong to the runner; shared Situations store game only.
+Inspect output images before claiming parity. Commands use `npm run <name>`.
 
-```sh
-npm run test:mobile-confirm
-```
+| Script name                     | Focus                                                                                     |
+| ------------------------------- | ----------------------------------------------------------------------------------------- |
+| `test:mobile-confirm`           | Upgrade Commit/legacy Confirm hit targets and one accepted submission.                    |
+| `test:mobile-gameplay`          | Real card actions, Gydion spells, Snorri runes and Emmitt second-card planning.           |
+| `test:mobile-presentation`      | Public spells, counters, nested inspection, runes and piece markers.                      |
+| `test:mobile-deck`              | Tree/List/Grid, local plans, selection and owner/spectator visibility.                    |
+| `test:mobile-visual`            | Deck/shared-card readers and original-size paired screenshots.                            |
+| `test:mobile-roster-visual`     | Hero boards, rune slots/history and crowded public indicators.                            |
+| `test:mobile-spells-visual`     | Large/Image spell readers; `--rank4` focuses public Wish.                                 |
+| `test:mobile-ready-visual`      | Ready controls and clock UI.                                                              |
+| `test:mobile-shell-visual`      | Paused, suspended and completed match displays.                                           |
+| `test:mobile-special-visual`    | Emmitt, starting positions, reconnect and long-card content.                              |
+| `test:mobile-card-fallback`     | Intentional missing-artwork faults, explicitly labelled in evidence.                      |
+| `test:mobile-status-visual`     | Ten-hero waiting ticker, reduced motion and Board rows; `--status-only` focuses status.   |
+| `test:mobile-decision-visual`   | Defense, discard, spell/gold choices and supplementary details.                           |
+| `test:mobile-resolution-visual` | Teammate initiative choice, order labels and Board/Heroes inspection.                     |
+| `test:mobile-library-reopen`    | Explicit runner sources/seats/instructions and restored pending decisions.                |
+| `test:mobile-turn-state-visual` | Completed/unqueued/off-board heroes; `--case=emmitt-two-commits` focuses Emmitt.          |
+| `test:mobile-batches`           | Hypothetical Preview, batch upgrade/rune staging, Commit and recovery.                    |
+| `test:mobile-upgrade-parity`    | Small-card visual states, artwork/styles, hover/focus and pixel evidence.                 |
+| `test:mobile-card-visual`       | Artwork/mask/blur and selected-source animations; `--selected` focuses sheen.             |
+| `test:mobile-camera`            | Native 2D focus, gestures, rotation, fit and one real movement target.                    |
+| `test:mobile-utilities`         | Preferences, fullscreen, Decisions route and layered inspection.                          |
+| `test:mobile-elements`          | Focused mobile element auditing.                                                          |
+| `test:element-tools`            | Selector crops, Individual/Combine, focused/whole-page source export and offline viewers. |
 
-It loads the shared tier-II upgrade situation in mobile and desktop 2D shells at
-390x844, 360x800 and 844x390. It stages a card, checks the enabled Confirm button
-receives hits at its center and corners at both scroll extremes, then submits one
-real touch tap and verifies exactly one accepted upgrade. Failures save a browser
-screenshot under `.layout-lab/runtime/`. The suite closes only its owned services.
-Runtime/checkout overrides use the usual `GOA2_LAB_*` variables.
+Use `-- --help` only where implemented; read each runner's argument parser before
+assuming a common filter. Batch/upgrade parity support `-- --profile=portrait`
+(or `compact,landscape`). Several visual runners accept `-- --case=...`; these
+filters are runner-specific. Whole-page CSS collection is reserved for concrete
+whole-document questions. The deliberate artwork-fault runner uses its own raw
+capture path; ordinary exporters still reject missing assets.
 
-The M2 gameplay acceptance suite also owns its instance (default ports 3600-3603
-and 8600) and tests the frontend working tree:
+## Evidence and limits
 
-```sh
-npm run test:mobile-gameplay
-```
+Generated files live under ignored `.layout-lab/reviews/`, `.layout-lab/reports/`
+and `.layout-lab/runtime/`. Retain exact source revisions/dirty status, effective
+settings, checkpoint hashes, warnings and intended inspection alongside images.
+UI snapshots captured as evidence are broader than reusable Presentation changes.
+Frozen wall time does not stop animation frames or networking. Native mode is the
+reference for interactive animations; browser desk previews are streamed JPEGs.
 
-It uses the shared simple situations and runs
-`scripts/create-mobile-gameplay-situations.py` to fabricate real Gydion spell,
-Snorri inscription and Emmitt second-card checkpoints. Python resolves from
-`GOA2_LAB_PYTHON`, the sibling backend environment, or `uv run --project` as a
-fallback with an isolated environment under `.layout-lab/runtime/`. Checks cover inspection without submission, selected-card/inspection
-capture and restore, accepted core actions, sequential rune confirmations with
-the automatic fourth rune, spell-action follow-up, and Emmitt take-back, second
-commit and Done. Screenshots and `evidence.json` go under ignored
-`.layout-lab/reviews/m2-*/`; generated situations remain local drafts.
-
-The M3 presentation suite owns ports 3700-3703 and 8700 by default:
-
-```sh
-npm run test:mobile-presentation
-```
-
-It generates real-map display fixtures with
-`scripts/create-mobile-presentation-situations.py`, then checks owner/opponent/
-spectator public spell access, counters 0/1/3/9/10, scoped embedded spell readers,
-sorting, nested/public presentation save and restore, portrait/compact/landscape
-bounds, shared image painting, rune history and markers on Razzle's pieces.
-The rune flow also covers a real reload, Board peek, Undo and acknowledgment of
-the automatic fourth rune. `--runes-only` runs just that recovery flow.
-Screenshots and evidence go to ignored `.layout-lab/reviews/m3-*/`. Factories do
-not overwrite the curated library. Run these browser checks on Windows on this
-installation; normal WSL services are used without running Linux UI test suites.
-
-For paired visual reports against the pinned userscript target:
-
-```sh
-npm run test:mobile-roster-visual
-npm run test:mobile-spells-visual
-npm run test:mobile-ready-visual
-npm run test:mobile-shell-visual
-npm run test:mobile-special-visual
-npm run test:mobile-card-fallback
-npm run test:mobile-status-visual
-npm run test:mobile-decision-visual
-```
-
-The roster runner uses ports 4600-4603/9600 and accepts a focused filter such as
-`-- --case=snorri` or `-- --case=brogan`. It includes empty and occupied rune slots,
-masked and public active history, discard piles and crowded public indicators.
-The spell runner uses 4700-4703/9700 and compares selected Large/Image readers
-at all three sizes, including rotation and closing the browser afterward.
-The ready runner uses 4500-4503/9500, checks the Ready tap target at all three
-sizes and submits readiness on both clones before comparing running clocks.
-The shell runner uses 4800-4803/9800 and captures paused, suspended and completed
-match states from real-model fixtures, without consuming their pending readiness.
-The special runner uses 4900-4903/9900 for Emmitt's second-card selection,
-starting-position adjustment, an actual routed WebSocket outage/recovery, and a
-long Snorri card. The fallback runner uses the same ports; run it separately.
-It intentionally returns HTTP 404 for native Snorri card backgrounds, records the
-routed failures, and saves labeled raw originals/combined images for Large and
-Image readers. The target retains its normal Large text view. This fault check
-bypasses the clean-asset report exporter, whose normal missing-asset rejection
-remains unchanged. Its manifest names the intentional fault and source settings.
-The status runner uses 5100-5103/10100 for a real ten-hero waiting message,
-collapsed/expanded ticker behavior, reduced motion, fixed-height Board rows and
-reopening the shared history fixtures. The decision runner uses 5200-5203/10200
-for defense/discard/spell/gold choices and supplementary hero details. It labels
-native staged choices versus immediate-submit target choices explicitly; discard
-selection is aligned on both sides. Embedded spell inspection also verifies
-parent bounds and safe capture/restore without sending a game choice.
-These runners produce original screenshots, combined images, diffs and HTML reports under
-`.layout-lab/reports/`, with manifests under `.layout-lab/reviews/`. They use Live
-working-tree sources; review the images before making a visual-parity claim.
-
-The frontend remains unchanged in production: camera/presentation bridges are
-injected only by the lab Vite config. The backend helper lives in this tool and
-is never imported by the normal backend entrypoint.
-
-Embedded-view checks (real Chromium, no game services required):
-
-```sh
-npm run test:streams
-```
-
-On the marked verification desk, test embedded input against real phone and desktop 3D games:
-
-```sh
-npm run test:embedded
-```
-
-Native desktop checks (a display is required, or Xvfb on Linux):
-
-```sh
-npm run test:native
-# Use distinct ports; this suite owns and closes its instance:
-npm run test:native-e2e
-# Focused synchronization / live-update checks:
-npm run test:sync
-```
-
-The native suite checks all three phone versions, the userscript, direct input,
-modal layering, scaling, save/capture/reload, two desktop 2D views and two desktop
-3D views with camera controls. It also verifies that no screenshot stream is used.
-
-### Mobile Deck browsing and plans (M4)
-
-```sh
-npm run test:mobile-deck
-```
-
-This focused Windows Chromium check owns diagnostic ports 3800-3803 and 8800.
-It uses the shared Arien card-selection and Gydion public-spells-3 situations to
-check Tree/List/Grid, local plan persistence after reload, preview selection,
-390x844 / 360x800 / 844x390 layouts, and owner/spectator visibility. Browsing and
-planning must preserve the authoritative state hash and scoped live view.
-It records working-tree screenshots/evidence in ignored `.layout-lab/reviews/m4-*/`
-and closes only its own desk/services. The frontend's M4 integration notes own
-plan/preference migration and later M5/M6 upgrade submission scope.
-
-### Deck/shared-card visual parity
-
-```sh
-npm run test:mobile-visual
-```
-
-This isolated Windows comparison uses ports 3900-3903/8900 and the configured
-frozen Base/userscript refs against the frontend's Live working tree. It captures
-28 native/target pairs for Arien/Gydion: Tree/List/Grid and card previews at
-390x844, 360x800 and 844x390, plus Large/Image spell readers. Each report contains
-originals, a combined PNG, pairwise diff and standalone HTML overlay viewer.
-State hashes, panel geometry, compact-card heights and actual canvas pixels are
-checked; rendering and asset failures fail the run. Captures wait for native card
-paint readiness so a temporarily transparent canvas cannot count as finished.
-The helper stops only its own desk and leaves artifacts under ignored
-`.layout-lab/reviews/parity-*/` and `.layout-lab/reports/`. Set `GOA2_PARITY_TAG` to
-label a run. These are working-tree comparisons, not immutable commit evidence.
-The match header/camera and native localized card text are outside this focused
-Deck/shared-card visual comparison; full device/app acceptance remains separate.
-
-### Resolution order parity (M3)
-
-```sh
-npm run test:mobile-resolution-visual
-```
-
-This Windows Chromium comparison owns ports 5300-5303/10300. Its factory
-`scripts/create-mobile-resolution-situations.py` uses real planning commits on
-the full map: Arien/Hanu/Tigerclaw at initiative 13, Brogan at 11, with the
-initial coin on RED. It saves the actual teammate-choice prompt and the next
-action prompt after choosing Hanu. Both checkpoints are restored twice and
-checked for stable canonical state. These are generated drafts under ignored
-`.layout-lab/situation-recipes/mobile-resolution/`.
-
-The browser uses each view's Board-peek control without answering the pending
-game choice, compares Board and Heroes at 390x844, 360x800 and 844x390, and
-checks order labels, visible badge bounds and matching game hashes. Reports
-under `.layout-lab/reviews/resolution-*/` describe Live versus the frozen target;
-they are working-tree evidence. The frontend retains server-provided initiative
-ordering, including Reverse Time; unit coverage verifies the ascending case.
-The helper closes only its owned diagnostic desk and services.
-
-### Library defaults and remaining card/turn states
-
-```sh
-npm run test:mobile-library-reopen
-npm run test:mobile-turn-state-visual
-npm run test:mobile-turn-state-visual -- --case=emmitt-two-commits
-npm run test:mobile-status-visual -- --status-only
-npm run test:mobile-spells-visual -- --rank4
-```
-
-Library reopening uses diagnostic ports 5400-5403/10400 and the regular desk
-composed Situation load endpoint. It checks the shared long-status, Takahide gold,
-team-tie and selected-teammate entries with their saved Base/Comparator/Target
-sources, seats, layouts, hashes and actual pending decisions. Three-column
-reports are restore checks, rather than evidence of Live source parity.
-
-Turn-state comparisons own ports 5500-5503/10500 and generate normalized real
-checkpoints with the resolution factory: Hanu's accepted HOLD/confirmation,
-a hero without a queued or completed card, and an off-board hero. They compare
-Board/Heroes at all three phone sizes. Assertions distinguish completion from
-absence, retain the just-resolved card, and check fixed row/column bounds.
-The Emmitt case uses the gameplay factory, commits his second card through
-native UI and mirrors the real command with API synchronization before taking
-paired images. Opponent masking remains covered by frontend integration tests.
-Factory outputs remain local drafts; curated turn-state, two-card Emmitt and
-public rank-IV Wish copies are indexed in [the shared library](../library/README.md#coverage). The off-board variant deliberately
-removes Brogan and discards his unresolved card without claiming a natural play
-sequence. No production saves or engine rules are modified.
-
-`--status-only` limits the existing status runner to its ten-hero long-status
-case and verifies horizontal as well as vertical row bounds. The spell runner's
-`--rank4` mode uses a fabricated public Wish with all other prepared spells still
-masked. It checks a spectator can inspect Large/Image at three sizes and the
-Tiny row has solid rank-IV end accents without an initiative rail. It uses the
-usual spell-runner ports 4700-4703/9700. These remain Live-versus-frozen-target
-comparisons, and each owned diagnostic desk closes after capture.
-
-### Staged mobile upgrades and runes (M6)
-
-```sh
-npm run test:mobile-batches
-```
-
-This regression owns ports 5910-5913/10910 and tests the configured frontend
-working tree with shared situations `3fd1f952c1a6` (three upgrades) and
-`0601f17bbdab` (Snorri inscription). The backend must advertise upgrade
-`supports_preview` plus batch capabilities. Native mobile is checked against
-real engine offers at 390x844, 360x800 and 844x390; the pinned userscript Target
-is captured as a visual reference, not assumed to share native batch semantics.
-Checks cover separate hypothetical Preview, Reset, Board peek/camera, immutable
-staging, one accepted complete Commit, and viewport/navigation/five-point tap
-bounds. A recovery flow covers legacy single-rune acknowledgment, actual reload,
-Undo, reconnect and explicit batch confirmation without automatic replay.
-Reports and images are written under ignored `.layout-lab/runtime/mobile-batches-*`.
-Only owned services are closed. Normal checkout/ref/port overrides apply.
-
-`test:mobile-confirm` supports both the new single-upgrade Commit and the legacy
-Confirm picker, and continues testing desktop at all three sizes. Run it against
-an older backend checkout with `GOA2_LAB_BACKEND` to verify capability fallback.
-The gameplay and presentation regressions support batch rune staging while
-retaining legacy single-choice transport coverage.
-
-### Upgrade card visual states
-
-```sh
-npm run test:mobile-upgrade-parity
-```
-
-Uses isolated ports 5920-5923/10920 and the Live frontend versus frozen Base plus
-userscript. At portrait, compact and landscape sizes it exports original-size
-paired small-card crops, pixel diffs, viewport images and `cards.json` containing
-focused computed styles. Initial, staged, hypothetical Preview, hover and keyboard
-focus are compared. A local six-upgrade draft is restored through the engine and
-advanced with legacy single confirmations to verify observed item-history states.
-The runner asserts dimensions, icon geometry, border/background/shadow and opacity;
-it does not assume that arbitrary screenshot differences prove a regression.
-Animation is reduced consistently for stable viewed-card comparisons. The draft
-stays local under ignored data. No whole-page CSS traversal is performed.
-Evidence is under `.layout-lab/reviews/m6-parity-*`; owned services close on exit.
-
-For focused reruns use `npm run test:mobile-upgrade-parity -- --profile=portrait`
-(or `compact,landscape`). Each viewport also exports the standard combined-image,
-pixel-diff and overlay viewer report; its report metadata is saved in
-`<profile>-viewer.json`. `test:mobile-batches` accepts the same profile filter.
-
-### Shared card artwork and blur comparison
-
-`npm run test:mobile-card-visual` compares the live mobile renderers with the
-frozen baseline plus userscript in Windows Chromium. It opens independent clones
-of library situations for Arien Large upgrade/Deck readers, Small/Tiny Hand rows,
-Brogan history/Nano discards, and Gydion Large/Image public spells including
-rank IV as spectator. Use `-- --case=deck-large,spell-large --profile=portrait`
-for a focused rerun. Generic card Image rendering has no equivalent target mode;
-it is not presented as an equal-mode image comparison.
-
-Evidence is saved under `.layout-lab/reviews/cards-*`: viewport report links,
-per-card HTML/computed styles, artwork/mask/bar layers, and element crops. Hand,
-history and discard crops combine visible matches individually without resizing.
-The runner checks unchanged game hashes, native render errors and equal artwork
-filter/scale/mask/opacity for text cards. Large headers/footers must use 5px
-backdrop blur. No whole-document CSS is collected. The current crop helper cannot
-resolve some fixed target previews in landscape; the manifest records that gap
-and retains the full viewport report. Full images and reported source identities
-remain the evidence; passing sampled checks does not establish universal parity.
-Add `--selected` with `--case=deck-large,hand-small,spell-large` to compare the
-selected-source sheen. It verifies the reduced-motion gradient and deterministic
-1-second animation frames against Target, including 4s/4.2s timings and pointer
-pass-through, then captures the selected rows. History/Nano/upgrade cases are
-excluded in this mode.
-
-### Native 2D camera and hero focus (M7)
-
-`npm run test:mobile-camera` uses owned Windows Chromium views and the configured
-backend services. Existing library situations cover Arien/Hanu focus, Razzle’s
-owned-piece focus and movement target selection. It checks keyboard inspection
-separately from centering, anchored pinch/twist, cancellation, portrait/compact/
-landscape centering in the unobscured Board area, fit/reset and camera restore.
-The final isolated clone submits a real movement target after a gesture. Paired
-reference captures are saved under `.layout-lab/reviews/m7-camera-*`. This is
-synthetic browser touch coverage; physical-device gestures remain M9 acceptance.
-
-Native camera presentations now include an optional `angle`. Older saves without
-it restore at zero rotation. The userscript continues using its separate saved
-rotation adapter. Frozen frontend revisions lacking native rotation reject an
-unsupported rotated camera copy explicitly. Equal viewports and matching panes
-are still required before judging visual differences.
-
-### Native mobile utilities (M8)
-
-Run `npm run test:mobile-utilities` for the focused Windows Chromium check against
-the configured frontend working tree. It owns ports 5980–5983/10980 and reuses
-shared planning, Gydion public-spells and six-upgrade situations. It checks live
-appearance/audio/language settings, reload persistence, fullscreen, the scoped
-Decisions route and retry, layered spell/Deck navigation and upgrade preview
-dismissal. Portrait, compact and short-landscape captures compare Live/mobile
-with the pinned userscript Target. A separate native commit checks actual history
-and spectator card masking after the paired captures. Generated evidence stays
-under `.layout-lab/reviews/m8-utilities-*` and `.layout-lab/reports/`.
-
-No native Linux tests or automatic phone activation are included. Browser touch
-and fullscreen checks do not establish physical-device acceptance.
-
-## Desk interface
-
-`npm run test:ui` runs the maintained isolated desk browser suite. It serves the
-real public UI with shared Situation metadata and mocked API responses, requiring
-no game services and leaving existing sessions untouched. Checks cover desktop and
-narrow layouts, search/selection, menus, capture tools, View settings, controllers,
-review history/options, import and connection recovery. `npm test` includes it.
-
-## State model and review workflows
-
-See [state-model checks](state-model.md#verification) for the focused Python,
-workspace, restoration and review suites. [Recorded validation](validation/state-model-2026-10-22.md)
-distinguishes completed checks from outstanding browser/device coverage. Test results
-apply to the sources and environment recorded by each run.
+[Validation records](plans/README.md#validation-records) preserve dated results,
+including the earlier Simple/attached-backend quickstarts. They are not current
+instructions or evidence that later defaults were exercised end to end. Browser
+phone emulation does not establish physical iOS/Android gestures, haptics or
+network acceptance. Open gaps are tracked in [remaining follow-ups](plans/README.md#remaining-follow-ups).

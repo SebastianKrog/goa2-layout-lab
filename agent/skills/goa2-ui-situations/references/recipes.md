@@ -11,7 +11,9 @@ The five basic recipes below were exercised using the repo's scripts/create-simp
 - Start a seeded GameSetup, or use the lab's fixed starter when its four heroes are suitable. Leave phase PLANNING and keep the card in the owner's hand.
 - Load the owning hero's seat in every layout intended to show that private hand. Open Hand where it is a panel; scroll to the inline hand on the legacy desktop layout.
 - Wait until Hand is active and the actual card control is visible; native mobile mounts its panel asynchronously. Select a real hand card using the actual UI. Do not press Commit or send COMMIT_CARD. The canonical game hash should remain unchanged.
-- Save situation after selection. The lab captures selectedCard from instrumented card controls where supported. Reopen and confirm the same card is selected. If a layout's selected state is not instrumented/restorable, record that it must be reapplied; do not claim full persistence.
+- Save the game-only Situation. Add `selectedCard` as a separate role-based
+  Presentation, or an exact card instruction on the Review entry/ad hoc request.
+  Reopen with those instructions and confirm the selection. If a layout's selected state is not instrumented/restorable, record that it must be reapplied; do not claim full persistence.
 
 If the request means an engine-issued card choice instead, identify its context and use the defense/discard/upgrade recipe. PLANNING selection and a SELECT_CARD prompt are different UI states.
 
@@ -93,7 +95,8 @@ Sources: tests/engine/effects/cases/test_snorri_effects.py::test_inscribe_places
 - Start registered Snorri on the real map. Seed a completed arrangement, or finish Inscribe in the isolated factory. A concrete arrangement is {1:RuneType.AXE,2:RuneType.BIRD,3:RuneType.ANVIL,4:RuneType.HORN}.
 - Set the intended turn, for example turn 2, and prepare an ordinary Snorri card's CHOOSE_ACTION in RESOLUTION if the request is "during his turn". Use the real card/actor setup from recipe 2; runic_dagger was checked at turn 2 with the bird rune. Do not leave the PlaceRunesStep chooser pending.
 - The base active rune derives from the card owner's turn slot, not necessarily the current actor. The helper also unions ultimate runes in context["snorri_ult_rune_action"] and context["snorri_ult_rune_defense"] when present. Inspect the backend's active_runes(state,card,context) usage and current view fields rather than adding an active_rune flag to frontend state.
-- Open or scroll to Snorri's hero/turn display. Save the turn number, arrangement, current card and viewpoint. Include other turn slots so the active marker has visual contrast.
+- Open or scroll to Snorri's hero/turn display. Save the turn number, arrangement and current card in the game checkpoint;
+  record Viewpoint separately. Include other turn slots so the active marker has visual contrast.
 - If testing different active turns, make separate named checkpoints; scrolling or opening a menu must not change the game's turn.
 
 Sources: src/goa2/scripts/snorri_effects.py::active_runes; rune_slots in src/goa2/domain/views.py; the Snorri effect fixtures. Verify availability separately in frozen Base, migrated mobile, userscript and 3D.
@@ -104,7 +107,7 @@ Registry spelling is Emmitt; the hero ID is hero_emmitt. Use that registered her
 
 - Start GameSetup with Emmitt, an opponent such as Wasp, and seed/normal hands. Register goa2.scripts.emmitt_effects and set Emmitt's level to 8 as in tests/engine/test_emmitt_ultimate.py. Keep at least two playable hand cards.
 - **Before either commit:** leave PLANNING, focus Emmitt, open Hand. Useful for the initial two-card affordance.
-- **Choosing the second card (usual default):** call session.commit_card(HeroID(emmitt.id), card) with the actual Card object from Emmitt's hand, not a card-ID string. Leave PLANNING and the second commit pending. Other heroes can remain uncommitted; even after the opponent commits, Emmitt can still have a second-card decision. Select the desired second card locally in the UI without committing it, then save.
+- **Choosing the second card (usual default):** call session.commit_card(HeroID(emmitt.id), card) with the actual Card object from Emmitt's hand, not a card-ID string. Leave PLANNING and the second commit pending. Other heroes can remain uncommitted; even after the opponent commits, Emmitt can still have a second-card decision. Select the desired second card locally in the UI without committing it, then save the game moment and record selection separately.
 - Do not manually set pending_cards, pending_second_cards or planning_done. The actual commit/finish-planning methods establish those fields. Do not call finish_planning when preparing the second-card choice: that closes the optional second commit.
 - **After reveal, retrieving one:** commit both Emmitt cards and close other heroes' planning. Stop at the mandatory SELECT_CARD retrieve-one prompt addressed to Emmitt, before returning either revealed card. This is a different fixture, not the planning selector.
 - For the retrieve prompt, retain current_turn_card/extra_turn_card and their faceup state through normal session methods. Owner and opponent views can both show the revealed pair; the planning hand remains private.
@@ -117,13 +120,15 @@ These are presentation variants of a saved game, not engine phases.
 
 1. Start from the same checkpoint for all compared layouts. Choose a seat that can see the requested contents.
 2. Request the pane through the lab adapter or actual UI. Record both whether the menu exists and whether its content is available inline.
-3. Set scroll and any hero/card inspection explicitly. Save situation after the panels are arranged; saving only a preset does not store this presentation.
-4. Reopen with Restore saved viewpoints. A backend hash change while merely opening Hand/Deck/Heroes is unexpected and should be investigated as fixture contamination.
+3. Save the game-only Situation. Record Viewpoint separately and request the
+   panel/inspection as sparse Presentation instructions; camera/scroll snapshots
+   are internal evidence, not preset content.
+4. Reopen with the same Viewpoint and inspection instructions. A backend hash change while merely opening Hand/Deck/Heroes is unexpected and should be investigated as fixture contamination.
 
-| Requested feature | Presentation intent | Legitimate layout differences |
-| --- | --- | --- |
-| Hand menu | Native mobile/userscript pane hand | Legacy desktop can have an always-visible inline hand with no Hand menu. |
-| Deck menu | Pane deck for the owning hero | A View Deck modal may be the equivalent. Opponents/spectators may not have private deck contents. |
-| Heroes menu | Pane heroes or the relevant hero inspection | Legacy desktop/3D may show hero boards inline or offer a different inspection UI. |
+| Requested feature | Presentation intent                         | Legitimate layout differences                                                                     |
+| ----------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| Hand menu         | Native mobile/userscript pane hand          | Legacy desktop can have an always-visible inline hand with no Hand menu.                          |
+| Deck menu         | Pane deck for the owning hero               | A View Deck modal may be the equivalent. Opponents/spectators may not have private deck contents. |
+| Heroes menu       | Pane heroes or the relevant hero inspection | Legacy desktop/3D may show hero boards inline or offer a different inspection UI.                 |
 
 Use supported, inline-equivalent, unsupported or not-verified in the handoff. Name the missing control/content precisely. Do not replace unavailable old UI with temporary markup, switch the frozen source, advance the game or change seats silently just to make every column look successful.

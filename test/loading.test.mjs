@@ -116,6 +116,10 @@ test("single view and per-view controllers retain independent clone configuratio
     return { bot_kinds: ["random", "heuristic"] };
   });
   comparison.status = () => comparison.windows;
+  comparison.sync.mode = "none";
+  comparison.botCapabilities = async () => ({
+    botKinds: ["random", "heuristic"],
+  });
   comparison.open = async (config) => ({ config });
   comparison.closeWindow = async () => {};
   const solo = { ...PRESETS["Play solo"][0], bots: { hero_hanu: "random" } };
@@ -128,7 +132,10 @@ test("single view and per-view controllers retain independent clone configuratio
   );
   assert.equal(two[0].config.bots.hero_hanu, "random");
   assert.equal(two[1].config.bots.hero_hanu, "heuristic");
-  await assert.rejects(comparison.sync.setMode("api"), /Turn off bots/);
+  await assert.rejects(
+    comparison.sync.setMode("api"),
+    /Conflicting bot policies/,
+  );
   // Invalid setup must not replace the working views.
   const previous = comparison.windows;
   await assert.rejects(
@@ -158,10 +165,10 @@ test("single view and per-view controllers retain independent clone configuratio
     ),
     /bot policies/,
   );
-  comparison.api = async () => ({ bot_kinds: [] });
+  comparison.botCapabilities = async () => ({ botKinds: [] });
   await assert.rejects(
     comparison.load("moment", [solo], {}, moment),
-    /no requested bots/,
+    /does not support/,
   );
   assert.equal(comparison.windows, previous);
 });

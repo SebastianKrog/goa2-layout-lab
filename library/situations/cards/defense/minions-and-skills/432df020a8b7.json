@@ -1,0 +1,25 @@
+{
+  "id": "432df020a8b7",
+  "name": "Dodger - Shield of Decay with its bonus available",
+  "description": "Attack 4; minion modifier +0; defense needed 4. Waiting for Dodger; no defense submitted. Inspect shield_of_decay. 3 empty battle-zone spawn points in radius 2; printed 3+ can gain its card-text bonus.",
+  "backend_revision": "c4750787e620388a093683cc5b8518b437f1c2a3",
+  "saved_at": 1792729762.7974122,
+  "provenance": {
+    "kind": "ui-fabrication"
+  },
+  "summary": {
+    "phase": "RESOLUTION",
+    "round": 1,
+    "decision": "SELECT_CARD_OR_PASS",
+    "responder": "hero_dodger"
+  },
+  "schema": 3,
+  "kind": "situation",
+  "decisionStateId": "431c86fc831b6ca766b3a7a9be3a4244e7ff10b7511cdc3186d03fa237a70b81",
+  "tags": [
+    "hero:dodger",
+    "topic:cards",
+    "topic:defense",
+    "topic:minions-and-skills"
+  ]
+}

@@ -16631,5 +16631,15 @@
     "rollback_actor_id": "hero_hanu",
     "hero_names": {},
     "replay_log": []
-  }
+  },
+  "tags": [
+    "decision:choose-action",
+    "hero:arien",
+    "hero:brogan",
+    "hero:hanu",
+    "hero:tigerclaw",
+    "phase:resolution",
+    "topic:resolution",
+    "topic:ties"
+  ]
 }

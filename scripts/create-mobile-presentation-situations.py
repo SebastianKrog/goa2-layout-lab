@@ -39,7 +39,7 @@ def write(key, state, hero):
     saved = lab.checkpoint(restored)
     again, _ = lab.restore(saved)
     assert lab.canonical_hash(saved['state']) == lab.canonical_hash(lab.checkpoint(again)['state'])
-    payload = {'schema': lab.SCHEMA, 'name': 'M3 presentation - ' + key, 'checkpoint': saved,
+    payload = {'schema': lab.SCHEMA, 'name': key.replace('-', ' ').replace('_', ' ').capitalize(), 'checkpoint': saved,
         'provenance': {'kind': 'ui-fabrication', 'fixture': {'case': key}, 'seed': 20261019},
         'presentation': lab.compose_presentation({'pane': 'board'}, str(hero.id)),
         'additionalPresentations': [lab.compose_presentation({'pane': 'board'}, 'spectator')],

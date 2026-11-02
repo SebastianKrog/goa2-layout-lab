@@ -14,6 +14,7 @@ import {
   REFERENCES,
   linuxPath,
   BACKEND,
+  BOT_BACKEND,
   STARTUP,
 } from "./config.mjs";
 import { selectRuntime } from "./runtime.mjs";
@@ -50,7 +51,8 @@ export async function checkoutEvidence(checkout) {
     let bytes;
     try {
       const stat = await fs.lstat(target);
-      // Nested untracked Git checkouts are directories, not source files.
+      // Git lists untracked nested repositories as directory entries, not files
+      // belonging to this checkout. Keep the exclusion explicit in provenance.
       if (stat.isDirectory()) {
         excludedDirectories.push(name);
         digest.update(name).update("\0directory\0");
@@ -87,6 +89,21 @@ export function resolveComparator(ref = "mobile-migration") {
   if (!/^[\w./~-]+$/.test(ref) || ref.startsWith("-"))
     throw new Error("Invalid comparator revision.");
   return git(["rev-parse", "--verify", `${ref}^{commit}`]);
+}
+export function resolveMain(ref = "default") {
+  if (ref !== "default") return resolveComparator(ref);
+  for (const candidate of [
+    "refs/remotes/origin/HEAD",
+    "refs/heads/main",
+    "refs/heads/master",
+  ]) {
+    try {
+      return git(["rev-parse", "--verify", `${candidate}^{commit}`]);
+    } catch {}
+  }
+  throw Error(
+    "Frontend default branch not found. Set GOA2_LAB_MAIN_REF to its mainline ref.",
+  );
 }
 export async function available(port) {
   await new Promise((resolve, reject) => {
@@ -133,6 +150,7 @@ function wsl(args, options = {}) {
       `GOA2_LAB_TOOL=${linuxPath(TOOL)}`,
       `GOA2_LAB_FRONTEND=${linuxPath(ROOT)}`,
       `GOA2_LAB_BACKEND=${linuxPath(BACKEND)}`,
+      `GOA2_LAB_BOT_BACKEND=${linuxPath(BOT_BACKEND)}`,
       `GOA2_LAB_PATCH=${linuxPath(PATCH)}`,
       ...Object.entries(PORTS).map(
         ([key, port]) => `GOA2_LAB_${key.toUpperCase()}_PORT=${port}`,
@@ -173,6 +191,7 @@ export class Services {
     )
       throw new Error("Invalid userscript revision.");
     this.references = {
+      main: resolveMain(STARTUP.mainRef),
       base: resolveComparator(STARTUP.baseRef),
       script: /^[a-f0-9]{40}$/.test(STARTUP.scriptRef)
         ? STARTUP.scriptRef
@@ -303,6 +322,54 @@ export class Services {
       return await response.json();
     }, "isolated backend");
   }
+  async botCapabilities() {
+    const available = await fs
+      .access(path.join(BOT_BACKEND, "src/automata/runtime/driver.py"))
+      .then(
+        () => true,
+        () => false,
+      );
+    return { botKinds: available ? ["random", "heuristic", "ismcts"] : [] };
+  }
+  async botBackend() {
+    if (this.botStart) return this.botStart;
+    this.botStart = (async () => {
+      await available(PORTS.bots);
+      this.botEvidence = await checkoutEvidence(BOT_BACKEND);
+      await this.start("bots", ["bots"], true, PORTS.bots);
+      await waitFor(async () => {
+        if (this.children.get("bots")?.exited)
+          throw Object.assign(Error("Bot decision service stopped."), {
+            fatal: true,
+          });
+        const r = await fetch(`http://127.0.0.1:${PORTS.bots}/health`, {
+          headers: { "x-lab-token": this.token },
+          signal: AbortSignal.timeout(5000),
+        });
+        return r.ok;
+      }, "bot decision service");
+    })().catch(async (error) => {
+      await this.stop("bots");
+      this.botStart = null;
+      throw error;
+    });
+    return this.botStart;
+  }
+  async botRequest(route, body) {
+    await this.botBackend();
+    const response = await fetch(`http://127.0.0.1:${PORTS.bots}${route}`, {
+      method: body === undefined ? "GET" : "POST",
+      headers: {
+        "x-lab-token": this.token,
+        "content-type": "application/json",
+      },
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      signal: AbortSignal.timeout(120_000),
+    });
+    const value = await response.json();
+    if (!response.ok) throw Error(value.detail || "Bot decision failed.");
+    return value;
+  }
   async assetFor(source, pathname) {
     return source === "live" && process.platform === "win32"
       ? this.liveAssets.get(pathname)
@@ -311,7 +378,9 @@ export class Services {
   async provenance() {
     return {
       backend: this.backendEvidence || null,
+      botService: this.botEvidence || null,
       frontend: {
+        main: { commit: this.references.main, dirty: false },
         base: { commit: this.references.base, dirty: false },
         comparator: { commit: this.comparator, dirty: false },
         live: await checkoutEvidence(ROOT),
@@ -336,11 +405,13 @@ export class Services {
       return this.children.get(key).port;
     if (this.children.has(key)) await this.stop(key);
     const port =
-      key === "base"
-        ? PORTS.base
-        : key === "live"
-          ? PORTS.live
-          : PORTS.comparator;
+      key === "main"
+        ? PORTS.main
+        : key === "base"
+          ? PORTS.base
+          : key === "live"
+            ? PORTS.live
+            : PORTS.comparator;
     // Restart only this desk's existing owner when reusing a service port.
     for (const [other, value] of this.children)
       if (value.port === port) await this.stop(other);
@@ -349,7 +420,11 @@ export class Services {
       key === "live"
         ? ROOT
         : await this.source(
-            key === "base" ? this.references.base : this.comparator,
+            key === "main"
+              ? this.references.main
+              : key === "base"
+                ? this.references.base
+                : this.comparator,
           );
     if (key === "live" && !existsSync(path.join(ROOT, "node_modules/vite")))
       await this.prepare(ROOT);

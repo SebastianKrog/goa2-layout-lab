@@ -21,6 +21,9 @@ version files alone does not create a tag or publish a GitHub release.
 
 ## During development
 
+Current development targets **1.0.1**. The package version remains the last
+published stable version until the next release is prepared.
+
 Add user-visible changes under **Unreleased** in [CHANGELOG.md](../CHANGELOG.md).
 Record behavior and practical effects rather than every implementation commit.
 Keep the current released version until preparing the next release.

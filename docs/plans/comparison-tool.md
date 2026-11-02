@@ -8,7 +8,7 @@ and saved-preset concepts from the original design.
 
 ## Decisions
 
-- Support one to three independent playable Views, including duplicate sources,
+- Support one to three isolated playable Views, including duplicate sources,
   different player/spectator Viewpoints and desktop/mobile device profiles.
 - Keep committed Base and Comparator builds in ignored caches without switching
   working branches. Target is pinned Base plus the pinned userscript. Live uses
@@ -32,8 +32,9 @@ and saved-preset concepts from the original design.
 - Launch only required sources on dedicated configurable ports. Stop only owned
   processes and preserve regular development servers.
 
-Situations now reference separate Decision States and include one composed
-Presentation. Reusable arrangements are Layouts; Reviews and Runs collect ordered
+The original composed Situation model has since been replaced. Current Situations
+reference game-only Decision States; inspection requests carry optional Presentation
+and separate Viewpoint instructions. Reusable arrangements are Layouts; Reviews and Runs collect ordered
 inspection evidence. See [canonical terminology](../terminology.md) and
 [storage contracts](../state-model.md).
 
@@ -49,12 +50,12 @@ baseline, not a promise about future defaults. Configuration and each report's
 resolved source evidence determine what a current session actually uses.
 
 The original Mobile migration, Layout regression and 3D regression arrangements
-remain available as reusable choices. Empty startup now defaults to one Live View;
+remain available as reusable choices. Empty startup now offers quickstarts and comparison Layouts without opening Views;
 loading a saved Situation does not silently restore a historical arrangement.
 
 ## Verification and subsequent work
 
 The [testing guide](../testing.md) describes runnable checks and evidence locations.
-The [state-model validation record](../validation/state-model-2026-10-22.md)
+The [validation records](README.md#validation-records)
 distinguishes observed results from coverage gaps. Open work is listed once under
 [remaining follow-ups](README.md#remaining-follow-ups).

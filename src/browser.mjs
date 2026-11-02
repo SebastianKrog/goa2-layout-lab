@@ -1,10 +1,15 @@
+import { respondingSeat } from "./quickstarts.mjs";
+import { sessionChange } from "./session-changes.mjs";
+import { applySessionChange } from "./presentation.mjs";
 import { LIVE_ASSET_PATTERN } from "./live-assets.mjs";
 import {
   resolveView,
+  resolvePresentation,
   toPresentation,
   adapterPresentation,
 } from "./presentation-model.mjs";
 import { Synchronizer } from "./synchronize.mjs";
+import { randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { chromium } from "playwright";
@@ -34,6 +39,7 @@ export class Comparison {
     this.situationId = null;
     this.scriptInfo = null;
     this.sync = new Synchronizer(this);
+    this.botCapabilities = () => this.services.botCapabilities();
   }
   async launch() {
     if (this.options.native) {
@@ -84,11 +90,7 @@ export class Comparison {
   ) {
     [config] = validateSlots([config]);
     let intendedPresentation;
-    if (
-      situation?.presentation ||
-      config.overrides ||
-      presentation?.schema === 2
-    ) {
+    if (situation || config.overrides || presentation?.schema === 2) {
       const resolved = resolveView(config, situation, presentation);
       intendedPresentation = resolved.intended;
       [config] = slotsForSituation([resolved.config], situation);
@@ -109,7 +111,6 @@ export class Comparison {
               ? { situation }
               : {}),
         human_seat: this.manualSeat(config, situation),
-        bots: config.bots || {},
       }));
     const profile = PROFILES[config.profile];
     const context = await this.browser.newContext({
@@ -141,6 +142,10 @@ export class Comparison {
     const page = await context.newPage();
     const win = {
       config: { ...config },
+      syncGroup: existingClone
+        ? this.windows.find((w) => w.clone.game_id === existingClone.game_id)
+            ?.syncGroup
+        : undefined,
       situation,
       initialPresentation: structuredClone(
         intendedPresentation || toPresentation(presentation || {}, config.seat),
@@ -267,8 +272,30 @@ export class Comparison {
         waitUntil: "domcontentloaded",
         timeout: 120_000,
       });
-      await this.ready(win);
+      try {
+        await this.ready(win);
+      } catch (error) {
+        if (
+          config.source !== "main" ||
+          config.uiMode !== "mobile" ||
+          !error.message.includes("native mobile shell")
+        )
+          throw error;
+        // Compare the mainline's available interface at the chosen phone size.
+        // Keep the actual configuration and capture evidence honest about the shell.
+        config = { ...config, uiMode: "desktop" };
+        win.config.uiMode = "desktop";
+        win.compatibilityWarnings = [
+          "Main has no native mobile shell; showing its desktop interface at the selected phone size.",
+        ];
+        await page.goto(gameURL(port, clone, config), {
+          waitUntil: "domcontentloaded",
+          timeout: 120_000,
+        });
+        await this.ready(win);
+      }
       win.warnings = [
+        ...(win.compatibilityWarnings || []),
         ...(intendedPresentation?.warnings || []),
         ...(await restorePresentation(page, presentation, config)),
       ];
@@ -437,6 +464,7 @@ export class Comparison {
   async load(situationId, configs, presentations = {}, savedSituation = null) {
     // Resolve the roster before closing an existing comparison. This also
     // resolves saved Viewpoints that are unavailable in this game's roster.
+    configs ||= this.windows.map((w) => w.config);
     validateSlots(configs);
     const situation =
       savedSituation ||
@@ -448,24 +476,23 @@ export class Comparison {
     if (!situation) throw new Error("Choose a saved situation.");
     const slots = slotsForSituation(configs, situation);
     if (slots.some((s) => Object.keys(s.bots || {}).length)) {
-      const health = await this.api("/health", undefined, "GET");
+      const capabilities = await this.botCapabilities();
       if (
         slots.some((s) =>
           Object.values(s.bots || {}).some(
-            (kind) => !health.bot_kinds?.includes(kind),
+            (kind) => !capabilities.botKinds.includes(kind),
           ),
         )
       )
-        throw new Error(
-          "This backend has no requested bots. Configure the bots backend checkout.",
+        throw Error(
+          "The bot decision service does not support the requested policies.",
         );
     }
-    if (
-      this.sync.mode !== "none" &&
-      (slots.length === 1 ||
-        slots.some((s) => Object.keys(s.bots || {}).length))
-    )
-      await this.sync.setMode("none");
+    if (this.sync.mode !== "none") {
+      const bots = this.sync.botPolicies(slots.map((config) => ({ config })));
+      for (const slot of slots) slot.bots = structuredClone(bots);
+      slotsForSituation(slots, situation);
+    }
     const previousWindows = this.windows;
     const previousSituationId = this.situationId;
     const previousHeroIds = this.heroIds;
@@ -494,14 +521,19 @@ export class Comparison {
         cause: opened[failed].reason,
       });
     }
+    const group = randomUUID();
+    for (const win of replacements) win.syncGroup = group;
     this.windows = replacements;
+    this.sync.error = null;
     await Promise.allSettled(
       previousWindows.map((win) => this.closeWindow(win)),
     );
     const required = new Set(
-      slots.map((s) => (s.source === "target" ? "base" : s.source)),
+      this.sync
+        .participants()
+        .map((w) => (w.config.source === "target" ? "base" : w.config.source)),
     );
-    for (const key of ["base", "comparator", "live"])
+    for (const key of ["base", "comparator", "live", "main"])
       if (!required.has(key)) await this.services.stop(key);
     return this.status();
   }
@@ -538,25 +570,26 @@ export class Comparison {
       await Promise.allSettled(prepared.map((p) => this.closeWindow(p.win)));
       throw error;
     }
-    for (const p of prepared) this.windows[p.index] = p.win;
+    for (const p of prepared) {
+      p.win.syncGroup = this.sync.groupKey(p.old);
+      this.windows[p.index] = p.win;
+    }
     await Promise.allSettled(prepared.map((p) => this.closeWindow(p.old)));
     return this.status();
   }
   async applyPresentation(index, presentation) {
-    const old = this.window(index);
-    const win = await this.open(
-      old.config,
-      presentation,
-      old.clone,
-      index,
-      old.situation,
+    const win = this.window(index);
+    win.warnings = [
+      ...(win.compatibilityWarnings || []),
+      ...(await applySessionChange(win.page, presentation, win.config)),
+    ];
+    win.intendedPresentation = resolvePresentation(
+      win.intendedPresentation,
+      sessionChange(presentation),
     );
-    await old.context.close().catch(() => {});
-    win.initialPresentation = structuredClone(presentation);
-    win.views = { ...old.views, [win.config.render]: presentation };
-    this.windows[index] = win;
     return this.status();
   }
+
   window(index) {
     const win = this.windows[index];
     if (!win) throw new Error("Comparison window not found.");
@@ -579,23 +612,23 @@ export class Comparison {
       JSON.stringify(config.bots || {}) !==
       JSON.stringify(old.config.bots || {});
     if (botsChanged) {
-      if (Object.keys(config.bots || {}).length)
-        await this.sync.setMode("none");
-      await this.api("/bots", {
-        game_id: old.clone.game_id,
-        human_seat: this.manualSeat(config, old.situation),
-        bots: config.bots || {},
-      });
-      // Keep controller metadata accurate even if reopening the renderer fails.
-      old.config.bots = config.bots;
+      slotsForSituation([config], old.situation);
+      if (Object.keys(config.bots || {}).length) await this.botCapabilities();
     }
-    const withoutBots = ({ bots, autoSwitch, ...rest }) => rest;
+    const withoutBots = ({
+      bots,
+      autoSwitch,
+      autoSwitchManualOnly,
+      tags,
+      ...rest
+    }) => rest;
     if (
       !old.page.isClosed() &&
       JSON.stringify(withoutBots(config)) ===
         JSON.stringify(withoutBots(old.config))
     ) {
       old.config = config;
+      if (botsChanged) this.sync.setBots(old, config.bots || {});
       return this.status();
     }
     const presentation = restoreSaved ? old.views[config.render] : null;
@@ -610,6 +643,7 @@ export class Comparison {
     win.views = { ...old.views, [config.render]: presentation };
     win.initialPresentation = old.initialPresentation;
     this.windows[index] = win;
+    if (botsChanged) this.sync.setBots(win, config.bots || {});
     return this.status();
   }
   manualSeat(config, situation = null) {
@@ -656,32 +690,27 @@ export class Comparison {
           undefined,
           "GET",
         );
-        const eligible = players.filter((id) => win.clone.seats[id]);
-        // Stable while the same hero still owes a choice, including multiple
-        // inputs in an action and concurrent/team decisions.
-        if (!eligible.length || eligible.includes(win.config.seat)) continue;
-        await switcher(index, eligible[0]);
+        const seat = respondingSeat(players, win.config, win.clone.seats);
+        if (seat) await switcher(index, seat);
       } catch (error) {
         win.config.autoSwitch = false;
         win.warnings.push("Auto switch stopped: " + error.message);
       }
     }
   }
-  async save(index, name, kind = "situation") {
+  async save(index, name, kind = "situation", tags) {
     const source = this.window(index);
-    const presentation =
-      kind === "decision-state"
-        ? undefined
-        : toPresentation(
-            await capturePresentation(source.page, source.config.render),
-            source.config.seat,
-          );
     return this.api("/capture", {
       game_id: source.clone.game_id,
       name,
       provenance: { kind: "capture", source_situation: source.situation?.id },
       kind,
-      ...(presentation ? { presentation } : {}),
+      tags:
+        tags ??
+        (kind === "decision-state"
+          ? source.situation?.decisionStateTags
+          : source.situation?.tags) ??
+        [],
     });
   }
   async addView({ config, situationId, fromIndex = 0, index }) {
@@ -711,8 +740,16 @@ export class Comparison {
       );
     }
     const [resolved] = slotsForSituation([config], situation);
-    if (Object.keys(resolved.bots || {}).length)
-      await this.sync.setMode("none");
+    const source = situationId ? null : this.window(fromIndex);
+    const group = source ? this.sync.groupKey(source) : randomUUID();
+    if (source && this.sync.mode !== "none") {
+      const members = this.sync
+        .targets(source)
+        .filter((w) => w !== this.windows[index]);
+      resolved.bots = this.sync.botPolicies([...members, { config: resolved }]);
+      slotsForSituation([resolved], situation);
+    }
+    if (Object.keys(resolved.bots || {}).length) await this.botCapabilities();
     const destination = index ?? this.windows.length;
     const win = await this.open(
       resolved,
@@ -721,8 +758,11 @@ export class Comparison {
       destination,
       situation,
     );
+    win.syncGroup = group;
     if (index !== undefined) await this.closeWindow(this.windows[index]);
     this.windows[destination] = win;
+    if (source && this.sync.mode !== "none")
+      this.sync.setBots(win, resolved.bots);
     this.situationId = this.windows[0].situation?.id;
     return this.status();
   }
@@ -730,7 +770,6 @@ export class Comparison {
     const win = this.window(index);
     await this.closeWindow(win);
     this.windows.splice(index, 1);
-    if (this.windows.length < 2) await this.sync.setMode("none");
     this.situationId = this.windows[0]?.situation?.id || null;
     return this.status();
   }
@@ -789,7 +828,8 @@ export class Comparison {
         nativeId: w.context?.nativeId,
         closed: w.page.isClosed?.() || false,
         seats: Object.keys(w.clone.seats),
-        warnings: w.warnings,
+        warnings: [...w.warnings, ...(w.botWarning ? [w.botWarning] : [])],
+        botError: w.botError || null,
         errors: w.errors,
         assets: w.assets,
         url: w.page.url().replace(/token=[^&]+/, "token=[private]"),

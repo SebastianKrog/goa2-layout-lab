@@ -1,0 +1,24 @@
+{
+  "id": "f1a4454d8dcc",
+  "name": "Poison marker reduces Noble Blade Attack by two",
+  "description": "Poison marker reduces Noble Blade Attack by two. Attack 2; defense needed 2. Waiting for Brogan; no defense submitted. Poisoned Dart marker -2 on Arien; Levels: Arien 1, Hanu 1, Brogan 1, Tigerclaw 5",
+  "backend_revision": "c4750787e620388a093683cc5b8518b437f1c2a3",
+  "saved_at": 1792734799.619223,
+  "provenance": {
+    "kind": "ui-fabrication"
+  },
+  "summary": {
+    "phase": "RESOLUTION",
+    "round": 1,
+    "decision": "SELECT_CARD_OR_PASS",
+    "responder": "hero_brogan"
+  },
+  "schema": 3,
+  "kind": "situation",
+  "decisionStateId": "2760a9b6c02f569f7d4e32c666fa46534db2a1b8b3bfc2347539cee7d22ffd83",
+  "tags": [
+    "topic:abilities-and-effects",
+    "topic:cards",
+    "topic:defense"
+  ]
+}

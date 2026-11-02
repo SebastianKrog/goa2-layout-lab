@@ -1,24 +1,9 @@
 {
-  "schema": 2,
+  "schema": 3,
   "kind": "situation",
   "id": "e82f5d9a1c14",
-  "name": "Across the River - physical minions in two battle zones",
+  "name": "Across the River: minions in two battle zones",
   "decisionStateId": "a56905b7397aa87747bf03b3f56aabe0c66a873df4bea83621263a0b0478ee56",
-  "presentation": {
-    "schema": 2,
-    "sessionState": {
-      "pane": "board",
-      "selectedCard": null,
-      "inspectedCard": null
-    },
-    "userState": {},
-    "viewpoint": "hero_arien",
-    "restoration": "defaulted; no historical Session State was saved",
-    "adapter": {
-      "uiMode": "desktop",
-      "render": "2d"
-    }
-  },
   "summary": {
     "phase": "PLANNING",
     "round": 1,
@@ -27,11 +12,12 @@
   },
   "backend_revision": "6bb2885bd5162ccc463023f4daf7ed95453ee01b",
   "saved_at": 1792508080.3668127,
-  "migration": {
-    "sourceId": "e82f5d9a1c14",
-    "sourceSlot": "0"
-  },
   "provenance": {
     "kind": "ui-fabrication"
-  }
+  },
+  "tags": [
+    "topic:battle-zones",
+    "topic:board"
+  ],
+  "description": "Across the River: minions in two battle zones. Load in any Layout to inspect the game state."
 }

@@ -8,9 +8,14 @@ Resolve checkout roots from the workspace/sibling folders and the lab configurat
 
 Use the backend's installed Python environment to run a factory, from its checkout with src on PYTHONPATH. Use the configured platform/runtime; Windows UI verification may use the normal WSL backend services. Do not create a Windows environment over a Linux .venv, or run Linux UI test suites to validate a fixture.
 
-For an isolated desk, set all five distinct GOA2*LAB*\*\_PORT variables: DESK, BASE, COMPARATOR, LIVE, BACKEND. Start with --no-auto-load; add --verification for an owned diagnostic instance. Shut down only that owned instance. Avoid full source preparation when a fixture can be produced and imported into an existing authorized desk.
+For an isolated desk, set DESK, BASE, COMPARATOR, LIVE, MAIN, BACKEND and BOTS
+service ports, plus DEVICE when used. Follow the
+[complete port example](../../../../docs/setup.md#isolate-an-acceptance-desk). Start with --no-auto-load; add --verification for an owned diagnostic instance. Shut down only that owned instance. Avoid full source preparation when a fixture can be produced and imported into an existing authorized desk.
 
 ## Executed examples and verification scope
+
+The dated results below describe earlier sources and library IDs. Current
+Situations are game-only; reapply UI instructions explicitly when reopening them.
 
 The shared repo library contains the five simple examples under library/situations/cards/{selection,actions,upgrades,defense,discard}/. Inspect library/README.md for their current files and names. The reusable factory is scripts/create-simple-situations.py in the lab repo; run it with the sibling backend's Python environment. It supports --backend and --output, and defaults to ignored .layout-lab/situation-recipes/simple/. It outputs five import envelopes plus manifest.json, including owning slots and the planning selectedCard presentation. It does not start a desk, validate rendering, promote fixtures or commit anything. Import only the five envelopes, not manifest.json.
 
@@ -84,14 +89,13 @@ assert again_result.input_request.player_id == hero.id
 assert lab.canonical_hash(normalized["state"]) == lab.canonical_hash(lab.checkpoint(again)["state"])
 payload = {
     "schema": lab.SCHEMA,
-    "name": "Arien - action chooser - owner",
+    "name": "Arien — Noble Blade action choice",
     "checkpoint": normalized,
     "provenance": {
         "kind": "ui-fabrication",
         "condition": "Choose an action for Noble Blade; no action submitted",
         "seed": 20261017,
     },
-    "presentation": lab.compose_presentation({"pane": "board"}, str(hero.id)),
 }
 output.parent.mkdir(parents=True, exist_ok=True)
 output.write_text(json.dumps(lab.portable_situation(payload), indent=2), encoding="utf-8")
@@ -103,7 +107,7 @@ Restoring a waiting step can initialize transient context defaults (this occurre
 
 For planning or a display-only state with no pending step, restore may legitimately return no SessionResult. Validate the phase and visible data instead of demanding an input prompt.
 
-The factory exports a composed Situation through `portable_situation()`. Use an explicit canonical `presentation`, optional `additionalPresentations`, and a separate `suggestedLayout` from `make_layout()`; do not assemble legacy `presentations` or `provenance.slots`. Do not add production save credentials, hand-write opaque IDs, or fake backend_revision. The lab importer supplies the actual situation ID, revision, timestamp and summary.
+The factory exports a game-only Situation through `portable_situation()`. Optional factory `presentation` / `additionalPresentations` inputs become independent `presentationPresets`; a `suggestedLayout` from `make_layout()` remains separate. Do not assemble legacy `presentations` or `provenance.slots`. Do not add production save credentials, hand-write opaque IDs, or fake backend_revision. The lab importer supplies the actual situation ID, revision, timestamp and summary.
 
 ## Import and load through the public desk
 
@@ -154,22 +158,23 @@ const slots = [
   },
 ];
 await request("load", { situationId: saved.id, slots });
-await request("synchronize", { mode: "none" });
+await request("synchronize", { mode: "api" }); // game commands only; UI stays independent
 ```
 
 The fixed starter route is POST /api/starter. Replay import uses POST /api/import with kind:"replay", the JSONL content and decision:N; N applies exactly N recorded decisions. Do not invent a POST /api/fabricate or /api/set-state route; neither exists.
 
-A load applies the composed Situation's Presentation while retaining the selected Layout. Use explicit View overrides for an intentional different Viewpoint or Session State. Runtime accepts only the new model; old fixtures must be ported offline.
+A load keeps the selected Layout. Pass optional `presentation`, `presentationsByInterface` and `viewPresentations` separately for the requested inspection. Runtime accepts only the new model; old fixtures must be ported offline.
 
 ## Presentation and saving
 
-- POST /api/configure: {index, update:{seat,source,profile,render,layout}}. Configure the responder's viewpoint before opening private menus.
+- POST /api/configure: {index, update:{seat,source,profile,render,uiMode}}. Configure the responder's viewpoint before opening private menus.
 - POST /api/pane: {index,pane:"board"|"heroes"|"hand"|"deck"|"log"|"settings"}. Check whether the view really has that panel; desktop adapters can scroll to inline content.
 - POST /api/hero: {index,heroId}. The current 3D adapter opens bridge-based hero inspection. The 2D adapter scrolls to the instrumented hero and records focus; it does not itself open the Heroes menu or a hero tooltip. Use /api/pane with pane:"heroes" or the actual UI for that menu.
-- For local selection, wait for the requested panel and visible card control, then use the actual control or restorePresentation(page,{render:"2d",pane:"hand",selectedCard:"noble_blade"},slot). This is a JavaScript module adapter, not a public HTTP endpoint. The current adapter waits for native mobile navigation to mount and the card to become visible; check its returned warnings. Confirm capturePresentation().selectedCard after saving and reopening. In planning, a selected card is not yet committed. For pending choices, clicking a card can immediately submit it: do not use generic clicks to manufacture a highlight before saving.
-- GET /api/views reports config, presentation, canonical state hash, decision summary and userscript activation. It does not expose all choice options; inspect the owning page's actual **GOA2_LAB_STATE** or the restored factory result when needed.
-- POST /api/save {index,name} captures Decision State plus Presentation. Add kind:"decision-state" for game-only state. POST /api/presentation/save {index,name} saves a template; POST /api/presentation/apply {index,id} reapplies it without game progress changes. POST /api/layout/save stores Views and synchronization without a checkpoint.
-- Reopen the composed Situation with the intended Layout. Confirm exact meaningful state and panel/selection, not opaque IDs or byte-for-byte equality of newly generated requests.
+- For local selection, wait for the requested panel and visible card control, then use the actual control or restorePresentation(page,{render:"2d",pane:"hand",selectedCard:"noble_blade"},slot). This is a JavaScript module adapter, not a public HTTP endpoint. The current adapter waits for native mobile navigation to mount and the card to become visible; check its returned warnings. Reapply the exact card as an ad hoc/Review instruction after reopening the
+  game-only Situation, then confirm capturePresentation().selectedCard. In planning, a selected card is not yet committed. For pending choices, clicking a card can immediately submit it: do not use generic clicks to manufacture a highlight before saving.
+- GET /api/views reports config, presentation, canonical state hash, decision summary and userscript activation. It does not expose all choice options; inspect the owning page's actual `window.__GOA2_LAB_STATE__` or the restored factory result when needed.
+- POST /api/save {index,name} saves a named game moment without UI state. Add kind:"decision-state" for an unnamed checkpoint. POST /api/presentation/save {index,name,field:"pane"} saves the current panel change; POST /api/presentation/apply {index,id} reapplies it without game progress changes. POST /api/layout/save stores Views and synchronization without a checkpoint.
+- Reopen the Situation with the intended Layout and separate Presentation instructions. Confirm exact meaningful state and panel/selection, not opaque IDs or byte-for-byte equality of newly generated requests.
 - GET /export/<situation-id> exports a credential-free saved situation. Treat unsupported presentation warnings as information to classify, not permission to patch missing UI into old sources.
 
 If card markers are absent in every otherwise-rendered hand, check that the current src/instrument.mjs is loaded: it normalizes Windows CRLF line endings before matching CardRow anchors. Restart an already-running desk after adapter-module changes so it uses the updated restoration code. A failure of lab instrumentation is not evidence that the frontend lacks a hand.
@@ -186,7 +191,8 @@ Use a small JSON or Markdown record beside the factory. This is a handoff conven
 - Exact stopping condition: phase, request type/responder when present, key IDs and expected content/options.
 - Slots and viewpoint intent: source, shell, renderer, profile, owner/opponent/spectator.
 - Per-view presentation and availability: supported, inline-equivalent, unsupported or not-verified, with a reason for missing features.
-- Round-trip status and any non-persisted UI state that the image workflow must reapply.
+- Round-trip status and the separate Viewpoint/Presentation instructions to reapply.
+  Camera/scroll snapshots can accompany the handoff as evidence, not reusable presets.
 
 Do not store player tokens or absolute machine-specific checkout paths in the handoff. Do not claim "ready" when the prompt, data or required viewpoint was never loaded. The image workflow can use the saved checkpoint plus these notes without advancing the game again.
 

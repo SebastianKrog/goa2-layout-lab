@@ -57,18 +57,19 @@ format remains schema 2.
 From the lab root, against an already-prepared desk:
 
 ```sh
-npm run extract -- --origin=http://127.0.0.1:3300 --indexes=1,2 --mode=element --selector=".your-control" --out=./new-element-review
+npm run extract -- --origin=http://127.0.0.1:3277 --indexes=0,1 --mode=element --selector=".your-control" --out=./new-element-review
 ```
 
 Only when whole-document collection is needed:
 
 ```sh
-npm run extract -- --origin=http://127.0.0.1:3300 --indexes=1,2 --mode=full --out=./new-full-review
-npm run extract -- --origin=http://127.0.0.1:3300 --indexes=1,2 --mode=active --out=./new-active-review
+npm run extract -- --origin=http://127.0.0.1:3277 --indexes=0,1 --mode=full --out=./new-full-review
+npm run extract -- --origin=http://127.0.0.1:3277 --indexes=0,1 --mode=active --out=./new-active-review
 ```
 
 Arguments use `--key=value`. Indexes are zero-based and must name two distinct
-open views; `1,2` selects Current build and Target in the default three-view setup.
+open views; `0,1` selects the first two loaded Views. The desk opens no Views by default;
+for a three-View migration Layout, `1,2` selects Comparator and Target.
 The destination must be new. Without `--out`, the report stays under ignored
 `.layout-lab/reports/source-<id>/`. The helper needs only Node built-ins and the
 running local desk; it does not launch services, load/reset situations, advance
@@ -78,7 +79,7 @@ The public API equivalent is:
 
 ```javascript
 await request("extract", {
-  indexes: [1, 2],
+  indexes: [0, 1],
   mode: "element",
   selector: ".your-control",
 });

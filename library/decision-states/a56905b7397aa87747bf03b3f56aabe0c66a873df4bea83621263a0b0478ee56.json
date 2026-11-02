@@ -15341,5 +15341,12 @@
     "rollback_actor_id": null,
     "hero_names": {},
     "replay_log": []
-  }
+  },
+  "tags": [
+    "hero:arien",
+    "hero:brogan",
+    "phase:planning",
+    "topic:battle-zones",
+    "topic:board"
+  ]
 }

@@ -1,0 +1,25 @@
+{
+  "id": "09f923ecb882",
+  "name": "Brogan - friendly ranged does not support defense",
+  "description": "Attack 4; minion modifier +0; defense needed 4. Waiting for Brogan; no defense submitted.",
+  "backend_revision": "c4750787e620388a093683cc5b8518b437f1c2a3",
+  "saved_at": 1792729763.6593583,
+  "provenance": {
+    "kind": "ui-fabrication"
+  },
+  "summary": {
+    "phase": "RESOLUTION",
+    "round": 1,
+    "decision": "SELECT_CARD_OR_PASS",
+    "responder": "hero_brogan"
+  },
+  "schema": 3,
+  "kind": "situation",
+  "decisionStateId": "200d249773f706b1e2e56d09d3536e87d9198c7d598f45513eac2a74148a7ce5",
+  "tags": [
+    "hero:brogan",
+    "topic:cards",
+    "topic:defense",
+    "topic:minions-and-skills"
+  ]
+}

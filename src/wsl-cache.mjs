@@ -6,7 +6,7 @@ import { createHash } from "node:crypto";
 import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
 import { pathToFileURL } from "node:url";
-import { TOOL, ROOT, BACKEND } from "./config.mjs";
+import { TOOL, ROOT, BACKEND, BOT_BACKEND } from "./config.mjs";
 
 const exec = promisify(execFile);
 const hash = (bytes) => createHash("sha256").update(bytes).digest("hex");
@@ -169,16 +169,18 @@ async function main() {
     const code = await run(["install", root], env);
     if (code) throw Error(`Frontend dependencies exited ${code}`);
     await fs.writeFile(`${pidfile}.result.json`, JSON.stringify({ root }));
-  } else if (action === "backend") {
+  } else if (action === "backend" || action === "bots") {
     // Register the adapter while hashing/copying. The runner replaces this with
     // its owned process-group PID before Uvicorn starts accepting requests.
     const [pidfile] = args;
     await fs.writeFile(pidfile, String(process.pid));
-    const root = await backendSnapshot(cache);
+    const isBots = action === "bots";
+    const checkout = isBots ? BOT_BACKEND : BACKEND;
+    const root = await backendSnapshot(cache, checkout);
     Object.assign(env, {
-      GOA2_LAB_BACKEND: root,
-      GOA2_LAB_BACKEND_CHECKOUT: BACKEND,
-      GOA2_LAB_VENV: path.join(cache, "venv"),
+      [isBots ? "GOA2_LAB_BOT_BACKEND" : "GOA2_LAB_BACKEND"]: root,
+      GOA2_LAB_BACKEND_CHECKOUT: checkout,
+      GOA2_LAB_VENV: path.join(cache, isBots ? "venv-bots" : "venv"),
       PYTHONPYCACHEPREFIX: path.join(cache, "pycache"),
     });
     process.exitCode = await run([action, ...args], env);

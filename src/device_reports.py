@@ -1,4 +1,5 @@
 """Device reports belong to the lab, never the production game server."""
+from datetime import datetime, timezone
 import base64
 import binascii
 import json
@@ -8,7 +9,6 @@ from pathlib import Path
 from html import escape
 
 from fastapi import HTTPException
-from state_model import presentation as compose_presentation
 
 
 def install_device_reports(app, *, checkpoint, write, root, now):
@@ -61,6 +61,8 @@ def install_device_reports(app, *, checkpoint, write, root, now):
         (folder / "screenshot.png").write_bytes(png)
         (folder / "report.json").write_text(json.dumps({
             "id": identifier, "comment": comment.strip(), "captured_at": capture["at"],
+            "capturedAt": datetime.fromtimestamp(capture["at"], timezone.utc).isoformat(),
+            "session": capture["provenance"].get("session"),
             "viewport": capture["viewport"], "presentation": capture["presentation"],
             "provenance": capture["provenance"], "review": review,
         }, indent=2), encoding="utf-8")
@@ -68,7 +70,7 @@ def install_device_reports(app, *, checkpoint, write, root, now):
             '<!doctype html><html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
             '<title>Layout lab device report</title><style>body{font:16px system-ui;max-width:960px;margin:24px auto;padding:0 16px}'
             'pre{white-space:pre-wrap}img{max-width:100%;height:auto}code{overflow-wrap:anywhere}</style>'
-            f'<h1>Device report</h1><p>Situation <code>{identifier}</code></p><pre>{escape(comment.strip())}</pre>'
+            f'<h1>Device report</h1><p class="report-captured-time">Captured <time datetime="{datetime.fromtimestamp(capture["at"], timezone.utc).isoformat()}">{datetime.fromtimestamp(capture["at"], timezone.utc).isoformat()}</time></p><script>document.querySelector("time").textContent=new Date(document.querySelector("time").dateTime).toLocaleString()</script><p>Situation <code>{identifier}</code></p><pre>{escape(comment.strip())}</pre>'
             '<p><a href="report.json">Report data</a> · <a href="situation.json">Situation JSON</a></p>'
             '<img src="screenshot.png" alt="Reported game screen without reporting controls"></html>',
             encoding="utf-8",
@@ -77,7 +79,6 @@ def install_device_reports(app, *, checkpoint, write, root, now):
                       "viewport": capture["viewport"], "report": f"{prefix}/{identifier}"}
         situation = write(capture["checkpoint"], comment.strip()[:160],
                           situation_id=identifier, provenance=provenance,
-                          presentation=compose_presentation(capture["presentation"], (capture["provenance"].get("slots") or [{}])[0].get("seat")),
                           group="device-reports")
         # Keep all integer-valued engine data in Python throughout capture/save.
         (folder / "situation.json").write_text(json.dumps(situation, indent=2), encoding="utf-8")

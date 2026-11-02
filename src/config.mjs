@@ -1,3 +1,4 @@
+import { normalizeTags } from "../public/tags.mjs";
 import { toPresentation } from "./presentation-model.mjs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -20,6 +21,9 @@ export const DATA = path.join(TOOL, ".layout-lab");
 export const BACKEND = path.resolve(
   process.env.GOA2_LAB_BACKEND || path.join(TOOL, "../goa2-backend"),
 );
+export const BOT_BACKEND = path.resolve(
+  process.env.GOA2_LAB_BOT_BACKEND || path.join(TOOL, "../goa2-backend-bots"),
+);
 export const PATCH = path.resolve(
   process.env.GOA2_LAB_PATCH || path.join(TOOL, "../goa2-mobile-2d-patch"),
 );
@@ -37,10 +41,12 @@ export function launchSettings(
     fallback;
   const ports = {};
   for (const [name, fallback] of Object.entries({
+    main: 3103,
     comparator: 3100,
     base: 3101,
     live: 3102,
     backend: 8100,
+    bots: 8110,
     desk: 3200,
   })) {
     const port = Number(env[`GOA2_LAB_${name.toUpperCase()}_PORT`] || fallback);
@@ -59,6 +65,7 @@ export function launchSettings(
   if (situationId !== null && !/^[A-Za-z0-9]{1,40}$/.test(situationId))
     throw new Error("Use --situation=<saved-situation-id>.");
   return {
+    mainRef: value("main-ref", "GOA2_LAB_MAIN_REF", "default"),
     baseRef: value("base-ref", "GOA2_LAB_BASE_REF", REFERENCES.base),
     scriptRef: value("script-ref", "GOA2_LAB_SCRIPT_REF", REFERENCES.script),
     comparatorRef: value(
@@ -113,8 +120,33 @@ const slot = (source, profile, render, uiMode = "desktop") => ({
   uiMode,
   seat: "hero_arien",
 });
+export const PRIMARY_LAYOUTS = [
+  "Current",
+  "Desktop · Main vs working tree",
+  "Mobile portrait · Main vs working tree",
+  "Mobile landscape · Main vs working tree",
+  "Mobile · Working tree",
+  "Desktop vs mobile · Working tree",
+];
 export const PRESETS = {
   Current: [slot("live", "desktop", "2d")],
+  "Desktop · Main vs working tree": [
+    slot("main", "desktop", "2d"),
+    slot("live", "desktop", "2d"),
+  ],
+  "Mobile portrait · Main vs working tree": [
+    slot("main", "portrait", "2d", "mobile"),
+    slot("live", "portrait", "2d", "mobile"),
+  ],
+  "Mobile landscape · Main vs working tree": [
+    slot("main", "landscape", "2d", "mobile"),
+    slot("live", "landscape", "2d", "mobile"),
+  ],
+  "Mobile · Working tree": [slot("live", "portrait", "2d", "mobile")],
+  "Desktop vs mobile · Working tree": [
+    slot("live", "desktop", "2d"),
+    slot("live", "portrait", "2d", "mobile"),
+  ],
   "Play solo": [slot("live", "portrait", "2d", "mobile")],
   "Mobile migration": [
     slot("base", "portrait", "2d"),
@@ -147,6 +179,7 @@ export function validateSlots(slots) {
         "View settings cannot contain a Situation or Decision State.",
       );
     const s = { ...value, uiMode: value.uiMode ?? "desktop" };
+    if (Object.hasOwn(s, "tags")) s.tags = normalizeTags(s.tags);
     if (s.overrides !== undefined) s.overrides = toPresentation(s.overrides);
     if (s.presentationDefaults !== undefined)
       s.presentationDefaults = toPresentation(s.presentationDefaults);
@@ -155,7 +188,7 @@ export function validateSlots(slots) {
       (typeof s.label !== "string" || s.label.length > 80)
     )
       throw new Error("View names must be at most 80 characters.");
-    if (!["base", "comparator", "target", "live"].includes(s.source))
+    if (!["main", "base", "comparator", "target", "live"].includes(s.source))
       throw new Error("Unknown frontend source.");
     if (!PROFILES[s.profile]) throw new Error("Unknown device profile.");
     if (!["2d", "3d"].includes(s.render)) throw new Error("Choose 2D or 3D.");
@@ -169,6 +202,11 @@ export function validateSlots(slots) {
       throw new Error("The native mobile shell uses 2D.");
     if (typeof s.seat !== "string" || !s.seat)
       throw new Error("Choose a player seat or spectator.");
+    if (
+      s.autoSwitchManualOnly !== undefined &&
+      typeof s.autoSwitchManualOnly !== "boolean"
+    )
+      throw new Error("Human-only auto switch must be on or off.");
     if (s.autoSwitch !== undefined && typeof s.autoSwitch !== "boolean")
       throw new Error("Auto switch must be on or off.");
     if (s.bots !== undefined) {
@@ -203,7 +241,6 @@ export function slotsForSituation(configs, situation) {
         "Leave at least one hero manual when playing against bots.",
       );
   const preferred = [
-    situation.presentation?.viewpoint,
     situation.summary?.responder,
     heroes.find((h) => situation.summary?.responder === "team:" + h.team)?.id,
     heroes[0].id,
@@ -224,7 +261,7 @@ export function gameURL(port, clone, s) {
     token,
     "3d": s.render === "3d" ? "1" : "0",
   });
-  if (s.source === "comparator" || s.source === "live")
+  if (["main", "comparator", "live"].includes(s.source))
     query.set("ui", s.uiMode);
   return `http://localhost:${port}/game/${clone.game_id}?${query}`;
 }

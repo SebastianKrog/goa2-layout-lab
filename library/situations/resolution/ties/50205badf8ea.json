@@ -1,24 +1,9 @@
 {
-  "schema": 2,
+  "schema": 3,
   "kind": "situation",
   "id": "50205badf8ea",
-  "name": "M3 resolution - team-tie",
+  "name": "Resolution: choose a teammate after a tie",
   "decisionStateId": "2ba107c910d9594ced573bf6892dd8a6bbabd0dcde7cc32b4b0fcfefa2929eb7",
-  "presentation": {
-    "schema": 2,
-    "sessionState": {
-      "pane": "board",
-      "selectedCard": null,
-      "inspectedCard": null
-    },
-    "userState": {},
-    "viewpoint": "hero_hanu",
-    "restoration": "defaulted; no historical Session State was saved",
-    "adapter": {
-      "uiMode": "desktop",
-      "render": "2d"
-    }
-  },
   "summary": {
     "phase": "RESOLUTION",
     "round": 1,
@@ -27,14 +12,16 @@
   },
   "backend_revision": "740ec5bbfa1aaadcf05b0df06d93ab3187e5de9a",
   "saved_at": 1792481970.5729225,
-  "migration": {
-    "sourceId": "50205badf8ea",
-    "sourceSlot": "0"
-  },
   "provenance": {
     "kind": "ui-fabrication",
     "fixture": {
       "case": "team-tie"
     }
-  }
+  },
+  "tags": [
+    "hero:resolution",
+    "topic:resolution",
+    "topic:ties"
+  ],
+  "description": "Resolution: choose a teammate after a tie. Waiting for team:RED."
 }

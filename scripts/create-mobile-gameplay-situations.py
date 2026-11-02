@@ -57,7 +57,7 @@ def write(key, session, result, seat):
     checkpoint = lab.checkpoint(restored)
     again, _ = lab.restore(checkpoint)
     assert lab.canonical_hash(checkpoint['state']) == lab.canonical_hash(lab.checkpoint(again)['state'])
-    payload = {'schema': lab.SCHEMA, 'name': f'M2 acceptance - {key}', 'checkpoint': checkpoint,
+    payload = {'schema': lab.SCHEMA, 'name': key.replace('-', ' ').capitalize(), 'checkpoint': checkpoint,
         'provenance': {'kind': 'ui-fabrication', 'fixture': {'case': key}, 'seed': 20261017},
         'presentation': lab.compose_presentation({'pane': 'board'}, seat),
         'suggestedLayout': lab.make_layout([

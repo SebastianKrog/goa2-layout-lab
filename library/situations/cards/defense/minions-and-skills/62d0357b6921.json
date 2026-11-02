@@ -1,0 +1,25 @@
+{
+  "id": "62d0357b6921",
+  "name": "Brogan - mixed minion pressure",
+  "description": "Attack 4; minion modifier -2; defense needed 6. Waiting for Brogan; no defense submitted.",
+  "backend_revision": "c4750787e620388a093683cc5b8518b437f1c2a3",
+  "saved_at": 1792729811.8487651,
+  "provenance": {
+    "kind": "ui-fabrication"
+  },
+  "summary": {
+    "phase": "RESOLUTION",
+    "round": 1,
+    "decision": "SELECT_CARD_OR_PASS",
+    "responder": "hero_brogan"
+  },
+  "schema": 3,
+  "kind": "situation",
+  "decisionStateId": "fde993d07b520c609429e167b1f887907f4ee537f8f51fbc85f593ca8853b0a5",
+  "tags": [
+    "hero:brogan",
+    "topic:cards",
+    "topic:defense",
+    "topic:minions-and-skills"
+  ]
+}

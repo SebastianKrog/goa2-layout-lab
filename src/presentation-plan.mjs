@@ -39,3 +39,32 @@ export function mobileRestorationPlan(value, config) {
   }
   return steps;
 }
+
+// Older live gateways may have normalized resolved defaults as requested changes.
+// Drop only proven no-op warnings; preserve unsupported targets and real failures.
+export function devicePresentationWarnings(intended, presentation, config) {
+  return (intended?.warnings || []).filter(warning => {
+    if (warning === "Viewpoint is configured separately and was skipped in this Presentation.")
+      return intended.viewpoint !== config.seat;
+    if (warning === "Presentation change scroll is unsupported and was skipped.")
+      return !Array.isArray(presentation.scroll) || presentation.scroll.length !== 0;
+    if (warning === "Presentation change windowScroll is unsupported and was skipped.")
+      return presentation.windowScroll?.x !== 0 || presentation.windowScroll?.y !== 0;
+    return true;
+  });
+}
+
+export async function restoreMobilePane(name, { until, visible, root = document }) {
+  const current = () => root.querySelector('[aria-label="Mobile game"]')?.dataset.mobilePane
+    || root.querySelector('[data-pane][aria-pressed="true"]')?.dataset.pane || "board";
+  const active = current();
+  if (active === name) return;
+  const target = name === "board" ? active === "choice" ? "board-choice" : active
+    : name === "choice" ? "board-choice" : name;
+  const control = await until(() => visible(`button[data-pane="${target}"]`)
+    || name === "choice" && visible('button[data-pane="choice"]'));
+  if (name === "choice" && control.dataset.pane === "board-choice" && control.textContent.trim() !== "Choice")
+    throw Error("Choice is unavailable for this viewpoint.");
+  control.click();
+  await until(() => current() === name);
+}

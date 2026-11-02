@@ -1,0 +1,24 @@
+{
+  "id": "f3ef37781f36",
+  "name": "Brogan adjacent to one friendly Barrier token",
+  "description": "Brogan adjacent to one friendly Barrier token. Attack 4; defense needed 4. Waiting for Brogan; no defense submitted. 1 adjacent friendly barrier aura(s) from real card placement; Levels: Arien 1, Hanu 1, Brogan 1, Trinkets 2",
+  "backend_revision": "c4750787e620388a093683cc5b8518b437f1c2a3",
+  "saved_at": 1792734801.1119244,
+  "provenance": {
+    "kind": "ui-fabrication"
+  },
+  "summary": {
+    "phase": "RESOLUTION",
+    "round": 1,
+    "decision": "SELECT_CARD_OR_PASS",
+    "responder": "hero_brogan"
+  },
+  "schema": 3,
+  "kind": "situation",
+  "decisionStateId": "97055ebe87170d85c06e622ebdb1e5cbc0df39dc089e68cf335cba965be9cad8",
+  "tags": [
+    "topic:abilities-and-effects",
+    "topic:cards",
+    "topic:defense"
+  ]
+}
